@@ -37,6 +37,16 @@ My intention is to write Python3 that's compatible with Python2, not *vice versa
 Pyctool components should be configurable in a consistent manner, using a tree of configuration objects that can be introspected.
 This will allow development of a GUI to assemble networks of components that can then (optionally) be run as a batch script.
 
+Metadata
+--------
+
+One of the better features of the BBC pictools was the "audit trail".
+Every tool extended this block of text with details of what it did - the program name, its parameters, the time and machine it ran on, etc.
+This often proved useful when seeking to find out what a particular file was supposed to be.
+
+Pyctools will probably use XMP "sidecar" files to store metadata like this.
+Using sidecar files means we won't need to restrict the video or still image file formats to those that support metadata.
+
 Extensible
 ----------
 
