@@ -30,6 +30,13 @@ Although Pyctools will be written in Python this should not have any adverse imp
 All the computationally intensive work should be done in C/C++/Ada/whatever - as long as it can be interfaced to Python it can be used.
 I'm hoping to be able to use a range of existing image processing libraries.
 
+Pyctools will be primarily targeted at Python3.
+I expect there will be some libraries that are only available in Python2 for a while yet, but I hope that situation won't last much longer.
+My intention is to write Python3 that's compatible with Python2, not *vice versa*.
+
+Pyctool components should be configurable in a consistent manner, using a tree of configuration objects that can be introspected.
+This will allow development of a GUI to assemble networks of components that can then (optionally) be run as a batch script.
+
 Extensible
 ----------
 
