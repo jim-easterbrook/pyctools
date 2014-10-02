@@ -47,6 +47,6 @@ setup(name = 'pyctools',
           ],
       license = 'GNU GPL',
       platforms = ['POSIX', 'MacOS', 'Windows'],
-      packages = ['pyctools.core'],
+      packages = ['pyctools', 'pyctools.core'],
       package_dir = {'' : 'src'},
       )
