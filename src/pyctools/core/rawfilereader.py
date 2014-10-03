@@ -26,15 +26,12 @@ from __future__ import print_function
 import io
 import logging
 import sys
-import time
 
 from guild.actor import *
 import numpy
 
+from pyctools.core.frame import Frame
 from pyctools.core.objectpool import ObjectPool
-
-class Frame(object):
-    pass
 
 bytes_per_pixel = {
     'UYVY' : 2,
@@ -74,9 +71,10 @@ class RawFileReader(Actor):
         Y_data = raw_array[Yoff::Yps]
         U_data = raw_array[Uoff::Ups]
         V_data = raw_array[Voff::Vps]
-        frame.Y_data = Y_data.reshape(self.ylen, self.xlen)
-        frame.U_data = U_data.reshape(self.ylen, self.xlen // UVhss)
-        frame.V_data = V_data.reshape(self.ylen, self.xlen // UVhss)
+        frame.data.append(Y_data.reshape(self.ylen, self.xlen))
+        frame.data.append(U_data.reshape(self.ylen, self.xlen // UVhss))
+        frame.data.append(V_data.reshape(self.ylen, self.xlen // UVhss))
+        frame.type = 'YCbCr'
         frame.frame_no = self.frame_no
         self.frame_no += 1
         self.output(frame)
@@ -86,6 +84,7 @@ class RawFileReader(Actor):
         self.file.close()
 
 def main():
+    import time
     class Sink(Actor):
         @actor_method
         def input(self, frame):
@@ -96,9 +95,9 @@ def main():
                 self.byte_count = 0
                 self.frame_count = 0
             else:
-                self.byte_count += frame.Y_data.shape[0] * frame.Y_data.shape[1]
-                self.byte_count += frame.U_data.shape[0] * frame.U_data.shape[1]
-                self.byte_count += frame.V_data.shape[0] * frame.V_data.shape[1]
+                self.byte_count += frame.data[0].shape[0] * frame.data[0].shape[1]
+                self.byte_count += frame.data[1].shape[0] * frame.data[1].shape[1]
+                self.byte_count += frame.data[2].shape[0] * frame.data[2].shape[1]
                 self.frame_count += 1
 
         def onStop(self):

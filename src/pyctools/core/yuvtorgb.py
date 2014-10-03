@@ -29,15 +29,12 @@ import sys
 import time
 
 from guild.actor import *
-from numpy import array
 import numpy
 from PIL import Image
 import scipy.ndimage
 
+from pyctools.core.frame import Frame
 from pyctools.core.objectpool import ObjectPool
-
-class Frame(object):
-    pass
 
 class YUVtoRGB(Actor):
     def process_start(self):
@@ -62,27 +59,32 @@ class YUVtoRGB(Actor):
     def compute_output(self):
         in_frame = self.in_frames.popleft()
         out_frame = self.out_frames.popleft()
+        out_frame.initialise(in_frame)
+        # check input and get data
+        if len(in_frame.data) != 3 or in_frame.type != 'YCbCr':
+            raise RuntimeError('Cannot convert "%s" images.' % in_frame.type)
+        Y_data, U_data, V_data = in_frame.as_numpy()
         # correct offset (and promote to floating format)
-        U_data = in_frame.U_data - 128.0
-        V_data = in_frame.V_data - 128.0
+        U_data = U_data - 128.0
+        V_data = V_data - 128.0
         # resample U & V
-        v_ss = in_frame.Y_data.shape[0] // in_frame.U_data.shape[0]
-        h_ss = in_frame.Y_data.shape[1] // in_frame.U_data.shape[1]
+        v_ss = Y_data.shape[0] // U_data.shape[0]
+        h_ss = Y_data.shape[1] // U_data.shape[1]
         if v_ss != 1 or h_ss != 1:
             U_data = scipy.ndimage.zoom(U_data, (v_ss, h_ss))
             V_data = scipy.ndimage.zoom(V_data, (v_ss, h_ss))
         # matrix (the hard way)
-        R_data = in_frame.Y_data + (V_data * 1.37071)
-        G_data = in_frame.Y_data - (U_data * 0.336455) - (V_data * 0.698196)
-        B_data = in_frame.Y_data + (U_data * 1.73245)
+        R_data = Y_data + (V_data * 1.37071)
+        G_data = Y_data - (U_data * 0.336455) - (V_data * 0.698196)
+        B_data = Y_data + (U_data * 1.73245)
         # merge using PIL
         R_data = R_data.astype(numpy.uint8)
         G_data = G_data.astype(numpy.uint8)
         B_data = B_data.astype(numpy.uint8)
-        out_frame.image = Image.merge('RGB', (Image.fromarray(R_data),
-                                              Image.fromarray(G_data),
-                                              Image.fromarray(B_data)))
-        out_frame.frame_no = in_frame.frame_no
+        out_frame.data.append(Image.merge('RGB', (Image.fromarray(R_data),
+                                                  Image.fromarray(G_data),
+                                                  Image.fromarray(B_data))))
+        out_frame.type = 'RGB'
         self.output(out_frame)
 
     def onStop(self):
@@ -95,7 +97,7 @@ def main():
         def input(self, frame):
             print('sink', frame.frame_no)
             if frame.frame_no == 0:
-                frame.image.show()
+                frame.data[0].show()
             time.sleep(1.0)
 
     if len(sys.argv) != 2:
