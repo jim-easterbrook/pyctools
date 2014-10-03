@@ -35,6 +35,8 @@ object, i.e. when it gets deleted.
 
 from __future__ import print_function
 
+__all__ = ['ObjectPool']
+
 import sys
 import time
 import weakref
