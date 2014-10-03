@@ -29,7 +29,6 @@ import sys
 import time
 
 from guild.actor import *
-from numpy import array
 import numpy
 
 from pyctools.core.objectpool import ObjectPool
@@ -42,7 +41,7 @@ bytes_per_pixel = {
     }
 
 mux_layout = {
-    'UYVY' : (1, 0, 2, 2),
+    'UYVY' : (1, 2, 0, 4, 2, 4, 2),
     }
 
 class RawFileReader(Actor):
@@ -70,11 +69,14 @@ class RawFileReader(Actor):
             self.stop()
             return
         # convert to numpy arrays
-        Yoff, Uoff, Voff, UVhss = mux_layout[self.fourcc]
+        Yoff, Yps, Uoff, Ups, Voff, Vps, UVhss = mux_layout[self.fourcc]
         raw_array = numpy.frombuffer(raw_data, numpy.uint8)
-        frame.Y_data = raw_array[Yoff::2].reshape(self.ylen, self.xlen)
-        frame.U_data = raw_array[Uoff::4].reshape(self.ylen, self.xlen // 2)
-        frame.V_data = raw_array[Voff::4].reshape(self.ylen, self.xlen // 2)
+        Y_data = raw_array[Yoff::Yps]
+        U_data = raw_array[Uoff::Ups]
+        V_data = raw_array[Voff::Vps]
+        frame.Y_data = Y_data.reshape(self.ylen, self.xlen)
+        frame.U_data = U_data.reshape(self.ylen, self.xlen // UVhss)
+        frame.V_data = V_data.reshape(self.ylen, self.xlen // UVhss)
         frame.frame_no = self.frame_no
         self.frame_no += 1
         self.output(frame)
@@ -84,14 +86,30 @@ class RawFileReader(Actor):
         self.file.close()
 
 def main():
-    from pyctools.core.yuvtorgb import YUVtoRGB
     class Sink(Actor):
         @actor_method
         def input(self, frame):
-            print('sink', frame.frame_no)
+            print('sink', frame.frame_no, end='\r')
+            sys.stdout.flush()
             if frame.frame_no == 0:
-                frame.image.show()
-            time.sleep(1.0)
+                self.start_time = time.time()
+                self.byte_count = 0
+                self.frame_count = 0
+            else:
+                self.byte_count += frame.Y_data.shape[0] * frame.Y_data.shape[1]
+                self.byte_count += frame.U_data.shape[0] * frame.U_data.shape[1]
+                self.byte_count += frame.V_data.shape[0] * frame.V_data.shape[1]
+                self.frame_count += 1
+
+        def onStop(self):
+            duration = time.time() - self.start_time
+            print()
+            print('received %d bytes in %g seconds' % (
+                self.byte_count, duration))
+            print('%d frames of %d bytes each' % (
+                self.frame_count, self.byte_count // self.frame_count))
+            print('%g frames/second, %g bytes/second' % (
+                self.frame_count / duration, self.byte_count / duration))
 
     if len(sys.argv) != 2:
         print('usage: %s uyvy_video_file' % sys.argv[0])
@@ -99,13 +117,13 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
     print('RawFileReader demonstration')
     source = RawFileReader(1920, 1080, 'UYVY', sys.argv[1])
-    conv = YUVtoRGB()
     sink = Sink()
-    pipeline(source, conv, sink)
-    start(source, conv, sink)
-    time.sleep(10)
-    stop(source, conv, sink)
-    wait_for(source, conv, sink)
+    pipeline(source, sink)
+    start(source, sink)
+    wait_for(source)
+    time.sleep(1)
+    stop(source, sink)
+    wait_for(source, sink)
     return 0
 
 if __name__ == '__main__':
