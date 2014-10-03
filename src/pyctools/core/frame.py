@@ -28,17 +28,12 @@ This is a fairly free-form container, but every Frame object must have:
 
 """
 
-from __future__ import print_function
-
-import sys
-import time
+__all__ = ['Frame']
 
 import numpy
 import PIL
 
-class Metadata(object):
-    def copy(self, other):
-        pass
+from pyctools.core.metadata import Metadata
 
 class Frame(object):
     def __init__(self):
