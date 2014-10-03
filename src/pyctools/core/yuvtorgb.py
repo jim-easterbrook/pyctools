@@ -105,7 +105,7 @@ def main():
         return 1
     logging.basicConfig(level=logging.DEBUG)
     print('YUVtoRGB demonstration')
-    source = RawFileReader(1920, 1080, 'UYVY', sys.argv[1])
+    source = RawFileReader('UYVY', sys.argv[1])
     conv = YUVtoRGB()
     sink = Sink()
     pipeline(source, conv, sink)

@@ -30,8 +30,7 @@ import sys
 from guild.actor import *
 import numpy
 
-from pyctools.core.frame import Frame
-from pyctools.core.objectpool import ObjectPool
+from pyctools.core import Frame, Metadata, ObjectPool
 
 bytes_per_pixel = {
     'UYVY' : 2,
@@ -42,16 +41,16 @@ mux_layout = {
     }
 
 class RawFileReader(Actor):
-    def __init__(self, xlen, ylen, fourcc, path):
+    def __init__(self, fourcc, path):
         super(RawFileReader, self).__init__()
-        self.xlen = xlen
-        self.ylen = ylen
         self.fourcc = fourcc
         self.path = path
         if self.fourcc not in bytes_per_pixel:
             raise RuntimeError("Can't open %s files" % self.fourcc)
 
     def process_start(self):
+        self.metadata = Metadata().from_file(self.path)
+        self.xlen, self.ylen = self.metadata.image_size()
         self.frame_size = self.xlen * self.ylen * bytes_per_pixel[self.fourcc]
         self.file = io.open(self.path, 'rb', 0)
         self.frame_no = 0
@@ -115,7 +114,7 @@ def main():
         return 1
     logging.basicConfig(level=logging.DEBUG)
     print('RawFileReader demonstration')
-    source = RawFileReader(1920, 1080, 'UYVY', sys.argv[1])
+    source = RawFileReader('UYVY', sys.argv[1])
     sink = Sink()
     pipeline(source, sink)
     start(source, sink)
