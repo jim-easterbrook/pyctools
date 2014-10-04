@@ -32,27 +32,69 @@ import numpy
 
 from pyctools.core import Frame, Metadata, ObjectPool
 
-bytes_per_pixel = {
-    'UYVY' : 2,
-    }
-
-mux_layout = {
-    'UYVY' : (1, 2, 0, 4, 2, 4, 2),
-    }
-
 class RawFileReader(Actor):
     def __init__(self, path):
         super(RawFileReader, self).__init__()
         self.path = path
 
     def process_start(self):
+        self.file = io.open(self.path, 'rb', 0)
         self.metadata = Metadata().from_file(self.path)
         self.fourcc = self.metadata.get('fourcc')
-        if self.fourcc not in bytes_per_pixel:
-            raise RuntimeError("Can't open %s files" % self.fourcc)
         self.xlen, self.ylen = self.metadata.image_size()
-        self.frame_size = self.xlen * self.ylen * bytes_per_pixel[self.fourcc]
-        self.file = io.open(self.path, 'rb', 0)
+        # set bits per pixel and UV subsampling ratios
+        if self.fourcc in ('IYU2',):
+            bpp = 24
+            self.UVhss, self.UVvss = 1, 1
+        elif self.fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC', 'YVYU', 'YUYV',
+                             'YV16', 'YUY2', 'YUNV', 'V422'):
+            bpp = 16
+            self.UVhss, self.UVvss = 2, 1
+        elif self.fourcc in ('IYUV', 'I420', 'YV12'):
+            bpp = 12
+            self.UVhss, self.UVvss = 2, 2
+        elif self.fourcc in ('YVU9',):
+            bpp = 9
+            self.UVhss, self.UVvss = 4, 4
+        else:
+            raise RuntimeError("Can't open %s files" % self.fourcc)
+        self.bytes_per_frame = (self.xlen * self.ylen * bpp) // 8
+        # set YUV array slice parameters
+        if self.fourcc in ('IYU2',):
+            self.Y_slice = 1, None, 3
+            self.U_slice = 0, None, 3
+            self.V_slice = 2, None, 3
+        elif self.fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC'):
+            # packed format, UYVY order
+            self.Y_slice = 1, None, 2
+            self.U_slice = 0, None, 4
+            self.V_slice = 2, None, 4
+        elif self.fourcc in ('YVYU',):
+            # packed format, YVYU order
+            self.Y_slice = 0, None, 2
+            self.U_slice = 3, None, 4
+            self.V_slice = 1, None, 4
+        elif self.fourcc in ('YUYV', 'YUY2', 'YUNV', 'V422'):
+            # packed format, YUYV order
+            self.Y_slice = 0, None, 2
+            self.U_slice = 1, None, 4
+            self.V_slice = 3, None, 4
+        elif self.fourcc in ('IYUV', 'I420'):
+            # planar format, YUV order
+            Y_size = self.xlen * self.ylen
+            UV_size = Y_size // (self.UVhss * self.UVvss)
+            self.Y_slice = 0,                Y_size,                 1
+            self.U_slice = Y_size,           Y_size + UV_size,       1
+            self.V_slice = Y_size + UV_size, Y_size + (UV_size * 2), 1
+        elif self.fourcc in ('YV16', 'YV12', 'YVU9'):
+            # planar format, YVU order
+            Y_size = self.xlen * self.ylen
+            UV_size = Y_size // (self.UVhss * self.UVvss)
+            self.Y_slice = 0,                Y_size,                 1
+            self.U_slice = Y_size + UV_size, Y_size + (UV_size * 2), 1
+            self.V_slice = Y_size,           Y_size + UV_size,       1
+        else:
+            raise RuntimeError("Can't open %s files" % self.fourcc)
         self.frame_no = 0
         self.pool = ObjectPool(Frame, 3)
         self.pool.bind("output", self, "new_frame")
@@ -60,19 +102,21 @@ class RawFileReader(Actor):
 
     @actor_method
     def new_frame(self, frame):
-        raw_data = self.file.read(self.frame_size)
-        if len(raw_data) < self.frame_size:
+        raw_data = self.file.read(self.bytes_per_frame)
+        if len(raw_data) < self.bytes_per_frame:
             self.stop()
             return
         # convert to numpy arrays
-        Yoff, Yps, Uoff, Ups, Voff, Vps, UVhss = mux_layout[self.fourcc]
         raw_array = numpy.frombuffer(raw_data, numpy.uint8)
-        Y_data = raw_array[Yoff::Yps]
-        U_data = raw_array[Uoff::Ups]
-        V_data = raw_array[Voff::Vps]
+        start, end, step = self.Y_slice
+        Y_data = raw_array[start:end:step]
+        start, end, step = self.U_slice
+        U_data = raw_array[start:end:step]
+        start, end, step = self.V_slice
+        V_data = raw_array[start:end:step]
         frame.data.append(Y_data.reshape(self.ylen, self.xlen))
-        frame.data.append(U_data.reshape(self.ylen, self.xlen // UVhss))
-        frame.data.append(V_data.reshape(self.ylen, self.xlen // UVhss))
+        frame.data.append(U_data.reshape(self.ylen // self.UVvss, self.xlen // self.UVhss))
+        frame.data.append(V_data.reshape(self.ylen // self.UVvss, self.xlen // self.UVhss))
         frame.type = 'YCbCr'
         frame.frame_no = self.frame_no
         self.frame_no += 1
