@@ -101,11 +101,11 @@ def main():
             time.sleep(1.0)
 
     if len(sys.argv) != 2:
-        print('usage: %s uyvy_video_file' % sys.argv[0])
+        print('usage: %s yuv_video_file' % sys.argv[0])
         return 1
     logging.basicConfig(level=logging.DEBUG)
     print('YUVtoRGB demonstration')
-    source = RawFileReader('UYVY', sys.argv[1])
+    source = RawFileReader(sys.argv[1])
     conv = YUVtoRGB()
     sink = Sink()
     pipeline(source, conv, sink)

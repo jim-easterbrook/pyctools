@@ -22,10 +22,10 @@
 Sets values in an image or video file's metadata sidecar, which is
 created if it doesn't already exist.
 
-Each value has a tag (or name). For a list of possible tags see
-http://www.exiv2.org/metadata.html
+Each value has a tag (or name). This is a single word which is
+expanded to the custom namespace 'Xmp.pyctools.tag'.
 
-Useful tags include: Exif.Image.ImageWidth and Exif.Image.ImageLength
+Useful tags include: xlen, ylen and fourcc
 
 """
 
@@ -52,7 +52,7 @@ def main():
     # set tag(s)
     for tag, value in args.tag:
         print(tag, value)
-        md.md.set_tag_string(tag, value)
+        md.set(tag, value)
     # save metadata
     md.to_file(args.path)
     return 0

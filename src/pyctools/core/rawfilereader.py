@@ -41,15 +41,15 @@ mux_layout = {
     }
 
 class RawFileReader(Actor):
-    def __init__(self, fourcc, path):
+    def __init__(self, path):
         super(RawFileReader, self).__init__()
-        self.fourcc = fourcc
         self.path = path
-        if self.fourcc not in bytes_per_pixel:
-            raise RuntimeError("Can't open %s files" % self.fourcc)
 
     def process_start(self):
         self.metadata = Metadata().from_file(self.path)
+        self.fourcc = self.metadata.get('fourcc')
+        if self.fourcc not in bytes_per_pixel:
+            raise RuntimeError("Can't open %s files" % self.fourcc)
         self.xlen, self.ylen = self.metadata.image_size()
         self.frame_size = self.xlen * self.ylen * bytes_per_pixel[self.fourcc]
         self.file = io.open(self.path, 'rb', 0)
@@ -110,11 +110,11 @@ def main():
                 self.frame_count / duration, self.byte_count / duration))
 
     if len(sys.argv) != 2:
-        print('usage: %s uyvy_video_file' % sys.argv[0])
+        print('usage: %s yuv_video_file' % sys.argv[0])
         return 1
     logging.basicConfig(level=logging.DEBUG)
     print('RawFileReader demonstration')
-    source = RawFileReader('UYVY', sys.argv[1])
+    source = RawFileReader(sys.argv[1])
     sink = Sink()
     pipeline(source, sink)
     start(source, sink)
