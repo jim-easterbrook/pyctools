@@ -25,33 +25,29 @@ created if it doesn't already exist.
 Each value has a tag (or name). This is a single word which is
 expanded to the custom namespace 'Xmp.pyctools.tag'.
 
-Useful tags include: xlen, ylen and fourcc
+Useful tags include: 'xlen', 'ylen' and 'fourcc'.
 
 """
 
-from __future__ import print_function
-
 import argparse
-import logging
 import sys
 
-from pyctools.core import Metadata
+from ..core import Metadata
 
 def main():
     # get command args
-    parser = argparse.ArgumentParser(description='Set metadata values.')
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('path', help='image or video file path')
     parser.add_argument(
         '-t', '--tag', metavar=('name', 'value'), action='append', nargs=2,
-        help='Exiv2 tag name and value')
+        help='tag name and value')
     args = parser.parse_args()
     if len(args.tag) < 1:
         return 0
-    # open metadata (if it exists)
+    # open or create metadata
     md = Metadata().from_file(args.path, create=True)
     # set tag(s)
     for tag, value in args.tag:
-        print(tag, value)
         md.set(tag, value)
     # save metadata
     md.to_file(args.path)
