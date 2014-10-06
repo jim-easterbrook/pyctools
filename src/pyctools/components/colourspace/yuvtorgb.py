@@ -17,13 +17,14 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Raw file reader.
+"""YUV (YCbCr) to RGB converter.
+
+Convert YUV frames (with any UV subsampling) to RGB.
 
 """
 
 from __future__ import print_function
 
-from collections import deque
 import logging
 import sys
 import time
@@ -33,32 +34,10 @@ import numpy
 from PIL import Image
 import scipy.ndimage
 
-from ...core import Frame, ObjectPool
+from ...core import Transformer
 
-class YUVtoRGB(Actor):
-    def process_start(self):
-        self.in_frames = deque()
-        self.out_frames = deque()
-        self.pool = ObjectPool(Frame, 3)
-        self.pool.bind("output", self, "new_frame")
-        start(self.pool)
-
-    @actor_method
-    def input(self, frame):
-        self.in_frames.append(frame)
-        if self.out_frames:
-            self.compute_output()
-
-    @actor_method
-    def new_frame(self, frame):
-        self.out_frames.append(frame)
-        if self.in_frames:
-            self.compute_output()
-
-    def compute_output(self):
-        in_frame = self.in_frames.popleft()
-        out_frame = self.out_frames.popleft()
-        out_frame.initialise(in_frame)
+class YUVtoRGB(Transformer):
+    def transform(self, in_frame, out_frame):
         # check input and get data
         if len(in_frame.data) != 3 or in_frame.type != 'YCbCr':
             raise RuntimeError('Cannot convert "%s" images.' % in_frame.type)
@@ -84,13 +63,9 @@ class YUVtoRGB(Actor):
                                                   Image.fromarray(G_data),
                                                   Image.fromarray(B_data))))
         out_frame.type = 'RGB'
-        self.output(out_frame)
-
-    def onStop(self):
-        stop(self.pool)
 
 def main():
-    from pyctools.components.io.rawfilereader import RawFileReader
+    from ..io.rawfilereader import RawFileReader
     class Sink(Actor):
         @actor_method
         def input(self, frame):
