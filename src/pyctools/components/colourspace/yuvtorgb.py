@@ -91,7 +91,7 @@ class YUVtoRGB(Actor):
         stop(self.pool)
 
 def main():
-    from pyctools.core.rawfilereader import RawFileReader
+    from pyctools.components.io.rawfilereader import RawFileReader
     class Sink(Actor):
         @actor_method
         def input(self, frame):

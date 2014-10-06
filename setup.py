@@ -18,13 +18,24 @@
 #  <http://www.gnu.org/licenses/>.
 
 import os
-from distutils.core import setup
+from setuptools import setup, find_packages
 import sys
+
+packages = find_packages('src')
+
+namespace_packages = []
+for package in packages:
+    init = os.path.join('src', package.replace('.', '/'), '__init__.py')
+    for line in open(init).readlines():
+        if 'declare_namespace' in line:
+            # very likely a namespace package
+            namespace_packages.append(package)
+            break
 
 long_description = open('README.rst').read()
 url = 'https://github.com/jim-easterbrook/pyctools'
 
-setup(name = 'pyctools',
+setup(name = 'pyctools.core',
       version = '0.0.0',
       author = 'Jim Easterbrook',
       author_email = 'jim@jim-easterbrook.me.uk',
@@ -40,6 +51,7 @@ setup(name = 'pyctools',
           'Programming Language :: Python :: 2',
           'Programming Language :: Python :: 2.6',
           'Programming Language :: Python :: 2.7',
+          'Programming Language :: Python :: 3',
           'Topic :: Multimedia :: Graphics',
           'Topic :: Multimedia :: Video',
           'Topic :: Scientific/Engineering :: Image Recognition',
@@ -47,6 +59,7 @@ setup(name = 'pyctools',
           ],
       license = 'GNU GPL',
       platforms = ['POSIX', 'MacOS', 'Windows'],
-      packages = ['pyctools', 'pyctools.core'],
+      packages = packages,
+      namespace_packages = namespace_packages,
       package_dir = {'' : 'src'},
       )
