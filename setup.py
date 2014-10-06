@@ -32,6 +32,14 @@ for package in packages:
             namespace_packages.append(package)
             break
 
+console_scripts = []
+for name in os.listdir('src/pyctools/tools'):
+    base, ext = os.path.splitext(name)
+    if name.startswith('_') or ext != '.py':
+        continue
+    console_scripts.append(
+        'pyctools-{name} = pyctools.tools.{name}:main'.format(name=base))
+
 long_description = open('README.rst').read()
 url = 'https://github.com/jim-easterbrook/pyctools'
 
@@ -62,4 +70,7 @@ setup(name = 'pyctools.core',
       packages = packages,
       namespace_packages = namespace_packages,
       package_dir = {'' : 'src'},
+      entry_points = {
+          'console_scripts' : console_scripts,
+          },
       )
