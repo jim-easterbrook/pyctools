@@ -33,7 +33,7 @@ __all__ = ['Frame']
 import numpy
 import PIL
 
-from pyctools.core.metadata import Metadata
+from .metadata import Metadata
 
 class Frame(object):
     def __init__(self):

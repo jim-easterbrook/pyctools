@@ -30,7 +30,7 @@ import sys
 from guild.actor import *
 import numpy
 
-from pyctools.core import Frame, Metadata, ObjectPool
+from ...core import Frame, Metadata, ObjectPool
 
 class RawFileReader(Actor):
     def __init__(self, path):

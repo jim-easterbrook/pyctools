@@ -33,8 +33,7 @@ import numpy
 from PIL import Image
 import scipy.ndimage
 
-from pyctools.core.frame import Frame
-from pyctools.core.objectpool import ObjectPool
+from ...core import Frame, ObjectPool
 
 class YUVtoRGB(Actor):
     def process_start(self):
