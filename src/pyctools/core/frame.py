@@ -62,7 +62,11 @@ class Frame(object):
         result = []
         for data in self.data:
             if isinstance(data, numpy.ndarray):
-                result.append(PIL.Image.fromarray(data))
+                if data.dtype == numpy.uint8:
+                    result.append(PIL.Image.fromarray(data))
+                else:
+                    result.append(PIL.Image.fromarray(
+                        data.clip(0, 255).astype(numpy.uint8)))
             elif isinstance(data, PIL.Image):
                 result.append(data)
             else:
