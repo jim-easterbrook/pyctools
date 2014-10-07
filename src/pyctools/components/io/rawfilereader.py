@@ -30,16 +30,18 @@ import sys
 from guild.actor import *
 import numpy
 
-from ...core import Frame, Metadata, ObjectPool
+from ...core import Metadata, Component, ConfigPath
 
-class RawFileReader(Actor):
-    def __init__(self, path):
-        super(RawFileReader, self).__init__()
-        self.path = path
+class RawFileReader(Component):
+    def __init__(self):
+        super(RawFileReader, self).__init__(with_outframe_pool=True)
+        self.config.append(ConfigPath('path'))
 
     def process_start(self):
-        self.file = io.open(self.path, 'rb', 0)
-        self.metadata = Metadata().from_file(self.path)
+        super(RawFileReader, self).process_start()
+        path = self.config['path']
+        self.file = io.open(path, 'rb', 0)
+        self.metadata = Metadata().from_file(path)
         self.fourcc = self.metadata.get('fourcc')
         self.xlen, self.ylen = self.metadata.image_size()
         # set bits per pixel and UV subsampling ratios
@@ -96,9 +98,6 @@ class RawFileReader(Actor):
         else:
             raise RuntimeError("Can't open %s files" % self.fourcc)
         self.frame_no = 0
-        self.pool = ObjectPool(Frame, 3)
-        self.pool.bind("output", self, "new_frame")
-        start(self.pool)
 
     @actor_method
     def new_frame(self, frame):
@@ -123,7 +122,7 @@ class RawFileReader(Actor):
         self.output(frame)
 
     def onStop(self):
-        stop(self.pool)
+        super(RawFileReader, self).onStop()
         self.file.close()
 
 def main():
@@ -158,7 +157,10 @@ def main():
         return 1
     logging.basicConfig(level=logging.DEBUG)
     print('RawFileReader demonstration')
-    source = RawFileReader(sys.argv[1])
+    source = RawFileReader()
+    config = source.get_config()
+    config['path'] = sys.argv[1]
+    source.set_config(config)
     sink = Sink()
     pipeline(source, sink)
     start(source, sink)

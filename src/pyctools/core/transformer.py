@@ -32,15 +32,13 @@ from collections import deque
 
 from guild.actor import *
 
-from . import Frame, ObjectPool
+from .component import Component
 
-class Transformer(Actor):
-    def process_start(self):
+class Transformer(Component):
+    def __init__(self):
+        super(Transformer, self).__init__(with_outframe_pool=True)
         self._transformer_in_frames = deque()
         self._transformer_out_frames = deque()
-        self._transformer_pool = ObjectPool(Frame, 3)
-        self._transformer_pool.bind("output", self, "_transformer_new_frame")
-        start(self._transformer_pool)
 
     @actor_method
     def input(self, frame):
@@ -49,7 +47,7 @@ class Transformer(Actor):
             self._transformer_transform()
 
     @actor_method
-    def _transformer_new_frame(self, frame):
+    def new_frame(self, frame):
         self._transformer_out_frames.append(frame)
         if self._transformer_in_frames:
             self._transformer_transform()
@@ -60,6 +58,3 @@ class Transformer(Actor):
         out_frame.initialise(in_frame)
         self.transform(in_frame, out_frame)
         self.output(out_frame)
-
-    def onStop(self):
-        stop(self._transformer_pool)
