@@ -100,7 +100,7 @@ class RawFileReader(Component):
         self.frame_no = 0
 
     @actor_method
-    def new_frame(self, frame):
+    def new_out_frame(self, frame):
         raw_data = self.file.read(self.bytes_per_frame)
         if len(raw_data) < self.bytes_per_frame:
             self.stop()

@@ -31,7 +31,7 @@ This is a fairly free-form container, but every Frame object must have:
 __all__ = ['Frame']
 
 import numpy
-import PIL
+import PIL.Image
 
 from .metadata import Metadata
 

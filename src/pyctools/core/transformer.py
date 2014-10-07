@@ -47,7 +47,7 @@ class Transformer(Component):
             self._transformer_transform()
 
     @actor_method
-    def new_frame(self, frame):
+    def new_out_frame(self, frame):
         self._transformer_out_frames.append(frame)
         if self._transformer_in_frames:
             self._transformer_transform()
