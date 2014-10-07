@@ -22,83 +22,32 @@
 Base class for all Pyctools components, i.e. objects designed to be
 used in processing pipelines (or networks).
 
-Provides configuration via a tree of different node types for
-different value types.
-
 """
 
-__all__ = ['Component', 'ConfigPath', 'ConfigInt']
+__all__ = ['Component']
 
-import copy
 import logging
 
 from guild.actor import *
 
+from .config import ConfigMixin, ConfigInt
 from .frame import Frame
 from .metadata import Metadata
 from .objectpool import ObjectPool
 
-class ConfigLeafNode(object):
-    def __init__(self, name, value=None):
-        self.name = name
-        self.value = value
-
-    def get(self):
-        return self.value
-
-    def set(self, value):
-        self.value = value
-
-class ConfigPath(ConfigLeafNode):
-    pass
-
-class ConfigInt(ConfigLeafNode):
-    pass
-
-class ConfigGroupNode(object):
-    def __init__(self, name):
-        self.name = name
-        self.children = []
-        self.append = self.children.append
-
-    def __getitem__(self, key):
-        return self._child(key).get()
-
-    def __setitem__(self, key, value):
-        self._child(key).set(value)
-
-    def _child(self, name):
-        parts = name.split('.', 1)
-        for child in self.children:
-            if child.name == parts[0]:
-                if len(parts) > 1:
-                    return child._child(parts[1])
-                return child
-        raise KeyError()
-
-class Component(Actor):
+class Component(Actor, ConfigMixin):
     def __init__(self, with_outframe_pool=False):
         super(Component, self).__init__()
+        ConfigMixin.__init__(self)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.with_outframe_pool = with_outframe_pool
-        self.config = ConfigGroupNode(self.__class__.__name__)
         if self.with_outframe_pool:
             self.config.append(ConfigInt('outframe_pool_len', 3))
-
-    def get_config(self):
-        # make copy to allow changes without affecting running
-        # component
-        return copy.deepcopy(self.config)
-
-    def set_config(self, config):
-        # single object assignment should be thread-safe, so can
-        # update running component
-        self.config = copy.deepcopy(config)
 
     def process_start(self):
         if self.with_outframe_pool:
             self.pool = ObjectPool(Frame, self.config['outframe_pool_len'])
-            self.pool.bind("output", self, "new_frame")
+            self.pool.bind("output", self, "new_out_frame")
             start(self.pool)
 
     def onStop(self):
