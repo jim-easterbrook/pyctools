@@ -25,17 +25,19 @@ from __future__ import print_function
 
 import io
 import logging
+import os
 import sys
 
 from guild.actor import *
 import numpy
 
-from ...core import Metadata, Component, ConfigPath
+from ...core import Metadata, Component, ConfigPath, ConfigEnum
 
 class RawFileReader(Component):
     def __init__(self):
         super(RawFileReader, self).__init__(with_outframe_pool=True)
         self.config.append(ConfigPath('path'))
+        self.config.append(ConfigEnum('looping', ('off', 'on'), dynamic=True))
 
     def process_start(self):
         super(RawFileReader, self).process_start()
@@ -61,6 +63,7 @@ class RawFileReader(Component):
         else:
             raise RuntimeError("Can't open %s files" % self.fourcc)
         self.bytes_per_frame = (self.xlen * self.ylen * bpp) // 8
+        self.zlen = os.path.getsize(path) // self.bytes_per_frame
         # set YUV array slice parameters
         if self.fourcc in ('IYU2',):
             self.Y_slice = 1, None, 3
@@ -101,8 +104,11 @@ class RawFileReader(Component):
 
     @actor_method
     def new_out_frame(self, frame):
+        if self.config['looping'] == 'on' and (self.frame_no % self.zlen) == 0:
+            self.file.seek(0)
         raw_data = self.file.read(self.bytes_per_frame)
         if len(raw_data) < self.bytes_per_frame:
+            self.output(None)
             self.stop()
             return
         # convert to numpy arrays

@@ -36,6 +36,10 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
 
     @actor_method
     def input(self, frame):
+        if not frame:
+            self.close()
+            self.stop()
+            return
         numpy_image = frame.as_numpy()[0]
         if numpy_image.dtype != numpy.uint8:
             numpy_image = numpy_image.clip(0, 255).astype(numpy.uint8)
@@ -66,7 +70,6 @@ def main():
     start(source, conv, sink)
     try:
         app.exec_()
-        print 'done'
     finally:
         stop(source, conv, sink)
         wait_for(source, conv, sink)
