@@ -37,6 +37,9 @@ import scipy.ndimage
 from ...core import Transformer
 
 class YUVtoRGB(Transformer):
+    mat_601 = numpy.array([[1.0,  0.0,       1.37071],
+                           [1.0, -0.336455, -0.698196],
+                           [1.0,  1.73245,   0.0]])
     def transform(self, in_frame, out_frame):
         # check input and get data
         if len(in_frame.data) != 3 or in_frame.type != 'YCbCr':
@@ -51,17 +54,9 @@ class YUVtoRGB(Transformer):
         if v_ss != 1 or h_ss != 1:
             U_data = scipy.ndimage.zoom(U_data, (v_ss, h_ss))
             V_data = scipy.ndimage.zoom(V_data, (v_ss, h_ss))
-        # matrix (the hard way)
-        R_data = Y_data + (V_data * 1.37071)
-        G_data = Y_data - (U_data * 0.336455) - (V_data * 0.698196)
-        B_data = Y_data + (U_data * 1.73245)
-        # merge using PIL
-        R_data = R_data.astype(numpy.uint8)
-        G_data = G_data.astype(numpy.uint8)
-        B_data = B_data.astype(numpy.uint8)
-        out_frame.data.append(Image.merge('RGB', (Image.fromarray(R_data),
-                                                  Image.fromarray(G_data),
-                                                  Image.fromarray(B_data))))
+        # matrix to RGB
+        YUV = numpy.dstack((Y_data.astype(U_data.dtype), U_data, V_data))
+        out_frame.data = [numpy.dot(YUV, self.mat_601.T)]
         out_frame.type = 'RGB'
 
 def main():
@@ -71,7 +66,7 @@ def main():
         def input(self, frame):
             print('sink', frame.frame_no)
             if frame.frame_no == 0:
-                frame.data[0].show()
+                frame.as_PIL()[0].show()
             time.sleep(1.0)
 
     if len(sys.argv) != 2:
