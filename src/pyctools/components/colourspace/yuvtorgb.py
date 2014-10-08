@@ -44,9 +44,9 @@ class YUVtoRGB(Transformer):
     mat_601 = numpy.array([[1.0,  0.0,       1.37071],
                            [1.0, -0.336455, -0.698196],
                            [1.0,  1.73245,   0.0]])
-    mat_709 = numpy.array([[1.0,  0.0,       1.53987],
-                           [1.0, -0.182929, -0.457753],
-                           [1.0,  1.81384,   0.0]])
+    mat_709 = numpy.array([[1.0,  0.0,       1.539648],
+                           [1.0, -0.183143, -0.457675],
+                           [1.0,  1.81418,   0.0]])
     def __init__(self):
         super(YUVtoRGB, self).__init__()
         self.config.append(
