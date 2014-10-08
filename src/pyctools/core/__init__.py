@@ -18,6 +18,7 @@
 #  <http://www.gnu.org/licenses/>.
 
 from component import *
+from compound import *
 from config import *
 from frame import *
 from metadata import *
