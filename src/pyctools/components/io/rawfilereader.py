@@ -23,6 +23,8 @@
 
 from __future__ import print_function
 
+__all__ = ['RawFileReader']
+
 import io
 import logging
 import os

@@ -74,7 +74,7 @@ class ConfigGroupNode(object):
                 if len(parts) > 1:
                     return child._child(parts[1])
                 return child
-        raise KeyError()
+        raise KeyError(name)
 
 class ConfigMixin(object):
     def __init__(self):

@@ -26,6 +26,8 @@ https://github.com/jim-easterbrook/guild which adds Qt support.
 
 """
 
+__all__ = ['QtDisplay']
+
 import copy
 import logging
 import sys

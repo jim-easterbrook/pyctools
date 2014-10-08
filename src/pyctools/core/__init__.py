@@ -17,10 +17,10 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-from component import *
-from compound import *
-from config import *
-from frame import *
-from metadata import *
-from objectpool import *
-from transformer import *
+from .component import *
+from .compound import *
+from .config import *
+from .frame import *
+from .metadata import *
+from .objectpool import *
+from .transformer import *
