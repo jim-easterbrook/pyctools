@@ -17,6 +17,15 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
+"""Simple Qt display.
+
+Shows incoming images in a Qt window.
+
+Note: this (currently) requires my branch of guild:
+https://github.com/jim-easterbrook/guild which adds Qt support.
+
+"""
+
 import copy
 import logging
 import sys
