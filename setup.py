@@ -26,11 +26,12 @@ packages = find_packages('src')
 namespace_packages = []
 for package in packages:
     init = os.path.join('src', package.replace('.', '/'), '__init__.py')
-    for line in open(init).readlines():
-        if 'declare_namespace' in line:
-            # very likely a namespace package
-            namespace_packages.append(package)
-            break
+    with open(init) as f:
+        for line in f.readlines():
+            if 'declare_namespace' in line:
+                # very likely a namespace package
+                namespace_packages.append(package)
+                break
 
 console_scripts = []
 for name in os.listdir('src/pyctools/tools'):
@@ -40,7 +41,8 @@ for name in os.listdir('src/pyctools/tools'):
     console_scripts.append(
         'pyctools-{name} = pyctools.tools.{name}:main'.format(name=base))
 
-long_description = open('README.rst').read()
+with open('README.rst') as f:
+    long_description = f.read()
 url = 'https://github.com/jim-easterbrook/pyctools'
 
 setup(name = 'pyctools.core',
