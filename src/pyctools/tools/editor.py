@@ -78,7 +78,6 @@ class IOIcon(QtGui.QGraphicsPolygonItem):
             return super(IOIcon, self).dropEvent(event)
         start_pos = pickle.loads(event.mimeData().data(self.link_mime_type).data())
         source = self.scene().itemAt(start_pos)
-        dest = self
         if isinstance(source, OutputIcon):
             source.connect_to(self)
         else:
@@ -136,19 +135,30 @@ class OutputIcon(IOIcon):
         return pos
 
 class ComponentIcon(QtGui.QGraphicsRectItem):
-    def __init__(self, component, parent=None):
+    def __init__(self, comp_id, component_class, parent=None):
         super(ComponentIcon, self).__init__(parent)
         self.setFlags(QtGui.QGraphicsItem.ItemIsMovable |
                       QtGui.QGraphicsItem.ItemIsSelectable |
                       QtGui.QGraphicsItem.ItemSendsGeometryChanges)
-        self.name = component.__name__
+        self.name = component_class.__name__
         self.setRect(0, 0, 100, 150)
         # create component
-        self.component = component()
-        # text label
-        name = component.__name__
-        self.text = QtGui.QGraphicsSimpleTextItem(name, self)
-        self.text.setPos(10, 10)
+        self.id = comp_id
+        self.component = component_class()
+        # id label
+        text = QtGui.QGraphicsSimpleTextItem(self.id, self)
+        font = text.font()
+        font.setBold(True)
+        text.setFont(font)
+        text.setPos(8, 8)
+        # type label
+        text = QtGui.QGraphicsSimpleTextItem(
+            self.component.__class__.__name__ + '()', self)
+        font = text.font()
+        font.setPointSizeF(font.pointSize() * 0.8)
+        font.setItalic(True)
+        text.setFont(font)
+        text.setPos(8, 30)
         # inputs
         self.inputs = []
         for idx, name in enumerate(self.component.inputs):
@@ -157,7 +167,9 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
             self.inputs.append(input)
         # output
         self.outputs = []
+        self.no_connect = {}
         for idx, name in enumerate(self.component.outputs):
+            self.no_connect[name] = getattr(self.component, name)
             output = OutputIcon(name, self)
             output.setPos(100, 100 + (idx * 20))
             self.outputs.append(output)
@@ -193,16 +205,42 @@ class NetworkArea(QtGui.QGraphicsScene):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
             return super(NetworkArea, self).dropEvent(event)
         data = event.mimeData().data(_COMP_MIMETYPE).data()
-        component = pickle.loads(data)
-        icon = ComponentIcon(component)
-        icon.setPos(event.scenePos())
-        self.addItem(icon)
-        self.update_scene_rect()
+        component_class = pickle.loads(data)
+        self.add_component(component_class, event.scenePos())
 
     def update_scene_rect(self):
         rect = self.itemsBoundingRect()
         rect.adjust(-150, -150, 150, 150)
         self.setSceneRect(rect.unite(self.sceneRect()))
+
+    def add_component(self, component_class, position):
+        while True:
+            base_name = filter(str.isupper, component_class.__name__).lower()
+            comp_id = base_name
+            n = 0
+            while self.id_in_use(comp_id):
+                comp_id = base_name + str(n)
+                n += 1
+            comp_id, OK = QtGui.QInputDialog.getText(
+                self.views()[0], 'Component id',
+                'Please enter a unique component id', text=comp_id)
+            if not OK:
+                return
+            comp_id = str(comp_id)
+            if not self.id_in_use(comp_id):
+                break
+        icon = ComponentIcon(comp_id, component_class)
+        icon.setPos(position)
+        self.addItem(icon)
+        self.update_scene_rect()
+
+    def id_in_use(self, comp_id):
+        for child in self.items():
+            if not isinstance(child, ComponentIcon):
+                continue
+            if child.id == comp_id:
+                return True
+        return False
 
 class ComponentItemModel(QtGui.QStandardItemModel):
     def mimeTypes(self):
