@@ -26,26 +26,123 @@ from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import Qt
 
 import pyctools.components
+from ..core.config import ConfigEnum, ConfigGroupNode, ConfigInt, ConfigPath
 
 _COMP_MIMETYPE = 'application/x-pyctools-component'
 _INPUT_MIMETYPE = 'application/x-pyctools-component-input'
 _OUTPUT_MIMETYPE = 'application/x-pyctools-component-output'
 
+class ConfigPathWidget(QtGui.QPushButton):
+    def __init__(self, config):
+        super(ConfigPathWidget, self).__init__()
+        self.config = config
+        value = self.config.get()
+        if value:
+            self.setText(self.config.get())
+        self.clicked.connect(self.get_value)
+
+    def get_value(self):
+        value = self.config.get()
+        if value:
+            directory = os.path.dirname(value)
+        else:
+            directory = ''
+        value = str(QtGui.QFileDialog.getOpenFileName(
+            self, 'Choose file', directory))
+        if value:
+            self.config.set(value)
+            self.setText(value)
+
+class ConfigIntWidget(QtGui.QSpinBox):
+    def __init__(self, config):
+        super(ConfigIntWidget, self).__init__()
+        self.config = config
+        value = self.config.get()
+        if value is not None:
+            self.setValue(self.config.get())
+        self.valueChanged.connect(self.config.set)
+
+class ConfigEnumWidget(QtGui.QComboBox):
+    def __init__(self, config):
+        super(ConfigEnumWidget, self).__init__()
+        self.config = config
+        for item in self.config.choices:
+            self.addItem(item)
+        self.setCurrentIndex(self.findText(self.config.get()))
+        self.currentIndexChanged.connect(self.new_value)
+
+    @QtCore.pyqtSlot(int)
+    def new_value(self, idx):
+        self.config.set(str(self.itemText(idx)))
+
+class ConfigDialog(QtGui.QDialog):
+    def __init__(self, parent):
+        super(ConfigDialog, self).__init__()
+        self.setWindowTitle('%s configuration' % parent.id)
+        self.component = parent.component
+        self.config = self.component.get_config()
+        self.setLayout(QtGui.QGridLayout())
+        self.layout().setColumnStretch(0, 1)
+        # central area
+        flat = True
+        for child in self.config.children:
+            if isinstance(child, ConfigGroupNode):
+                flat = False
+                break
+        if flat:
+            main_area = QtGui.QFormLayout()
+            for child in self.config.children:
+                if isinstance(child, ConfigPath):
+                    widget = ConfigPathWidget(child)
+                elif isinstance(child, ConfigInt):
+                    widget = ConfigIntWidget(child)
+                elif isinstance(child, ConfigEnum):
+                    widget = ConfigEnumWidget(child)
+                else:
+                    raise RuntimeError(
+                        'Unknown config type %s', child.__class__.__name__)
+                main_area.addRow(child.name, widget)
+            self.layout().addLayout(main_area, 0, 0, 1, 4)
+        else:
+            main_area = QtGui.QTabWidget()
+            self.layout().addWidget(main_area, 0, 0, 1, 4)
+        # buttons
+        cancel_button = QtGui.QPushButton('Cancel')
+        cancel_button.clicked.connect(self.close)
+        self.layout().addWidget(cancel_button, 1, 1)
+        apply_button = QtGui.QPushButton('Apply')
+        apply_button.clicked.connect(self.apply_changes)
+        self.layout().addWidget(apply_button, 1, 2)
+        close_button = QtGui.QPushButton('Close')
+        close_button.clicked.connect(self.apply_and_close)
+        self.layout().addWidget(close_button, 1, 3)
+
+    def apply_and_close(self):
+        self.apply_changes()
+        self.close()
+
+    def apply_changes(self):
+        self.component.set_config(self.config)
+
 class ComponentLink(QtGui.QGraphicsLineItem):
-    def __init__(self, source, dest, parent=None):
+    def __init__(self, source, outbox, dest, inbox, parent=None):
         super(ComponentLink, self).__init__(parent)
         self.source = source
+        self.outbox = outbox
         self.dest = dest
+        self.inbox = inbox
+        self.source.component.bind(self.name, self.dest.component, other.name)
         self.redraw()
 
     def redraw(self):
-        self.setLine(QtCore.QLineF(self.source.connect_pos(),
-                                   self.dest.connect_pos()))
+        self.setLine(QtCore.QLineF(
+            self.source.outputs[self.outbox].connect_pos(),
+            self.dest.inputs[self.inbox].connect_pos()))
 
 class IOIcon(QtGui.QGraphicsPolygonItem):
-    def __init__(self, name, parent=None):
+    def __init__(self, name, parent):
         super(IOIcon, self).__init__(parent)
-        self.connected_to = []
+        self.name = name
         self.setPolygon(
             QtGui.QPolygonF(QtGui.QPolygon([0, -5, 6, 0, 0, 5, 0, -5])))
         self.setAcceptDrops(True)
@@ -65,8 +162,7 @@ class IOIcon(QtGui.QGraphicsPolygonItem):
         start_pos = event.buttonDownScenePos(Qt.LeftButton)
         drag = QtGui.QDrag(event.widget())
         mimeData = QtCore.QMimeData()
-        mimeData.setData(self.mime_type,
-                         pickle.dumps(start_pos, pickle.HIGHEST_PROTOCOL))
+        mimeData.setData(self.mime_type, pickle.dumps(start_pos))
         drag.setMimeData(mimeData)
         dropAction = drag.exec_(Qt.LinkAction)
 
@@ -92,14 +188,8 @@ class InputIcon(IOIcon):
         self.label.setPos(ax + 8, ay - (br.height() / 2))
         super(InputIcon, self).setPos(ax, ay)
 
-    def redraw_connection(self):
-        for partner in self.connected_to:
-            if partner.connection:
-                partner.connection.redraw()
-
     def connect_pos(self):
-        pos = self.scenePos()
-        return pos
+        return self.scenePos()
 
 class OutputIcon(IOIcon):
     mime_type = _OUTPUT_MIMETYPE
@@ -114,20 +204,16 @@ class OutputIcon(IOIcon):
         self.label.setPos(ax - 2 - br.width(), ay - (br.height() / 2))
         super(OutputIcon, self).setPos(ax, ay)
 
-    def connect_to(self, other):
+    def disconnect(self):
         if self.connection:
             self.scene().removeItem(self.connection)
-            for partner in self.connected_to:
-                self.connected_to.remove(partner)
-                partner.connected_to.remove(self)
-        self.connected_to.append(other)
-        other.connected_to.append(self)
-        self.connection = ComponentLink(self, other)
-        self.scene().addItem(self.connection)
+            self.connection = None
 
-    def redraw_connection(self):
-        if self.connection:
-            self.connection.redraw()
+    def connect_to(self, other):
+        self.disconnect()
+        self.connection = ComponentLink(
+            self.parentItem(), self.name, other.parentItem(), other.name)
+        self.scene().addItem(self.connection)
 
     def connect_pos(self):
         pos = self.scenePos()
@@ -142,6 +228,7 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
                       QtGui.QGraphicsItem.ItemSendsGeometryChanges)
         self.name = component_class.__name__
         self.setRect(0, 0, 100, 150)
+        self.config_dialog = None
         # create component
         self.id = comp_id
         self.component = component_class()
@@ -160,19 +247,23 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
         text.setFont(font)
         text.setPos(8, 30)
         # inputs
-        self.inputs = []
+        self.inputs = {}
         for idx, name in enumerate(self.component.inputs):
-            input = InputIcon(name, self)
-            input.setPos(0, 100 + (idx * 20))
-            self.inputs.append(input)
+            self.inputs[name] = InputIcon(name, self)
+            self.inputs[name].setPos(0, 100 + (idx * 20))
         # output
-        self.outputs = []
-        self.no_connect = {}
+        self.outputs = {}
         for idx, name in enumerate(self.component.outputs):
-            self.no_connect[name] = getattr(self.component, name)
-            output = OutputIcon(name, self)
-            output.setPos(100, 100 + (idx * 20))
-            self.outputs.append(output)
+            self.outputs[name] = OutputIcon(name, self)
+            self.outputs[name].setPos(100, 100 + (idx * 20))
+
+    def mouseDoubleClickEvent(self, event):
+        if self.config_dialog:
+            return
+        self.config_dialog = ConfigDialog(self)
+        self.config_dialog.show()
+        self.config_dialog.raise_()
+        self.config_dialog.activateWindow()
 
     def itemChange(self, change, value):
         if change == QtGui.QGraphicsItem.ItemPositionChange:
@@ -180,11 +271,12 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
             pos.setX(pos.x() + 25 - ((pos.x() + 25) % 50))
             pos.setY(pos.y() + 25 - ((pos.y() + 25) % 50))
             return pos
-        if change == QtGui.QGraphicsItem.ItemPositionHasChanged:
-            for input in self.inputs:
-                input.redraw_connection()
-            for output in self.outputs:
-                output.redraw_connection()
+        if change == QtGui.QGraphicsItem.ItemPositionHasChanged and self.scene():
+            for item in self.scene().items():
+                if not isinstance(item, ComponentLink):
+                    continue
+                if item.source == self or item.dest == self:
+                    item.redraw()
         return super(ComponentIcon, self).itemChange(change, value)
 
 class NetworkArea(QtGui.QGraphicsScene):
