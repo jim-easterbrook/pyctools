@@ -36,6 +36,8 @@ import numpy
 from ...core import Metadata, Component, ConfigPath, ConfigEnum
 
 class RawFileReader(Component):
+    inputs = []
+
     def __init__(self):
         super(RawFileReader, self).__init__(with_outframe_pool=True)
         self.config.append(ConfigPath('path'))

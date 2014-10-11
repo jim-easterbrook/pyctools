@@ -41,6 +41,9 @@ from PyQt4.QtCore import Qt
 from ...core import ConfigMixin
 
 class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
+    inputs = ['input']
+    outputs = []
+
     def __init__(self):
         super(QtDisplay, self).__init__(
             None, Qt.Window | Qt.WindowStaysOnTopHint)

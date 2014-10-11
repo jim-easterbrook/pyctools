@@ -36,6 +36,9 @@ from .metadata import Metadata
 from .objectpool import ObjectPool
 
 class Component(Actor, ConfigMixin):
+    inputs = ['input']
+    outputs = ['output']
+
     def __init__(self, with_outframe_pool=False):
         super(Component, self).__init__()
         ConfigMixin.__init__(self)
