@@ -36,14 +36,15 @@ from guild.actor import *
 from guild.qtactor import ActorSignal, QtActorMixin
 import numpy
 from PyQt4 import QtGui, QtCore
+from PyQt4.QtCore import Qt
 
 from ...core import ConfigMixin
 
 class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
     def __init__(self):
-        super(QtDisplay, self).__init__(None, QtCore.Qt.Window)
+        super(QtDisplay, self).__init__(
+            None, Qt.Window | Qt.WindowStaysOnTopHint)
         ConfigMixin.__init__(self)
-        self.show()
 
     @actor_method
     def input(self, frame):
@@ -51,6 +52,8 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
             self.close()
             self.stop()
             return
+        if not self.isVisible():
+            self.show()
         numpy_image = frame.as_numpy()[0]
         if numpy_image.dtype != numpy.uint8:
             numpy_image = numpy_image.clip(0, 255).astype(numpy.uint8)
