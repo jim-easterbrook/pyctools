@@ -143,16 +143,24 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
                       QtGui.QGraphicsItem.ItemSendsGeometryChanges)
         self.name = component.__name__
         self.setRect(0, 0, 100, 150)
+        # create component
+        self.component = component()
         # text label
         name = component.__name__
         self.text = QtGui.QGraphicsSimpleTextItem(name, self)
         self.text.setPos(10, 10)
-        # input
-        self.input = InputIcon('input', self)
-        self.input.setPos(0, 100)
+        # inputs
+        self.inputs = []
+        for idx, name in enumerate(self.component.inputs):
+            input = InputIcon(name, self)
+            input.setPos(0, 100 + (idx * 20))
+            self.inputs.append(input)
         # output
-        self.output = OutputIcon('output', self)
-        self.output.setPos(100, 100)
+        self.outputs = []
+        for idx, name in enumerate(self.component.outputs):
+            output = OutputIcon(name, self)
+            output.setPos(100, 100 + (idx * 20))
+            self.outputs.append(output)
 
     def itemChange(self, change, value):
         if change == QtGui.QGraphicsItem.ItemPositionChange:
@@ -161,8 +169,10 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
             pos.setY(pos.y() + 25 - ((pos.y() + 25) % 50))
             return pos
         if change == QtGui.QGraphicsItem.ItemPositionHasChanged:
-            self.input.redraw_connection()
-            self.output.redraw_connection()
+            for input in self.inputs:
+                input.redraw_connection()
+            for output in self.outputs:
+                output.redraw_connection()
         return super(ComponentIcon, self).itemChange(change, value)
 
 class NetworkArea(QtGui.QGraphicsScene):
