@@ -18,6 +18,7 @@
 #  <http://www.gnu.org/licenses/>.
 
 import argparse
+import logging
 import cPickle as pickle
 import pkgutil
 import sys
@@ -267,7 +268,7 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
         self.component.set_config(config)
 
     def mouseDoubleClickEvent(self, event):
-        if self.config_dialog:
+        if self.config_dialog and self.config_dialog.isVisible():
             return
         self.config_dialog = ConfigDialog(self)
         self.config_dialog.show()
@@ -458,6 +459,7 @@ class MainWindow(QtGui.QMainWindow):
         grid.addWidget(stop_button, 1, 4)
 
 def main():
+    logging.basicConfig(level=logging.DEBUG)
     # let PyQt handle its options (need at least one argument after options)
     sys.argv.append('xxx')
     app = QtGui.QApplication(sys.argv)
