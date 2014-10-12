@@ -131,8 +131,11 @@ class ComponentLink(QtGui.QGraphicsLineItem):
         self.outbox = outbox
         self.dest = dest
         self.inbox = inbox
-        self.source.component.bind(self.name, self.dest.component, other.name)
+        self.renew()
         self.redraw()
+
+    def renew(self):
+        self.source.component.bind(self.outbox, self.dest.component, self.inbox)
 
     def redraw(self):
         self.setLine(QtCore.QLineF(
@@ -226,12 +229,13 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
         self.setFlags(QtGui.QGraphicsItem.ItemIsMovable |
                       QtGui.QGraphicsItem.ItemIsSelectable |
                       QtGui.QGraphicsItem.ItemSendsGeometryChanges)
-        self.name = component_class.__name__
+        self.component_class = component_class
+        self.name = self.component_class.__name__
         self.setRect(0, 0, 100, 150)
         self.config_dialog = None
         # create component
         self.id = comp_id
-        self.component = component_class()
+        self.component = self.component_class()
         # id label
         text = QtGui.QGraphicsSimpleTextItem(self.id, self)
         font = text.font()
@@ -256,6 +260,11 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
         for idx, name in enumerate(self.component.outputs):
             self.outputs[name] = OutputIcon(name, self)
             self.outputs[name].setPos(100, 100 + (idx * 20))
+
+    def renew(self):
+        config = self.component.get_config()
+        self.component = self.component_class()
+        self.component.set_config(config)
 
     def mouseDoubleClickEvent(self, event):
         if self.config_dialog:
@@ -334,6 +343,26 @@ class NetworkArea(QtGui.QGraphicsScene):
                 return True
         return False
 
+    def run_graph(self):
+        # replace components with fresh instances
+        for child in self.items():
+            if isinstance(child, ComponentIcon):
+                child.component.stop()
+                child.renew()
+        # rebuild connections
+        for child in self.items():
+            if isinstance(child, ComponentLink):
+                child.renew()
+        # run it!
+        for child in self.items():
+            if isinstance(child, ComponentIcon):
+                child.component.start()
+
+    def stop_graph(self):
+        for child in self.items():
+            if isinstance(child, ComponentIcon):
+                child.component.stop()
+
 class ComponentItemModel(QtGui.QStandardItemModel):
     def mimeTypes(self):
         return [_COMP_MIMETYPE]
@@ -402,19 +431,31 @@ class MainWindow(QtGui.QMainWindow):
         quit_action.triggered.connect(
             QtGui.QApplication.instance().closeAllWindows)
         file_menu.addAction(quit_action)
-        # main application area
-        self.central_widget = QtGui.QSplitter(self)
-        self.central_widget.setChildrenCollapsible(False)
+        ## main application area
+        self.setCentralWidget(QtGui.QWidget())
+        grid = QtGui.QGridLayout()
+        grid.setColumnStretch(0, 1)
+        self.centralWidget().setLayout(grid)
+        # component list and network drawing area
+        splitter = QtGui.QSplitter(self)
+        splitter.setChildrenCollapsible(False)
         self.component_list = ComponentList(self)
-        self.central_widget.addWidget(self.component_list)
+        splitter.addWidget(self.component_list)
         self.network_area = NetworkArea(self)
         view = QtGui.QGraphicsView(self.network_area)
         view.setAcceptDrops(True)
         view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.central_widget.addWidget(view)
-        self.central_widget.setStretchFactor(1, 1)
-        self.setCentralWidget(self.central_widget)
+        splitter.addWidget(view)
+        splitter.setStretchFactor(1, 1)
+        grid.addWidget(splitter, 0, 0, 1, 5)
+        # buttons
+        run_button = QtGui.QPushButton('run graph')
+        run_button.clicked.connect(self.network_area.run_graph)
+        grid.addWidget(run_button, 1, 3)
+        stop_button = QtGui.QPushButton('stop graph')
+        stop_button.clicked.connect(self.network_area.stop_graph)
+        grid.addWidget(stop_button, 1, 4)
 
 def main():
     # let PyQt handle its options (need at least one argument after options)
