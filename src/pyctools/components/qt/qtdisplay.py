@@ -38,7 +38,7 @@ import numpy
 from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import Qt
 
-from ...core import ConfigMixin
+from ...core import ConfigMixin, ConfigInt
 
 class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
     inputs = ['input']
@@ -48,6 +48,7 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
         super(QtDisplay, self).__init__(
             None, Qt.Window | Qt.WindowStaysOnTopHint)
         ConfigMixin.__init__(self)
+        self.config.append(ConfigInt('shrink', dynamic=True))
 
     @actor_method
     def input(self, frame):
@@ -64,7 +65,10 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
         image = QtGui.QImage(numpy_image.data, xlen, ylen, xlen * bpc,
                              QtGui.QImage.Format_RGB888)
         pixmap = QtGui.QPixmap.fromImage(image)
-        self.resize(xlen, ylen)
+        shrink = self.config['shrink']
+        if shrink > 1:
+            pixmap = pixmap.scaled(xlen // shrink, ylen // shrink)
+        self.resize(pixmap.size())
         self.setPixmap(pixmap)
 
 def main():
