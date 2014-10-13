@@ -375,6 +375,33 @@ class NetworkArea(QtGui.QGraphicsScene):
             if isinstance(child, ComponentIcon):
                 child.component.stop()
 
+    def load_script(self, file_name):
+        global_vars = {}
+        local_vars = {}
+        with open(file_name) as f:
+            code = compile(f.read(), file_name, 'exec')
+            exec(code, global_vars, local_vars)
+        if 'Network' not in local_vars:
+            # not a recognised script
+            print 'Script not recognised'
+            return
+        network = local_vars['Network']()
+        comps = {}
+        for comp_id, comp in network.components.iteritems():
+            comps[comp_id] = ComponentIcon(comp_id, eval(comp['class']))
+            comps[comp_id].setPos(*comp['pos'])
+            self.addItem(comps[comp_id])
+            cnf = comps[comp_id].component.get_config()
+            for key, value in eval(comp['config']).iteritems():
+                cnf[key] = value
+            comps[comp_id].component.set_config(cnf)
+        for source, dest in network.linkages.iteritems():
+            source, outbox = source
+            dest, inbox = dest
+            icon = ComponentLink(comps[source], outbox, comps[dest], inbox)
+            self.addItem(icon)
+        self.update_scene_rect()
+
     def save_script(self, file_name):
         components = {}
         modules = []
@@ -492,6 +519,10 @@ class MainWindow(QtGui.QMainWindow):
         self.setWindowTitle("Pyctools network editor")
         ## file menu
         file_menu = self.menuBar().addMenu('File')
+        load_action = QtGui.QAction('Load script', self)
+        load_action.setShortcuts(['Ctrl+L'])
+        load_action.triggered.connect(self.load_script)
+        file_menu.addAction(load_action)
         save_action = QtGui.QAction('Save script', self)
         save_action.setShortcuts(['Ctrl+S'])
         save_action.triggered.connect(self.save_script)
@@ -527,6 +558,12 @@ class MainWindow(QtGui.QMainWindow):
         stop_button = QtGui.QPushButton('stop graph')
         stop_button.clicked.connect(self.network_area.stop_graph)
         grid.addWidget(stop_button, 1, 4)
+
+    def load_script(self):
+        file_name = str(QtGui.QFileDialog.getOpenFileName(
+            self, 'Load file', filter='Python scripts (*.py)'))
+        if file_name:
+            self.network_area.load_script(file_name)
 
     def save_script(self):
         file_name = str(QtGui.QFileDialog.getSaveFileName(
