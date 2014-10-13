@@ -36,7 +36,7 @@ class ConfigLeafNode(object):
 
     def set(self, value):
         if not self.validate(value):
-            raise ValueError()
+            raise ValueError(str(value))
         self.value = value
 
 class ConfigPath(ConfigLeafNode):
@@ -55,7 +55,7 @@ class ConfigEnum(ConfigLeafNode):
     def validate(self, value):
         return value in self.choices
 
-class ConfigGroupNode(object):
+class ConfigParent(object):
     def __init__(self, name):
         self.name = name
         self.children = []
@@ -76,9 +76,12 @@ class ConfigGroupNode(object):
                 return child
         raise KeyError(name)
 
+class ConfigGrandParent(ConfigParent):
+    pass
+
 class ConfigMixin(object):
     def __init__(self):
-        self.config = ConfigGroupNode(self.__class__.__name__)
+        self.config = ConfigParent(self.__class__.__name__)
 
     def get_config(self):
         # make copy to allow changes without affecting running

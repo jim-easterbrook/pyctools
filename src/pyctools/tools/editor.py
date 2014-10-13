@@ -27,7 +27,7 @@ from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import Qt
 
 import pyctools.components
-from ..core.config import ConfigEnum, ConfigGroupNode, ConfigInt, ConfigPath
+from ..core.config import ConfigEnum, ConfigGrandParent, ConfigParent, ConfigInt, ConfigPath
 
 _COMP_MIMETYPE = 'application/x-pyctools-component'
 _INPUT_MIMETYPE = 'application/x-pyctools-component-input'
@@ -76,6 +76,37 @@ class ConfigEnumWidget(QtGui.QComboBox):
     def new_value(self, idx):
         self.config.set(str(self.itemText(idx)))
 
+class ConfigParentWidget(QtGui.QWidget):
+    def __init__(self, config):
+        super(ConfigParentWidget, self).__init__()
+        self.config = config
+        self.setLayout(QtGui.QFormLayout())
+        for child in self.config.children:
+            widget = ConfigWidget(child)
+            self.layout().addRow(child.name, widget)
+
+class ConfigGrandParentWidget(QtGui.QTabWidget):
+    def __init__(self, config):
+        super(ConfigParentWidget, self).__init__()
+        self.config = config
+        for child in self.config.children:
+            widget = ConfigWidget(child)
+            self.addTab(widget, child.name)
+
+def ConfigWidget(config):
+    if isinstance(config, ConfigGrandParent):
+        return ConfigGrandParentWidget(config)
+    elif isinstance(config, ConfigParent):
+        return ConfigParentWidget(config)
+    elif isinstance(config, ConfigPath):
+        return ConfigPathWidget(config)
+    elif isinstance(config, ConfigInt):
+        return ConfigIntWidget(config)
+    elif isinstance(config, ConfigEnum):
+        return ConfigEnumWidget(config)
+    else:
+        raise RuntimeError('Unknown config type %s', config.__class__.__name__)
+
 class ConfigDialog(QtGui.QDialog):
     def __init__(self, parent):
         super(ConfigDialog, self).__init__()
@@ -85,28 +116,8 @@ class ConfigDialog(QtGui.QDialog):
         self.setLayout(QtGui.QGridLayout())
         self.layout().setColumnStretch(0, 1)
         # central area
-        flat = True
-        for child in self.config.children:
-            if isinstance(child, ConfigGroupNode):
-                flat = False
-                break
-        if flat:
-            main_area = QtGui.QFormLayout()
-            for child in self.config.children:
-                if isinstance(child, ConfigPath):
-                    widget = ConfigPathWidget(child)
-                elif isinstance(child, ConfigInt):
-                    widget = ConfigIntWidget(child)
-                elif isinstance(child, ConfigEnum):
-                    widget = ConfigEnumWidget(child)
-                else:
-                    raise RuntimeError(
-                        'Unknown config type %s', child.__class__.__name__)
-                main_area.addRow(child.name, widget)
-            self.layout().addLayout(main_area, 0, 0, 1, 4)
-        else:
-            main_area = QtGui.QTabWidget()
-            self.layout().addWidget(main_area, 0, 0, 1, 4)
+        main_area = ConfigWidget(self.config)
+        self.layout().addWidget(main_area, 0, 0, 1, 4)
         # buttons
         cancel_button = QtGui.QPushButton('Cancel')
         cancel_button.clicked.connect(self.close)

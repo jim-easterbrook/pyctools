@@ -25,15 +25,15 @@ Kamaelia's 'Graphline' component
 Components are linked within the compound and to the outside world
 according to the 'linkages' parameter.
 
-The child components' config nodes are gathered into one
-ConfigGroupNode. The child names (as used in the linkages) are
+The child components' config parent nodes are gathered into one
+ConfigGrandParent. The child names (as used in the linkages) are
 prepended to their config. E.g. if you have a component you've named
 'src', its 'outframe_pool_len' config is now called
 'src.outframe_pool_len'.
 
 """
 
-from .config import ConfigGroupNode
+from .config import ConfigGrandParent
 
 class Compound(object):
     def __init__(self, **kw):
@@ -61,7 +61,7 @@ class Compound(object):
         self.children[src].bind(outbox, dest, destmeth)
 
     def get_config(self):
-        config = ConfigGroupNode(self.__class__.__name__)
+        config = ConfigGrandParent(self.__class__.__name__)
         for name, child in self.children.iteritems():
             child_config = child.get_config()
             child_config.name = name
