@@ -41,9 +41,12 @@ class ConfigLeafNode(object):
             raise ValueError(str(value))
         self.value = value
 
+    def flatten(self, prefix=''):
+        return {self.name: self.value}
+
 class ConfigPath(ConfigLeafNode):
     def validate(self, value):
-        return True
+        return isinstance(value, str)
 
 class ConfigInt(ConfigLeafNode):
     def __init__(self, name, value=None, dynamic=False,
@@ -55,7 +58,8 @@ class ConfigInt(ConfigLeafNode):
             self.value = min(max(0, self.min_value), self.max_value)
 
     def validate(self, value):
-        return value >= self.min_value and value <= self.max_value
+        return (isinstance(value, int) and
+                value >= self.min_value and value <= self.max_value)
 
 class ConfigEnum(ConfigLeafNode):
     def __init__(self, name, choices, **kw):
@@ -76,6 +80,12 @@ class ConfigParent(object):
 
     def __setitem__(self, key, value):
         self._child(key).set(value)
+
+    def flatten(self, prefix=''):
+        result = {}
+        for child in self.children:
+            result.update(child.flatten(prefix + '.' + child.name))
+        return result
 
     def _child(self, name):
         parts = name.split('.', 1)
