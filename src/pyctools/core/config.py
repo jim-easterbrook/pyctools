@@ -25,11 +25,13 @@ different value types.
 """
 
 import copy
+import sys
 
 class ConfigLeafNode(object):
     def __init__(self, name, value=None, dynamic=False):
         self.name = name
         self.value = value
+        self.dynamic = dynamic
 
     def get(self):
         return self.value
@@ -44,8 +46,16 @@ class ConfigPath(ConfigLeafNode):
         return True
 
 class ConfigInt(ConfigLeafNode):
+    def __init__(self, name, value=None, dynamic=False,
+                 min_value=-sys.maxint, max_value=sys.maxint):
+        super(ConfigInt, self).__init__(name, value, dynamic)
+        self.min_value = min_value
+        self.max_value = max_value
+        if value is None:
+            self.value = min(max(0, self.min_value), self.max_value)
+
     def validate(self, value):
-        return True
+        return value >= self.min_value and value <= self.max_value
 
 class ConfigEnum(ConfigLeafNode):
     def __init__(self, name, choices, **kw):

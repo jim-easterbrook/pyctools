@@ -58,9 +58,9 @@ class ConfigIntWidget(QtGui.QSpinBox):
     def __init__(self, config):
         super(ConfigIntWidget, self).__init__()
         self.config = config
-        value = self.config.get()
-        if value is not None:
-            self.setValue(self.config.get())
+        self.setMinimum(max(self.config.min_value, -(2**31)))
+        self.setMaximum(min(self.config.max_value,  (2**31)-1))
+        self.setValue(self.config.get())
         self.valueChanged.connect(self.config.set)
 
 class ConfigEnumWidget(QtGui.QComboBox):
