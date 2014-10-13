@@ -41,8 +41,8 @@ class ConfigLeafNode(object):
             raise ValueError(str(value))
         self.value = value
 
-    def flatten(self, prefix=''):
-        return {self.name: self.value}
+    def __repr__(self):
+        return repr(self.value)
 
 class ConfigPath(ConfigLeafNode):
     def validate(self, value):
@@ -69,32 +69,21 @@ class ConfigEnum(ConfigLeafNode):
     def validate(self, value):
         return value in self.choices
 
-class ConfigParent(object):
+class ConfigParent(ConfigLeafNode):
     def __init__(self, name):
-        self.name = name
-        self.children = []
-        self.append = self.children.append
+        super(ConfigParent, self).__init__(name, value={})
+
+    def validate(self, value):
+        return isinstance(value, dict)
+
+    def append(self, child):
+        self.value[child.name] = child
 
     def __getitem__(self, key):
-        return self._child(key).get()
+        return self.value[key].get()
 
     def __setitem__(self, key, value):
-        self._child(key).set(value)
-
-    def flatten(self, prefix=''):
-        result = {}
-        for child in self.children:
-            result.update(child.flatten(prefix + '.' + child.name))
-        return result
-
-    def _child(self, name):
-        parts = name.split('.', 1)
-        for child in self.children:
-            if child.name == parts[0]:
-                if len(parts) > 1:
-                    return child._child(parts[1])
-                return child
-        raise KeyError(name)
+        self.value[key].set(value)
 
 class ConfigGrandParent(ConfigParent):
     pass

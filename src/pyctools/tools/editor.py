@@ -81,17 +81,17 @@ class ConfigParentWidget(QtGui.QWidget):
         super(ConfigParentWidget, self).__init__()
         self.config = config
         self.setLayout(QtGui.QFormLayout())
-        for child in self.config.children:
+        for name, child in self.config.value.iteritems():
             widget = ConfigWidget(child)
-            self.layout().addRow(child.name, widget)
+            self.layout().addRow(name, widget)
 
 class ConfigGrandParentWidget(QtGui.QTabWidget):
     def __init__(self, config):
         super(ConfigParentWidget, self).__init__()
         self.config = config
-        for child in self.config.children:
+        for name, child in self.config.value.iteritems():
             widget = ConfigWidget(child)
-            self.addTab(widget, child.name)
+            self.addTab(widget, name)
 
 def ConfigWidget(config):
     if isinstance(config, ConfigGrandParent):
@@ -385,7 +385,7 @@ class NetworkArea(QtGui.QGraphicsScene):
                     'class' : '%s.%s' % (
                         child.component_class.__module__,
                         child.component_class.__name__),
-                    'config' : child.component.get_config().flatten(),
+                    'config' : repr(child.component.get_config()),
                     'pos' : (child.pos().x(), child.pos().y()),
                     }
                 if child.component_class.__module__ not in modules:
@@ -415,7 +415,7 @@ class Network(object):
         for comp_id, component in self.components.iteritems():
             comps[comp_id] = eval(component['class'])()
             cnf = comps[comp_id].get_config()
-            for key, value in component['config'].iteritems():
+            for key, value in eval(component['config']).iteritems():
                 cnf[key] = value
             comps[comp_id].set_config(cnf)
         return Compound(linkages=self.linkages, **comps)
