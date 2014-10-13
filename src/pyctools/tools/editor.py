@@ -154,13 +154,19 @@ class ComponentLink(QtGui.QGraphicsLineItem):
             self.source.outputs[self.outbox].connect_pos(),
             self.dest.inputs[self.inbox].connect_pos()))
 
-class IOIcon(QtGui.QGraphicsPolygonItem):
+class IOIcon(QtGui.QGraphicsRectItem):
     def __init__(self, name, parent):
         super(IOIcon, self).__init__(parent)
         self.name = name
-        self.setPolygon(
-            QtGui.QPolygonF(QtGui.QPolygon([0, -5, 6, 0, 0, 5, 0, -5])))
         self.setAcceptDrops(True)
+        # draw an invisible rectangle to define drag-and-drop area
+        pen = self.pen()
+        pen.setStyle(Qt.NoPen)
+        self.setPen(pen)
+        self.setRect(-3, -8, 13, 17)
+        # draw a smaller visible triangle
+        self.triangle = QtGui.QGraphicsPolygonItem(
+            QtGui.QPolygonF(QtGui.QPolygon([0, -5, 6, 0, 0, 5, 0, -5])), self)
         self.label = QtGui.QGraphicsSimpleTextItem(name, parent)
         font = self.label.font()
         font.setPointSizeF(font.pointSize() * 0.75)
