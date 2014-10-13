@@ -375,6 +375,60 @@ class NetworkArea(QtGui.QGraphicsScene):
             if isinstance(child, ComponentIcon):
                 child.component.stop()
 
+    def save_script(self, file_name):
+        components = {}
+        modules = []
+        linkages = {}
+        for child in self.items():
+            if isinstance(child, ComponentIcon):
+                components[child.id] = {
+                    'class' : '%s.%s' % (
+                        child.component_class.__module__,
+                        child.component_class.__name__),
+                    'config' : child.component.get_config().flatten(),
+                    'pos' : (child.pos().x(), child.pos().y()),
+                    }
+                if child.component_class.__module__ not in modules:
+                    modules.append(child.component_class.__module__)
+            elif isinstance(child, ComponentLink):
+                linkages[(child.source.id, child.outbox)] = (
+                    child.dest.id, child.inbox)
+        with open(file_name, 'w') as of:
+            of.write("""#!/usr/bin/env python
+# File written by pyctools-editor. Do not edit.
+
+from PyQt4 import QtGui
+
+from pyctools.core.compound import Compound
+
+""")
+            for module in modules:
+                of.write('import %s\n' % module)
+            of.write("""
+class Network(object):
+    def __init__(self):
+        self.components = %s
+        self.linkages = %s
+
+    def make(self):
+        comps = {}
+        for comp_id, component in self.components.iteritems():
+            comps[comp_id] = eval(component['class'])()
+            cnf = comps[comp_id].get_config()
+            for key, value in component['config'].iteritems():
+                cnf[key] = value
+            comps[comp_id].set_config(cnf)
+        return Compound(linkages=self.linkages, **comps)
+
+if __name__ == '__main__':
+    app = QtGui.QApplication([])
+    comp = Network().make()
+    comp.start()
+    app.exec_()
+    comp.stop()
+    comp.join()
+""" % (components, linkages))
+
 class ComponentItemModel(QtGui.QStandardItemModel):
     def mimeTypes(self):
         return [_COMP_MIMETYPE]
@@ -436,8 +490,13 @@ class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         self.setWindowTitle("Pyctools network editor")
-        # file menu
+        ## file menu
         file_menu = self.menuBar().addMenu('File')
+        save_action = QtGui.QAction('Save script', self)
+        save_action.setShortcuts(['Ctrl+S'])
+        save_action.triggered.connect(self.save_script)
+        file_menu.addAction(save_action)
+        file_menu.addSeparator()
         quit_action = QtGui.QAction('Quit', self)
         quit_action.setShortcuts(['Ctrl+Q', 'Ctrl+W'])
         quit_action.triggered.connect(
@@ -468,6 +527,12 @@ class MainWindow(QtGui.QMainWindow):
         stop_button = QtGui.QPushButton('stop graph')
         stop_button.clicked.connect(self.network_area.stop_graph)
         grid.addWidget(stop_button, 1, 4)
+
+    def save_script(self):
+        file_name = str(QtGui.QFileDialog.getSaveFileName(
+            self, 'Save file', filter='Python scripts (*.py)'))
+        if file_name:
+            self.network_area.save_script(file_name)
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
