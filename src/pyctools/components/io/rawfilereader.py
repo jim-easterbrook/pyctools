@@ -51,59 +51,74 @@ class RawFileReader(Component):
         self.fourcc = self.metadata.get('fourcc')
         self.xlen, self.ylen = self.metadata.image_size()
         # set bits per pixel and UV subsampling ratios
-        if self.fourcc in ('IYU2',):
+        if self.fourcc in ('IYU2', 'BGR[24]', 'RGB[24]'):
             bpp = 24
-            self.UVhss, self.UVvss = 1, 1
+            self.ssr = ((1, 1), (1, 1), (1, 1))
         elif self.fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC', 'YVYU', 'YUYV',
                              'YV16', 'YUY2', 'YUNV', 'V422'):
             bpp = 16
-            self.UVhss, self.UVvss = 2, 1
+            self.ssr = ((1, 1), (2, 1), (2, 1))
         elif self.fourcc in ('IYUV', 'I420', 'YV12'):
             bpp = 12
-            self.UVhss, self.UVvss = 2, 2
+            self.ssr = ((1, 1), (2, 2), (2, 2))
         elif self.fourcc in ('YVU9',):
             bpp = 9
-            self.UVhss, self.UVvss = 4, 4
+            self.ssr = ((1, 1), (4, 4), (4, 4))
         else:
             raise RuntimeError("Can't open %s files" % self.fourcc)
         self.bytes_per_frame = (self.xlen * self.ylen * bpp) // 8
         self.zlen = os.path.getsize(path) // self.bytes_per_frame
-        # set YUV array slice parameters
-        if self.fourcc in ('IYU2',):
-            self.Y_slice = 1, None, 3
-            self.U_slice = 0, None, 3
-            self.V_slice = 2, None, 3
+        if self.zlen < 1:
+            raise RuntimeError("Zero length file %s" % path)
+        # set raw array slice parameters
+        if self.fourcc in ('BGR[24]',):
+            self.slice = ((2, None, 3),
+                          (1, None, 3),
+                          (0, None, 3))
+        elif self.fourcc in ('RGB[24]',):
+            self.slice = ((0, None, 3),
+                          (1, None, 3),
+                          (2, None, 3))
+        elif self.fourcc in ('IYU2',):
+            self.slice = ((1, None, 3),
+                          (0, None, 3),
+                          (2, None, 3))
         elif self.fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC'):
             # packed format, UYVY order
-            self.Y_slice = 1, None, 2
-            self.U_slice = 0, None, 4
-            self.V_slice = 2, None, 4
+            self.slice = ((1, None, 2),
+                          (0, None, 4),
+                          (2, None, 4))
         elif self.fourcc in ('YVYU',):
             # packed format, YVYU order
-            self.Y_slice = 0, None, 2
-            self.U_slice = 3, None, 4
-            self.V_slice = 1, None, 4
+            self.slice = ((0, None, 2),
+                          (3, None, 4),
+                          (1, None, 4))
         elif self.fourcc in ('YUYV', 'YUY2', 'YUNV', 'V422'):
             # packed format, YUYV order
-            self.Y_slice = 0, None, 2
-            self.U_slice = 1, None, 4
-            self.V_slice = 3, None, 4
+            self.slice = ((0, None, 2),
+                          (1, None, 4),
+                          (3, None, 4))
         elif self.fourcc in ('IYUV', 'I420'):
             # planar format, YUV order
             Y_size = self.xlen * self.ylen
-            UV_size = Y_size // (self.UVhss * self.UVvss)
-            self.Y_slice = 0,                Y_size,                 1
-            self.U_slice = Y_size,           Y_size + UV_size,       1
-            self.V_slice = Y_size + UV_size, Y_size + (UV_size * 2), 1
+            UV_size = Y_size // (self.ssr[1][0] * self.ssr[1][1])
+            self.slice = ((0,                Y_size,                 1),
+                          (Y_size,           Y_size + UV_size,       1),
+                          (Y_size + UV_size, Y_size + (UV_size * 2), 1))
         elif self.fourcc in ('YV16', 'YV12', 'YVU9'):
             # planar format, YVU order
             Y_size = self.xlen * self.ylen
-            UV_size = Y_size // (self.UVhss * self.UVvss)
-            self.Y_slice = 0,                Y_size,                 1
-            self.U_slice = Y_size + UV_size, Y_size + (UV_size * 2), 1
-            self.V_slice = Y_size,           Y_size + UV_size,       1
+            UV_size = Y_size // (self.ssr[1][0] * self.ssr[1][1])
+            self.slice = ((0,                Y_size,                 1),
+                          (Y_size + UV_size, Y_size + (UV_size * 2), 1),
+                          (Y_size,           Y_size + UV_size,       1))
         else:
             raise RuntimeError("Can't open %s files" % self.fourcc)
+        # set frame type
+        if self.fourcc in ('BGR[24]', 'RGB[24]'):
+            self.frame_type = 'RGB'
+        else:
+            self.frame_type = 'YCbCr'
         self.frame_no = 0
 
     @actor_method
@@ -117,16 +132,14 @@ class RawFileReader(Component):
             return
         # convert to numpy arrays
         raw_array = numpy.frombuffer(raw_data, numpy.uint8)
-        start, end, step = self.Y_slice
-        Y_data = raw_array[start:end:step]
-        start, end, step = self.U_slice
-        U_data = raw_array[start:end:step]
-        start, end, step = self.V_slice
-        V_data = raw_array[start:end:step]
-        frame.data.append(Y_data.reshape(self.ylen, self.xlen))
-        frame.data.append(U_data.reshape(self.ylen // self.UVvss, self.xlen // self.UVhss))
-        frame.data.append(V_data.reshape(self.ylen // self.UVvss, self.xlen // self.UVhss))
-        frame.type = 'YCbCr'
+        for idx in range(len(self.slice)):
+            start, end, step = self.slice[idx]
+            raw_data = raw_array[start:end:step]
+            frame.data.append(raw_data.reshape(
+                self.ylen // self.ssr[idx][1], self.xlen // self.ssr[idx][0]))
+        if self.frame_type != 'YCbCr':
+            frame.data = [numpy.dstack(frame.data)]
+        frame.type = self.frame_type
         frame.frame_no = self.frame_no
         self.frame_no += 1
         self.output(frame)
