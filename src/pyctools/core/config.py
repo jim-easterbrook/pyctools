@@ -83,10 +83,17 @@ class ConfigParent(ConfigLeafNode):
         return self.value[key].get()
 
     def __setitem__(self, key, value):
-        self.value[key].set(value)
+        if key in self.value:
+            self.value[key].set(value)
+        else:
+            self.value[key] = value
 
 class ConfigGrandParent(ConfigParent):
-    pass
+    def __getitem__(self, key):
+        return self.value[key]
+
+    def __setitem__(self, key, value):
+        self.value[key] = value
 
 class ConfigMixin(object):
     def __init__(self):

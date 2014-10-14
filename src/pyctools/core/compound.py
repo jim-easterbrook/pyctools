@@ -69,8 +69,8 @@ class Compound(object):
         return config
 
     def set_config(self, config):
-        for child_config in config.children:
-            self.children[child_config.name].set_config(child_config)
+        for name, child_config in config.value.iteritems():
+            self.children[name].set_config(child_config)
 
     def go(self):
         self.start()
