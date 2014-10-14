@@ -45,8 +45,7 @@ class Component(Actor, ConfigMixin):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.with_outframe_pool = with_outframe_pool
         if self.with_outframe_pool:
-            self.config.append(ConfigInt(
-                'outframe_pool_len', min_value=2, value=3))
+            self.config['outframe_pool_len'] = ConfigInt(min_value=2, value=3)
 
     def process_start(self):
         if self.with_outframe_pool:

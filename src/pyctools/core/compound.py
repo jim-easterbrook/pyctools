@@ -61,11 +61,11 @@ class Compound(object):
         self.children[src].bind(outbox, dest, destmeth)
 
     def get_config(self):
-        config = ConfigGrandParent(self.__class__.__name__)
+        config = ConfigGrandParent()
         for name, child in self.children.iteritems():
             child_config = child.get_config()
             child_config.name = name
-            config.append(child_config)
+            config[name] = child_config
         return config
 
     def set_config(self, config):

@@ -28,8 +28,7 @@ import copy
 import sys
 
 class ConfigLeafNode(object):
-    def __init__(self, name, value=None, dynamic=False):
-        self.name = name
+    def __init__(self, value=None, dynamic=False):
         self.value = value
         self.dynamic = dynamic
 
@@ -49,9 +48,9 @@ class ConfigPath(ConfigLeafNode):
         return isinstance(value, str)
 
 class ConfigInt(ConfigLeafNode):
-    def __init__(self, name, value=None, dynamic=False,
+    def __init__(self, value=None, dynamic=False,
                  min_value=-sys.maxint, max_value=sys.maxint):
-        super(ConfigInt, self).__init__(name, value, dynamic)
+        super(ConfigInt, self).__init__(value, dynamic)
         self.min_value = min_value
         self.max_value = max_value
         if value is None:
@@ -62,22 +61,19 @@ class ConfigInt(ConfigLeafNode):
                 value >= self.min_value and value <= self.max_value)
 
 class ConfigEnum(ConfigLeafNode):
-    def __init__(self, name, choices, **kw):
-        super(ConfigEnum, self).__init__(name, value=choices[0], **kw)
+    def __init__(self, choices, **kw):
+        super(ConfigEnum, self).__init__(value=choices[0], **kw)
         self.choices = choices
 
     def validate(self, value):
         return value in self.choices
 
 class ConfigParent(ConfigLeafNode):
-    def __init__(self, name):
-        super(ConfigParent, self).__init__(name, value={})
+    def __init__(self):
+        super(ConfigParent, self).__init__(value={})
 
     def validate(self, value):
         return isinstance(value, dict)
-
-    def append(self, child):
-        self.value[child.name] = child
 
     def __getitem__(self, key):
         return self.value[key].get()
@@ -97,7 +93,7 @@ class ConfigGrandParent(ConfigParent):
 
 class ConfigMixin(object):
     def __init__(self):
-        self.config = ConfigParent(self.__class__.__name__)
+        self.config = ConfigParent()
 
     def get_config(self):
         # make copy to allow changes without affecting running

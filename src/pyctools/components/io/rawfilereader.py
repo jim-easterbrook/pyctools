@@ -40,8 +40,8 @@ class RawFileReader(Component):
 
     def __init__(self):
         super(RawFileReader, self).__init__(with_outframe_pool=True)
-        self.config.append(ConfigPath('path'))
-        self.config.append(ConfigEnum('looping', ('off', 'on'), dynamic=True))
+        self.config['path'] = ConfigPath()
+        self.config['looping'] = ConfigEnum(('off', 'on'), dynamic=True)
 
     def process_start(self):
         super(RawFileReader, self).process_start()

@@ -48,7 +48,7 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
         super(QtDisplay, self).__init__(
             None, Qt.Window | Qt.WindowStaysOnTopHint)
         ConfigMixin.__init__(self)
-        self.config.append(ConfigInt('shrink', min_value=1, dynamic=True))
+        self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
 
     @actor_method
     def input(self, frame):

@@ -51,10 +51,8 @@ class YUVtoRGB(Transformer):
                            [1.0,  1.81418,   0.0]])
     def __init__(self):
         super(YUVtoRGB, self).__init__()
-        self.config.append(
-            ConfigEnum('matrix', ('auto', '601', '709'), dynamic=True))
-        self.config.append(
-            ConfigEnum('range', ('studio', 'computer'), dynamic=True))
+        self.config['matrix'] = ConfigEnum(('auto', '601', '709'), dynamic=True)
+        self.config['range'] = ConfigEnum(('studio', 'computer'), dynamic=True)
 
     def transform(self, in_frame, out_frame):
         # check input and get data

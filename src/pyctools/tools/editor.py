@@ -87,7 +87,7 @@ class ConfigParentWidget(QtGui.QWidget):
 
 class ConfigGrandParentWidget(QtGui.QTabWidget):
     def __init__(self, config):
-        super(ConfigParentWidget, self).__init__()
+        super(ConfigGrandParentWidget, self).__init__()
         self.config = config
         for name, child in self.config.value.iteritems():
             widget = ConfigWidget(child)
@@ -450,8 +450,8 @@ class NetworkArea(QtGui.QGraphicsScene):
             of.write("""#!/usr/bin/env python
 # File written by pyctools-editor. Do not edit.
 
+import logging
 from PyQt4 import QtGui
-
 from pyctools.core.compound import Compound
 
 """)
@@ -474,6 +474,7 @@ class Network(object):
         return Compound(linkages=self.linkages, **comps)
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     app = QtGui.QApplication([])
     comp = Network().make()
     comp.start()
