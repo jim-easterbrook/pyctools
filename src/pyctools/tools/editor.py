@@ -147,6 +147,16 @@ class ComponentLink(QtGui.QGraphicsLineItem):
         self.renew()
         self.redraw()
 
+    def itemChange(self, change, value):
+        if change == QtGui.QGraphicsItem.ItemSelectedHasChanged:
+            pen = self.pen()
+            if value.toBool():
+                pen.setStyle(Qt.DashLine)
+            else:
+                pen.setStyle(Qt.SolidLine)
+            self.setPen(pen)
+        return super(ComponentLink, self).itemChange(change, value)
+
     def renew(self):
         self.source.component.bind(self.outbox, self.dest.component, self.inbox)
 
@@ -247,7 +257,6 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
                       QtGui.QGraphicsItem.ItemIsSelectable |
                       QtGui.QGraphicsItem.ItemSendsGeometryChanges)
         self.component_class = component_class
-        self.name = self.component_class.__name__
         self.setRect(0, 0, 100, 150)
         self.config_dialog = None
         # create component
@@ -261,7 +270,7 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
         text.setPos(8, 8)
         # type label
         text = QtGui.QGraphicsSimpleTextItem(
-            self.component.__class__.__name__ + '()', self)
+            self.component_class.__name__ + '()', self)
         font = text.font()
         font.setPointSizeF(font.pointSize() * 0.8)
         font.setItalic(True)
