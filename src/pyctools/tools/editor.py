@@ -139,6 +139,7 @@ class ConfigDialog(QtGui.QDialog):
 class ComponentLink(QtGui.QGraphicsLineItem):
     def __init__(self, source, outbox, dest, inbox, parent=None):
         super(ComponentLink, self).__init__(parent)
+        self.setFlags(QtGui.QGraphicsItem.ItemIsSelectable)
         self.source = source
         self.outbox = outbox
         self.dest = dest
@@ -194,11 +195,24 @@ class IOIcon(QtGui.QGraphicsRectItem):
         if not event.mimeData().hasFormat(self.link_mime_type):
             return super(IOIcon, self).dropEvent(event)
         start_pos = pickle.loads(event.mimeData().data(self.link_mime_type).data())
-        source = self.scene().itemAt(start_pos)
-        if isinstance(source, OutputIcon):
-            source.connect_to(self)
+        link_from = self.scene().itemAt(start_pos)
+        if isinstance(link_from, QtGui.QGraphicsPolygonItem):
+            link_from = link_from.parentItem()
+        if isinstance(link_from, OutputIcon):
+            source = link_from.parentItem()
+            outbox = link_from.name
+            dest = self.parentItem()
+            inbox = self.name
         else:
-            self.connect_to(source)
+            source = self.parentItem()
+            outbox = self.name
+            dest = link_from.parentItem()
+            inbox = link_from.name
+        for link in self.scene().matching_items(ComponentLink):
+            if link.source == source and link.outbox == outbox:
+                self.scene().removeItem(link)
+        link = ComponentLink(source, outbox, dest, inbox)
+        self.scene().addItem(link)
 
 class InputIcon(IOIcon):
     mime_type = _INPUT_MIMETYPE
@@ -216,25 +230,10 @@ class OutputIcon(IOIcon):
     mime_type = _OUTPUT_MIMETYPE
     link_mime_type = _INPUT_MIMETYPE
 
-    def __init__(self, name, parent=None):
-        super(OutputIcon, self).__init__(name, parent)
-        self.connection = None
-
     def setPos(self, ax, ay):
         br = self.label.boundingRect()
         self.label.setPos(ax - 2 - br.width(), ay - (br.height() / 2))
         super(OutputIcon, self).setPos(ax, ay)
-
-    def disconnect(self):
-        if self.connection:
-            self.scene().removeItem(self.connection)
-            self.connection = None
-
-    def connect_to(self, other):
-        self.disconnect()
-        self.connection = ComponentLink(
-            self.parentItem(), self.name, other.parentItem(), other.name)
-        self.scene().addItem(self.connection)
 
     def connect_pos(self):
         pos = self.scenePos()
@@ -299,11 +298,10 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
             pos.setY(pos.y() + 25 - ((pos.y() + 25) % 50))
             return pos
         if change == QtGui.QGraphicsItem.ItemPositionHasChanged and self.scene():
-            for item in self.scene().items():
-                if not isinstance(item, ComponentLink):
-                    continue
+            for item in self.scene().matching_items(ComponentLink):
                 if item.source == self or item.dest == self:
                     item.redraw()
+            self.scene().update_scene_rect()
         return super(ComponentIcon, self).itemChange(change, value)
 
 class NetworkArea(QtGui.QGraphicsScene):
@@ -326,6 +324,20 @@ class NetworkArea(QtGui.QGraphicsScene):
         data = event.mimeData().data(_COMP_MIMETYPE).data()
         component_class = pickle.loads(data)
         self.add_component(component_class, event.scenePos())
+
+    def keyPressEvent(self, event):
+        if not event.matches(QtGui.QKeySequence.Delete):
+            event.ignore()
+            return
+        event.accept()
+        for child in self.items():
+            if not child.isSelected():
+                continue
+            if isinstance(child, ComponentIcon):
+                for link in self.matching_items(ComponentLink):
+                    if link.source == child or link.dest == child:
+                        self.removeItem(link)
+            self.removeItem(child)
 
     def update_scene_rect(self):
         rect = self.itemsBoundingRect()
@@ -354,32 +366,31 @@ class NetworkArea(QtGui.QGraphicsScene):
         self.update_scene_rect()
 
     def id_in_use(self, comp_id):
-        for child in self.items():
-            if not isinstance(child, ComponentIcon):
-                continue
+        for child in self.matching_items(ComponentIcon):
             if child.id == comp_id:
                 return True
         return False
 
+    def matching_items(self, klass):
+        for child in self.items():
+            if isinstance(child, klass):
+                yield child
+
     def run_graph(self):
         # replace components with fresh instances
-        for child in self.items():
-            if isinstance(child, ComponentIcon):
-                child.component.stop()
-                child.renew()
+        for child in self.matching_items(ComponentIcon):
+            child.component.stop()
+            child.renew()
         # rebuild connections
-        for child in self.items():
-            if isinstance(child, ComponentLink):
-                child.renew()
+        for child in self.matching_items(ComponentLink):
+            child.renew()
         # run it!
-        for child in self.items():
-            if isinstance(child, ComponentIcon):
-                child.component.start()
+        for child in self.matching_items(ComponentIcon):
+            child.component.start()
 
     def stop_graph(self):
-        for child in self.items():
-            if isinstance(child, ComponentIcon):
-                child.component.stop()
+        for child in self.matching_items(ComponentIcon):
+            child.component.stop()
 
     def load_script(self, file_name):
         global_vars = {}
@@ -404,8 +415,8 @@ class NetworkArea(QtGui.QGraphicsScene):
         for source, dest in network.linkages.iteritems():
             source, outbox = source
             dest, inbox = dest
-            icon = ComponentLink(comps[source], outbox, comps[dest], inbox)
-            self.addItem(icon)
+            link = ComponentLink(comps[source], outbox, comps[dest], inbox)
+            self.addItem(link)
         self.update_scene_rect()
 
     def save_script(self, file_name):
@@ -552,6 +563,7 @@ class MainWindow(QtGui.QMainWindow):
         self.network_area = NetworkArea(self)
         view = QtGui.QGraphicsView(self.network_area)
         view.setAcceptDrops(True)
+        view.setDragMode(QtGui.QGraphicsView.RubberBandDrag)
         view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         splitter.addWidget(view)
