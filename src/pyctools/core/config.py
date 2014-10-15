@@ -60,6 +60,10 @@ class ConfigInt(ConfigLeafNode):
         return (isinstance(value, int) and
                 value >= self.min_value and value <= self.max_value)
 
+class ConfigStr(ConfigLeafNode):
+    def validate(self, value):
+        return isinstance(value, str)
+
 class ConfigEnum(ConfigLeafNode):
     def __init__(self, choices, **kw):
         super(ConfigEnum, self).__init__(value=choices[0], **kw)

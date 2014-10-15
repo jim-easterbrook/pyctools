@@ -28,7 +28,7 @@ from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import Qt
 
 import pyctools.components
-from ..core.config import ConfigEnum, ConfigGrandParent, ConfigParent, ConfigInt, ConfigPath
+from ..core.config import *
 
 _COMP_MIMETYPE = 'application/x-pyctools-component'
 _INPUT_MIMETYPE = 'application/x-pyctools-component-input'
@@ -39,9 +39,9 @@ class ConfigPathWidget(QtGui.QPushButton):
         super(ConfigPathWidget, self).__init__()
         self.config = config
         self.show_value(self.config.get())
-        self.clicked.connect(self.get_value)
+        self.clicked.connect(self.set_value)
 
-    def get_value(self):
+    def set_value(self):
         value = self.config.get()
         if value:
             directory = os.path.dirname(value)
@@ -79,6 +79,16 @@ class ConfigIntWidget(QtGui.QSpinBox):
         self.setMaximum(min(self.config.max_value,  (2**31)-1))
         self.setValue(self.config.get())
         self.valueChanged.connect(self.config.set)
+
+class ConfigStrWidget(QtGui.QLineEdit):
+    def __init__(self, config):
+        super(ConfigStrWidget, self).__init__()
+        self.config = config
+        self.setText(self.config.get())
+        self.editingFinished.connect(self.set_value)
+
+    def set_value(self):
+        self.config.set(str(self.text()))
 
 class ConfigEnumWidget(QtGui.QComboBox):
     def __init__(self, config):
@@ -119,6 +129,8 @@ def ConfigWidget(config):
         return ConfigPathWidget(config)
     elif isinstance(config, ConfigInt):
         return ConfigIntWidget(config)
+    elif isinstance(config, ConfigStr):
+        return ConfigStrWidget(config)
     elif isinstance(config, ConfigEnum):
         return ConfigEnumWidget(config)
     else:
