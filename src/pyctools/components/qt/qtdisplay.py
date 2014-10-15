@@ -28,6 +28,7 @@ https://github.com/jim-easterbrook/guild which adds Qt support.
 
 __all__ = ['QtDisplay']
 
+from collections import deque
 import copy
 import logging
 import sys
@@ -49,6 +50,14 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
             None, Qt.Window | Qt.WindowStaysOnTopHint)
         ConfigMixin.__init__(self)
         self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
+        self.config['framerate'] = ConfigInt(min_value=1, value=25)
+
+    def process_start(self):
+        self.next_frame = deque()
+        # start timer to show frames at regular intervals
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self.show_frame)
+        self.timer.start(1000 // self.config['framerate'])
 
     @actor_method
     def input(self, frame):
@@ -56,8 +65,14 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
             self.close()
             self.stop()
             return
+        self.next_frame.append(frame)
+
+    def show_frame(self):
+        if not self.next_frame:
+            return
         if not self.isVisible():
             self.show()
+        frame = self.next_frame.popleft()
         numpy_image = frame.as_numpy()[0]
         if numpy_image.dtype != numpy.uint8:
             numpy_image = numpy_image.clip(0, 255).astype(numpy.uint8)
@@ -84,6 +99,7 @@ def main():
     source = RawFileReader()
     config = source.get_config()
     config['path'] = sys.argv[1]
+    config['looping'] = 'reverse'
     source.set_config(config)
     conv = YUVtoRGB()
     sink = QtDisplay()
