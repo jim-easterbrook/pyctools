@@ -52,11 +52,11 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
         self.config['framerate'] = ConfigInt(min_value=1, value=25)
+        self.timer = QtCore.QTimer(self)
 
     def process_start(self):
         self.next_frame = deque()
         # start timer to show frames at regular intervals
-        self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.show_frame)
         self.timer.start(1000 // self.config['framerate'])
 
@@ -67,6 +67,7 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
     def show_frame(self):
         if not self.next_frame:
             return
+        self.timer.setInterval(1000 // self.config['framerate'])
         frame = self.next_frame.popleft()
         if not frame:
             self.stop()
