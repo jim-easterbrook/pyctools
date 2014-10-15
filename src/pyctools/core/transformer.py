@@ -60,5 +60,8 @@ class Transformer(Component):
             return
         out_frame = self._transformer_out_frames.popleft()
         out_frame.initialise(in_frame)
-        self.transform(in_frame, out_frame)
-        self.output(out_frame)
+        if self.transform(in_frame, out_frame):
+            self.output(out_frame)
+        else:
+            self.output(None)
+            self.stop()

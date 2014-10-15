@@ -57,7 +57,8 @@ class YUVtoRGB(Transformer):
     def transform(self, in_frame, out_frame):
         # check input and get data
         if len(in_frame.data) != 3 or in_frame.type != 'YCbCr':
-            raise RuntimeError('Cannot convert "%s" images.' % in_frame.type)
+            self.logger.critical('Cannot convert "%s" images.', in_frame.type)
+            return False
         Y_data, U_data, V_data = in_frame.as_numpy()
         # apply offset (and promote to floating format)
         Y_data = Y_data - 16.0
@@ -89,6 +90,7 @@ class YUVtoRGB(Transformer):
             RGB *= (255.0 / 219.0)
         out_frame.data = [RGB]
         out_frame.type = 'RGB'
+        return True
 
 def main():
     from ..io.rawfilereader import RawFileReader
