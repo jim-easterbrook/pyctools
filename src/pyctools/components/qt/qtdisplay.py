@@ -49,6 +49,7 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
         super(QtDisplay, self).__init__(
             None, Qt.Window | Qt.WindowStaysOnTopHint)
         ConfigMixin.__init__(self)
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
         self.config['framerate'] = ConfigInt(min_value=1, value=25)
 
@@ -61,30 +62,39 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
 
     @actor_method
     def input(self, frame):
-        if not frame:
-            self.close()
-            self.stop()
-            return
         self.next_frame.append(frame)
 
     def show_frame(self):
         if not self.next_frame:
             return
+        frame = self.next_frame.popleft()
+        if not frame:
+            self.stop()
+            return
         if not self.isVisible():
             self.show()
-        frame = self.next_frame.popleft()
         numpy_image = frame.as_numpy()[0]
         if numpy_image.dtype != numpy.uint8:
             numpy_image = numpy_image.clip(0, 255).astype(numpy.uint8)
         ylen, xlen, bpc = numpy_image.shape
-        image = QtGui.QImage(numpy_image.data, xlen, ylen, xlen * bpc,
-                             QtGui.QImage.Format_RGB888)
+        if frame.type == 'RGB':
+            image = QtGui.QImage(numpy_image.data, xlen, ylen, xlen * bpc,
+                                 QtGui.QImage.Format_RGB888)
+        else:
+            self.logger.critical('Cannot display %s frame', frame.type)
+            self.stop()
+            return
         pixmap = QtGui.QPixmap.fromImage(image)
         shrink = self.config['shrink']
         if shrink > 1:
             pixmap = pixmap.scaled(xlen // shrink, ylen // shrink)
         self.resize(pixmap.size())
         self.setPixmap(pixmap)
+
+    def onStop(self):
+        super(QtDisplay, self).onStop()
+        self.timer.stop()
+        self.close()
 
 def main():
     from ..io.rawfilereader import RawFileReader
