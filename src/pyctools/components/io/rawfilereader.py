@@ -41,7 +41,8 @@ class RawFileReader(Component):
     def __init__(self):
         super(RawFileReader, self).__init__(with_outframe_pool=True)
         self.config['path'] = ConfigPath()
-        self.config['looping'] = ConfigEnum(('off', 'on'), dynamic=True)
+        self.config['looping'] = ConfigEnum(
+            ('off', 'repeat', 'reverse'), dynamic=True)
 
     def process_start(self):
         super(RawFileReader, self).process_start()
@@ -120,16 +121,29 @@ class RawFileReader(Component):
         else:
             self.frame_type = 'YCbCr'
         self.frame_no = 0
+        self.file_frame = 0
+        self.inc = 1
 
     @actor_method
     def new_out_frame(self, frame):
-        if self.config['looping'] == 'on' and (self.frame_no % self.zlen) == 0:
-            self.file.seek(0)
+        if self.file_frame >= self.zlen:
+            if self.config['looping'] == 'off':
+                self.output(None)
+                self.stop()
+                return
+            elif self.config['looping'] == 'repeat':
+                self.file_frame = 0
+                self.file.seek(0)
+            else:
+                self.file_frame = self.zlen - 2
+                self.inc = -1
+        elif self.file_frame < 0:
+            self.file_frame = 1
+            self.inc = 1
+        if self.inc != 1:
+            self.file.seek((self.inc - 1) * self.bytes_per_frame, io.SEEK_CUR)
+        self.file_frame += self.inc
         raw_data = self.file.read(self.bytes_per_frame)
-        if len(raw_data) < self.bytes_per_frame:
-            self.output(None)
-            self.stop()
-            return
         # convert to numpy arrays
         raw_array = numpy.frombuffer(raw_data, numpy.uint8)
         for idx in range(len(self.slice)):
