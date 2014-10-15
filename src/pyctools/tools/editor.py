@@ -19,6 +19,7 @@
 
 import argparse
 import logging
+import os
 import cPickle as pickle
 import pkgutil
 import sys
@@ -37,9 +38,7 @@ class ConfigPathWidget(QtGui.QPushButton):
     def __init__(self, config):
         super(ConfigPathWidget, self).__init__()
         self.config = config
-        value = self.config.get()
-        if value:
-            self.setText(self.config.get())
+        self.show_value(self.config.get())
         self.clicked.connect(self.get_value)
 
     def get_value(self):
@@ -52,7 +51,25 @@ class ConfigPathWidget(QtGui.QPushButton):
             self, 'Choose file', directory))
         if value:
             self.config.set(value)
-            self.setText(value)
+            self.show_value(value)
+
+    def show_value(self, value):
+        if not value:
+            self.setText('')
+            return
+        max_len = 40
+        if len(value) > max_len:
+            parts = value.split('/')
+            if len(parts) > 3:
+                parts[2] = '...'
+            value = '/'.join(parts)
+        while len(value) > max_len and len(parts) > 4:
+            del parts[3]
+            value = '/'.join(parts)
+        while len(value) > max_len and len(parts[-1]) > 4:
+            parts[-1] = '...' + parts[-1][4:]
+            value = '/'.join(parts)
+        self.setText(value)
 
 class ConfigIntWidget(QtGui.QSpinBox):
     def __init__(self, config):
