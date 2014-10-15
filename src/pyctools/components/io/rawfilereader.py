@@ -158,6 +158,7 @@ class RawFileReader(Component):
         frame.type = self.frame_type
         frame.frame_no = self.frame_no
         self.frame_no += 1
+        frame.metadata.copy(self.metadata)
         self.output(frame)
 
     def onStop(self):
