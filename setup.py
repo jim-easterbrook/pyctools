@@ -17,8 +17,10 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
+from Cython.Distutils import build_ext
+import numpy
 import os
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 import sys
 
 packages = find_packages('src')
@@ -40,6 +42,17 @@ for name in os.listdir('src/pyctools/tools'):
         continue
     console_scripts.append(
         'pyctools-{name} = pyctools.tools.{name}:main'.format(name=base))
+
+ext_modules = []
+for name in os.listdir('src/pyctools/extensions'):
+    base, ext = os.path.splitext(name)
+    if name.startswith('_') or ext != '.pyx':
+        continue
+    ext_modules.append(Extension(
+        'pyctools.extensions.' + base,
+        [os.path.join('src/pyctools/extensions', name)],
+        include_dirs = [numpy.get_include()],
+        ))
 
 with open('README.rst') as f:
     long_description = f.read()
@@ -71,8 +84,11 @@ setup(name = 'pyctools.core',
       platforms = ['POSIX', 'MacOS', 'Windows'],
       packages = packages,
       namespace_packages = namespace_packages,
+      ext_modules = ext_modules,
       package_dir = {'' : 'src'},
       entry_points = {
           'console_scripts' : console_scripts,
           },
+      install_requires = ['cython', 'numpy'],
+      cmdclass = {'build_ext': build_ext},
       )

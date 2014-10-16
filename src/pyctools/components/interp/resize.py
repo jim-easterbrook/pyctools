@@ -30,6 +30,7 @@ from guild.actor import *
 import numpy
 
 from ...core import Transformer, ConfigInt
+from ...extensions.resize import resize_line1, resize_line2
 
 class Resize(Transformer):
     inputs = ['input', 'filter']
@@ -54,7 +55,6 @@ class Resize(Transformer):
             ylen += 1
         self.filter = numpy.zeros((ylen, xlen), dtype=numpy.float32)
         self.filter[0:yup, 0:xup] = 1.0 / float(xup * yup)
-        self.filter_pos = [(1 - ylen) // 2, (1 - xlen) // 2]
 
     @actor_method
     def filter(self, new_filter):
@@ -69,63 +69,56 @@ class Resize(Transformer):
             self.logger.warning('Filter input must have odd dimensions')
             return
         self.filter = new_filter
-        self.filter_pos = [(1 - ylen) // 2, (1 - xlen) // 2]
 
     def transform(self, in_frame, out_frame):
-        in_data = in_frame.as_numpy()
-        in_shape = list(in_data[0].shape)
-        ylen_in, xlen_in = in_shape[:2]
         x_up = self.config['xup']
         x_down = self.config['xdown']
         y_up = self.config['yup']
         y_down = self.config['ydown']
-        xlen_out = (xlen_in * x_up) // x_down
-        ylen_out = (ylen_in * y_up) // y_down
-        xlen_out = max(xlen_out, 1)
-        ylen_out = max(ylen_out, 1)
-        ylen_fil, xlen_fil = self.filter.shape
-        out_shape = [ylen_out, xlen_out] + in_shape[2:]
+        in_data = in_frame.as_numpy()
+        norm_filter = self.filter * float(x_up * y_up)
         out_frame.data = []
         for in_comp in in_data:
-            out_comp = numpy.zeros(out_shape, dtype=numpy.float32)
-            # choice of filter coefficient is according to
-            #   filter_pos = (out_pos * down) - (in_pos * up)
-            # save computation by using increments and decrements
-            # on each loop iteration
-            y_in_0 = 0
-            y_fil_0 = -self.filter_pos[0]
-            while y_fil_0 < ylen_fil:
-                y_fil_0 += y_up
-                y_in_0 -= 1
-            for y_out in range(ylen_out):
-                while y_fil_0 >= ylen_fil:
-                    y_fil_0 -= y_up
-                    y_in_0 += 1
-                y_in = y_in_0
-                y_fil = y_fil_0
-                while y_fil >= 0:
-                    if y_in >= 0 and y_in < ylen_in:
-                        # do line
-                        x_in_0 = 0
-                        x_fil_0 = -self.filter_pos[1]
-                        while x_fil_0 < xlen_fil:
-                            x_fil_0 += x_up
-                            x_in_0 -= 1
-                        for x_out in range(xlen_out):
-                            while x_fil_0 >= xlen_fil:
-                                x_fil_0 -= x_up
-                                x_in_0 += 1
-                            x_in = x_in_0
-                            x_fil = x_fil_0
-                            while x_fil >= 0:
-                                if x_in >= 0 and x_in < xlen_in:
-                                    # do pixel
-                                    out_comp[y_out, x_out] += in_comp[y_in, x_in] * self.filter[y_fil, x_fil] * float(x_up * y_up)
-                                x_fil -= x_up
-                                x_in += 1
-                            x_fil_0 += x_down
-                    y_fil -= y_up
-                    y_in += 1
-                y_fil_0 += y_down
-            out_frame.data.append(out_comp)
+            out_frame.data.append(resize_frame(
+                in_comp.astype(numpy.float32), norm_filter,
+                x_up, x_down, y_up, y_down))
         return True
+
+def resize_frame(in_comp, norm_filter, x_up, x_down, y_up, y_down):
+    in_shape = in_comp.shape
+    ylen_in, xlen_in = in_shape[:2]
+    xlen_out = (xlen_in * x_up) // x_down
+    ylen_out = (ylen_in * y_up) // y_down
+    xlen_out = max(xlen_out, 1)
+    ylen_out = max(ylen_out, 1)
+    ylen_fil, xlen_fil = norm_filter.shape
+    out_comp = numpy.zeros(
+        [ylen_out, xlen_out] + list(in_shape[2:]), dtype=numpy.float32)
+    # choice of filter coefficient is according to
+    #   filter_pos = (out_pos * down) - (in_pos * up)
+    # save computation by using increments and decrements
+    # on each loop iteration
+    dy_in = 1 + ((y_down - 1) // y_up)
+    dy_fil = y_down - (dy_in * y_up)
+    y_in_0 = 0
+    y_fil_0 = (ylen_fil - 1) // 2
+    while y_fil_0 >= y_up and y_in_0 < ylen_in - 1:
+        y_fil_0 -= y_up
+        y_in_0 += 1
+    for y_out in range(ylen_out):
+        y_fil_1 = min(ylen_fil, y_fil_0 + (y_in_0 * y_up) + 1)
+        y_in = y_in_0
+        for y_fil in range(y_fil_0, y_fil_1, y_up):
+            if in_comp.ndim == 2:
+                resize_line1(out_comp[y_out], in_comp[y_in],
+                             norm_filter[y_fil], x_up, x_down)
+            else:
+                resize_line2(out_comp[y_out], in_comp[y_in],
+                             norm_filter[y_fil], x_up, x_down)
+            y_in -= 1
+        y_fil_0 += dy_fil
+        y_in_0 += dy_in
+        while y_fil_0 < 0 or y_in_0 >= ylen_in:
+            y_fil_0 += y_up
+            y_in_0 -= 1
+    return out_comp
