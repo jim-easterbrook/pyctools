@@ -69,8 +69,6 @@ class FilterGenerator(Component):
         for y in range(y_fil.shape[0]):
             for x in range(x_fil.shape[0]):
                 result[y, x] = x_fil[x] * y_fil[y]
-        # normalise gain
-        result = result / result.sum()
         self.output(result)
 
     def filter_1D(self, up, down, ap):
@@ -84,7 +82,10 @@ class FilterGenerator(Component):
                 break
             coef = math.sin(theta_1) / theta_1
             win = 0.5 * (1.0 + math.cos(theta_2))
-            coefs.append(coef * win)
+            coef = coef * win
+            if abs(coef) < 1.0e-16:
+                coef = 0.0
+            coefs.append(coef)
             n += 1
         fil_dim = len(coefs)
         result = numpy.ones(1 + (fil_dim * 2), dtype=numpy.float32)
@@ -93,4 +94,10 @@ class FilterGenerator(Component):
             result[fil_dim - n] = coef
             result[fil_dim + n] = coef
             n += 1
+        # normalise gain of each phase
+##        phases = (up * down) // min(up, down)
+        phases = up * down
+        for n in range(phases):
+            result[n::phases] /= result[n::phases].sum()
+        result /= float(phases)
         return result
