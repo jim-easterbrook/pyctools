@@ -51,6 +51,7 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
         ConfigMixin.__init__(self)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
+        self.config['expand'] = ConfigInt(min_value=1, dynamic=True)
         self.config['framerate'] = ConfigInt(min_value=1, value=25)
         self.timer = QtCore.QTimer(self)
 
@@ -87,8 +88,10 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
             return
         pixmap = QtGui.QPixmap.fromImage(image)
         shrink = self.config['shrink']
-        if shrink > 1:
-            pixmap = pixmap.scaled(xlen // shrink, ylen // shrink)
+        expand = self.config['expand']
+        if shrink > 1 or expand > 1:
+            pixmap = pixmap.scaled(
+                xlen * expand // shrink, ylen * expand // shrink)
         self.resize(pixmap.size())
         self.setPixmap(pixmap)
 
