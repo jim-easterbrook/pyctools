@@ -25,12 +25,13 @@ different value types.
 """
 
 import copy
-import sys
 
 class ConfigLeafNode(object):
-    def __init__(self, value=None, dynamic=False):
+    def __init__(self, value=None, dynamic=False, min_value=None, max_value=None):
         self.value = value
         self.dynamic = dynamic
+        self.min_value = min_value
+        self.max_value = max_value
 
     def get(self):
         return self.value
@@ -40,6 +41,13 @@ class ConfigLeafNode(object):
             raise ValueError(str(value))
         self.value = value
 
+    def clip(self, value):
+        if self.max_value is not None:
+            value = min(value, self.max_value)
+        if self.min_value is not None:
+            value = max(value, self.min_value)
+        return value
+
     def __repr__(self):
         return repr(self.value)
 
@@ -48,33 +56,24 @@ class ConfigPath(ConfigLeafNode):
         return isinstance(value, str)
 
 class ConfigInt(ConfigLeafNode):
-    def __init__(self, value=None, dynamic=False,
-                 min_value=-sys.maxint, max_value=sys.maxint):
-        super(ConfigInt, self).__init__(value, dynamic)
-        self.min_value = min_value
-        self.max_value = max_value
-        if value is None:
-            self.value = min(max(0, self.min_value), self.max_value)
+    def __init__(self, **kw):
+        super(ConfigInt, self).__init__(**kw)
+        if self.value is None:
+            self.value = self.clip(0)
 
     def validate(self, value):
-        return (isinstance(value, int) and
-                value >= self.min_value and value <= self.max_value)
+        return isinstance(value, int) and self.clip(value) == value
 
 class ConfigFloat(ConfigLeafNode):
-    def __init__(self, value=None, dynamic=False,
-                 min_value=-sys.float_info.max, max_value=sys.float_info.max,
-                 decimals=8, wrapping=False):
-        super(ConfigFloat, self).__init__(value, dynamic)
-        self.min_value = min_value
-        self.max_value = max_value
+    def __init__(self, decimals=8, wrapping=False, **kw):
+        super(ConfigFloat, self).__init__(**kw)
         self.decimals = decimals
         self.wrapping = wrapping
-        if value is None:
-            self.value = min(max(0.0, self.min_value), self.max_value)
+        if self.value is None:
+            self.value = self.clip(0.0)
 
     def validate(self, value):
-        return (isinstance(value, float) and
-                value >= self.min_value and value <= self.max_value)
+        return isinstance(value, float) and self.clip(value) == value
 
 class ConfigStr(ConfigLeafNode):
     def validate(self, value):

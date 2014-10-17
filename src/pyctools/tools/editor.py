@@ -17,10 +17,14 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
+from __future__ import print_function
+
 import argparse
 import logging
 import os
-import cPickle as pickle
+import re
+import six
+from six.moves import cPickle
 import pkgutil
 import sys
 
@@ -75,8 +79,10 @@ class ConfigIntWidget(QtGui.QSpinBox):
     def __init__(self, config):
         super(ConfigIntWidget, self).__init__()
         self.config = config
-        self.setMinimum(max(self.config.min_value, -(2**31)))
-        self.setMaximum(min(self.config.max_value,  (2**31)-1))
+        if self.config.min_value is not None:
+            self.setMinimum(self.config.min_value)
+        if self.config.max_value is not None:
+            self.setMaximum(self.config.max_value)
         self.setValue(self.config.get())
         self.valueChanged.connect(self.config.set)
 
@@ -85,8 +91,10 @@ class ConfigFloatWidget(QtGui.QDoubleSpinBox):
         super(ConfigFloatWidget, self).__init__()
         self.config = config
         self.setDecimals(self.config.decimals)
-        self.setMinimum(self.config.min_value)
-        self.setMaximum(self.config.max_value)
+        if self.config.min_value is not None:
+            self.setMinimum(self.config.min_value)
+        if self.config.max_value is not None:
+            self.setMaximum(self.config.max_value)
         self.setWrapping(self.config.wrapping)
         self.setValue(self.config.get())
         self.valueChanged.connect(self.config.set)
@@ -194,7 +202,9 @@ class ComponentLink(QtGui.QGraphicsLineItem):
     def itemChange(self, change, value):
         if change == QtGui.QGraphicsItem.ItemSelectedHasChanged:
             pen = self.pen()
-            if value.toBool():
+            if isinstance(value, QtCore.QVariant):
+                value = value.toBool()
+            if value:
                 pen.setStyle(Qt.DashLine)
             else:
                 pen.setStyle(Qt.SolidLine)
@@ -238,7 +248,7 @@ class IOIcon(QtGui.QGraphicsRectItem):
         start_pos = event.buttonDownScenePos(Qt.LeftButton)
         drag = QtGui.QDrag(event.widget())
         mimeData = QtCore.QMimeData()
-        mimeData.setData(self.mime_type, pickle.dumps(start_pos))
+        mimeData.setData(self.mime_type, cPickle.dumps(start_pos))
         drag.setMimeData(mimeData)
         dropAction = drag.exec_(Qt.LinkAction)
 
@@ -248,7 +258,7 @@ class IOIcon(QtGui.QGraphicsRectItem):
     def dropEvent(self, event):
         if not event.mimeData().hasFormat(self.link_mime_type):
             return super(IOIcon, self).dropEvent(event)
-        start_pos = pickle.loads(event.mimeData().data(self.link_mime_type).data())
+        start_pos = cPickle.loads(event.mimeData().data(self.link_mime_type).data())
         link_from = self.scene().itemAt(start_pos)
         if isinstance(link_from, QtGui.QGraphicsPolygonItem):
             link_from = link_from.parentItem()
@@ -346,10 +356,11 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
 
     def itemChange(self, change, value):
         if change == QtGui.QGraphicsItem.ItemPositionChange:
-            pos = value.toPointF()
-            pos.setX(pos.x() + 25 - ((pos.x() + 25) % 50))
-            pos.setY(pos.y() + 25 - ((pos.y() + 25) % 50))
-            return pos
+            if isinstance(value, QtCore.QVariant):
+                value = value.toPointF()
+            value.setX(value.x() + 25 - ((value.x() + 25) % 50))
+            value.setY(value.y() + 25 - ((value.y() + 25) % 50))
+            return value
         if change == QtGui.QGraphicsItem.ItemPositionHasChanged and self.scene():
             for item in self.scene().matching_items(ComponentLink):
                 if item.source == self or item.dest == self:
@@ -375,7 +386,7 @@ class NetworkArea(QtGui.QGraphicsScene):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
             return super(NetworkArea, self).dropEvent(event)
         data = event.mimeData().data(_COMP_MIMETYPE).data()
-        component_class = pickle.loads(data)
+        component_class = cPickle.loads(data)
         self.add_component(component_class, event.scenePos())
 
     def keyPressEvent(self, event):
@@ -399,7 +410,7 @@ class NetworkArea(QtGui.QGraphicsScene):
 
     def add_component(self, component_class, position):
         while True:
-            base_name = filter(str.isupper, component_class.__name__).lower()
+            base_name = re.sub('[^A-Z]', '', component_class.__name__).lower()
             comp_id = base_name
             n = 0
             while self.id_in_use(comp_id):
@@ -453,19 +464,19 @@ class NetworkArea(QtGui.QGraphicsScene):
             exec(code, global_vars, local_vars)
         if 'Network' not in local_vars:
             # not a recognised script
-            print 'Script not recognised'
+            print('Script not recognised')
             return
         network = local_vars['Network']()
         comps = {}
-        for comp_id, comp in network.components.iteritems():
+        for comp_id, comp in network.components.items():
             comps[comp_id] = ComponentIcon(comp_id, eval(comp['class']))
             comps[comp_id].setPos(*comp['pos'])
             self.addItem(comps[comp_id])
             cnf = comps[comp_id].component.get_config()
-            for key, value in eval(comp['config']).iteritems():
+            for key, value in eval(comp['config']).items():
                 cnf[key] = value
             comps[comp_id].component.set_config(cnf)
-        for source, dest in network.linkages.iteritems():
+        for source, dest in network.linkages.items():
             source, outbox = source
             dest, inbox = dest
             link = ComponentLink(comps[source], outbox, comps[dest], inbox)
@@ -509,10 +520,10 @@ class Network(object):
 
     def make(self):
         comps = {}
-        for comp_id, component in self.components.iteritems():
+        for comp_id, component in self.components.items():
             comps[comp_id] = eval(component['class'])()
             cnf = comps[comp_id].get_config()
-            for key, value in eval(component['config']).iteritems():
+            for key, value in eval(component['config']).items():
                 cnf[key] = value
             comps[comp_id].set_config(cnf)
         return Compound(linkages=self.linkages, **comps)
@@ -537,12 +548,14 @@ class ComponentItemModel(QtGui.QStandardItemModel):
         idx = index_list[0]
         if not idx.isValid():
             return None
-        data = idx.data(Qt.UserRole+1).toPyObject()
+        data = idx.data(Qt.UserRole+1)
+        if isinstance(data, QtCore.QVariant):
+            data = data.toPyObject()
         if not data:
             return None
         result = QtCore.QMimeData()
         result.setData(_COMP_MIMETYPE,
-                       pickle.dumps(data, pickle.HIGHEST_PROTOCOL))
+                       cPickle.dumps(data, cPickle.HIGHEST_PROTOCOL))
         return result
 
 class ComponentList(QtGui.QTreeView):
@@ -563,7 +576,10 @@ class ComponentList(QtGui.QTreeView):
                     parent[parts[0]] = {}
                 parent = parent[parts[0]]
                 parts = parts[1:]
-            mod = __import__(name, globals(), locals(), ['*'])
+            try:
+                mod = __import__(name, globals(), locals(), ['*'])
+            except ImportError:
+                continue
             if hasattr(mod, '__all__'):
                 for comp in mod.__all__:
                     parent[comp] = getattr(mod, comp)
@@ -575,7 +591,7 @@ class ComponentList(QtGui.QTreeView):
         self.updateGeometries()
 
     def add_nodes(self, root_node, components):
-        for name, item in components.iteritems():
+        for name, item in components.items():
             node = QtGui.QStandardItem(name)
             node.setEditable(False)
             root_node.appendRow(node)

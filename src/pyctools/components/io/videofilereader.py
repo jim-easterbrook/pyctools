@@ -32,7 +32,6 @@ import logging
 import os
 import sys
 
-import cv
 import cv2
 from guild.actor import *
 
