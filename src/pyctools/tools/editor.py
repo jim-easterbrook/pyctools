@@ -108,7 +108,8 @@ class ConfigParentWidget(QtGui.QWidget):
         super(ConfigParentWidget, self).__init__()
         self.config = config
         self.setLayout(QtGui.QFormLayout())
-        for name, child in self.config.value.iteritems():
+        for name in sorted(self.config.value):
+            child = self.config.value[name]
             widget = ConfigWidget(child)
             self.layout().addRow(name, widget)
 
@@ -116,7 +117,8 @@ class ConfigGrandParentWidget(QtGui.QTabWidget):
     def __init__(self, config):
         super(ConfigGrandParentWidget, self).__init__()
         self.config = config
-        for name, child in self.config.value.iteritems():
+        for name in sorted(self.config.value):
+            child = self.config.value[name]
             widget = ConfigWidget(child)
             self.addTab(widget, name)
 
