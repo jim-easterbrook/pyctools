@@ -75,9 +75,7 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
             return
         if not self.isVisible():
             self.show()
-        numpy_image = frame.as_numpy()[0]
-        if numpy_image.dtype != numpy.uint8:
-            numpy_image = numpy_image.clip(0, 255).astype(numpy.uint8)
+        numpy_image = frame.as_numpy(numpy.uint8)[0]
         ylen, xlen, bpc = numpy_image.shape
         if frame.type == 'RGB':
             image = QtGui.QImage(numpy_image.data, xlen, ylen, xlen * bpc,

@@ -47,16 +47,28 @@ class Frame(object):
         self.type = other.type
         self.metadata.copy(other.metadata)
 
-    def as_numpy(self):
+    def as_numpy(self, dtype=None):
         result = []
         for data in self.data:
             if isinstance(data, numpy.ndarray):
-                result.append(data)
+                new_data = data
             elif isinstance(data, PIL.Image):
-                result.append(numpy.ndarray(data))
+                if data.mode == 'F':
+                    new_data = numpy.array(data, dtype=numpy.float32)
+                elif data.mode == 'I':
+                    new_data = numpy.array(data, dtype=numpy.int32)
+                elif dtype is not None:
+                    new_data = numpy.array(data, dtype=dtype)
+                else:
+                    new_data = numpy.array(data, dtype=numpy.float32)
             else:
                 raise RuntimeError(
                     'Cannot convert "%s" to numpy' % data.__class__.__name__)
+            if dtype is not None and new_data.dtype != dtype:
+                if dtype == numpy.uint8:
+                    new_data = new_data.clip(0, 255)
+                new_data = new_data.astype(dtype)
+            result.append(new_data)
         return result
 
     def as_PIL(self):
