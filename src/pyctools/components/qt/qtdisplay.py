@@ -76,10 +76,17 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
         if not self.isVisible():
             self.show()
         numpy_image = frame.as_numpy(numpy.uint8)[0]
-        ylen, xlen, bpc = numpy_image.shape
         if frame.type == 'RGB':
+            ylen, xlen, bpc = numpy_image.shape
             image = QtGui.QImage(numpy_image.data, xlen, ylen, xlen * bpc,
                                  QtGui.QImage.Format_RGB888)
+        elif frame.type == 'Y':
+            ylen, xlen = numpy_image.shape
+            image = QtGui.QImage(numpy_image.data, xlen, ylen, xlen,
+                                 QtGui.QImage.Format_Indexed8)
+            image.setNumColors(256)
+            for i in range(256):
+                image.setColor(i, QtGui.qRgba(i, i, i, 255))
         else:
             self.logger.critical('Cannot display %s frame', frame.type)
             self.stop()
