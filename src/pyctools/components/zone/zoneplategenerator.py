@@ -37,47 +37,47 @@ class ZonePlateGenerator(Component):
     def __init__(self):
         super(ZonePlateGenerator, self).__init__(with_outframe_pool=True)
         self.config['k0'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=0.0, max_value=1.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['kx'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=0.0, max_value=1.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['ky'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=0.0, max_value=1.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['kt'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=0.0, max_value=1.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['kx2'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['kxy'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['kxt'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['kyx'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['ky2'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['kyt'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['ktx'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['kty'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['kt2'] = ConfigFloat(
-            value=0.0, min_value=0.0, max_value=2.0, decimals=3,
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['xlen'] = ConfigInt(value=720, min_value=1, dynamic=True)
         self.config['ylen'] = ConfigInt(value=576, min_value=1, dynamic=True)
-        self.config['zlen'] = ConfigInt(value=8, min_value=1, dynamic=True)
+        self.config['zlen'] = ConfigInt(value=32, min_value=1, dynamic=True)
         self.config['looping'] = ConfigEnum(('off', 'repeat'), dynamic=True)
 
     def process_start(self):
