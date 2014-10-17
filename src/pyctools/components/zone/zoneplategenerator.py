@@ -30,6 +30,7 @@ from guild.actor import *
 import numpy
 
 from ...core import Metadata, Component, ConfigFloat, ConfigInt, ConfigEnum
+from ...extensions.zone import zone_frame
 
 class ZonePlateGenerator(Component):
     inputs = []
@@ -82,6 +83,13 @@ class ZonePlateGenerator(Component):
 
     def process_start(self):
         super(ZonePlateGenerator, self).process_start()
+        # store sine wave in a lookup table
+        self.phases = 1024
+        self.waveform = numpy.ndarray([self.phases], dtype=numpy.float32)
+        for i in range(self.phases):
+            phase = float(i) / float(self.phases)
+            self.waveform[i] = 16.0 + (
+                219.0 * (1.0 + math.cos(phase * math.pi * 2.0)) / 2.0)
         self.metadata = Metadata()
         self.frame_type = 'Y'
         self.frame_no = 0
@@ -89,10 +97,10 @@ class ZonePlateGenerator(Component):
         kx = self.config['kx']
         ky = 1.0 - self.config['ky']
         kt = self.config['kt']
-        self.Iktdt_k0 = k0
-        self.Ikt2dt_kt = kt
-        self.Ikxtdt_kx = kx
-        self.Ikytdt_ky = ky
+        self.Iktdt_k0 = k0 * self.phases
+        self.Ikt2dt_kt = kt * self.phases
+        self.Ikxtdt_kx = kx * self.phases
+        self.Ikytdt_ky = ky * self.phases
 
     @actor_method
     def new_out_frame(self, frame):
@@ -104,40 +112,28 @@ class ZonePlateGenerator(Component):
             self.stop()
             return
         data = numpy.ndarray([ylen, xlen], dtype=numpy.float32)
-        kx2 =  self.config['kx2'] / float(xlen)
-        kxy = -self.config['kxy'] / float(ylen)
-        kxt =  self.config['kxt'] / float(zlen)
-        kyx = -self.config['kyx'] / float(xlen)
-        ky2 =  self.config['ky2'] / float(ylen)
-        kyt = -self.config['kyt'] / float(zlen)
-        ktx =  self.config['ktx'] / float(xlen)
-        kty = -self.config['kty'] / float(ylen)
-        kt2 =  self.config['kt2'] / float(zlen)
+        kx2 =  self.config['kx2'] * self.phases / float(xlen)
+        kxy = -self.config['kxy'] * self.phases / float(ylen)
+        kxt =  self.config['kxt'] * self.phases / float(zlen)
+        kyx = -self.config['kyx'] * self.phases / float(xlen)
+        ky2 =  self.config['ky2'] * self.phases / float(ylen)
+        kyt = -self.config['kyt'] * self.phases / float(zlen)
+        ktx =  self.config['ktx'] * self.phases / float(xlen)
+        kty = -self.config['kty'] * self.phases / float(ylen)
+        kt2 =  self.config['kt2'] * self.phases / float(zlen)
         # initialise vertical integrals
         Ikydy_Iktdt_k0 = self.Iktdt_k0
         Iky2dy_Ikytdt_ky = self.Ikytdt_ky
         Ikxydy_Ikxtdt_kx = self.Ikxtdt_kx
-        for y in range(ylen):
-            # initialise horizontal integrals
-            Ikxdx_Ikydy_Iktdt_k0 = Ikydy_Iktdt_k0
-            Ikx2dx_Ikxydy_Ikxtdt_kx = Ikxydy_Ikxtdt_kx
-            for x in range(xlen):
-                phase = Ikxdx_Ikydy_Iktdt_k0 % 1.0
-                # compute sine here
-                data[y, x] = 16.0 + (219.0 * (1.0 + math.cos(phase * math.pi * 2.0)) / 2.0)
-                # increment horizontal integrals
-                Ikxdx_Ikydy_Iktdt_k0 = (Ikxdx_Ikydy_Iktdt_k0 + Ikx2dx_Ikxydy_Ikxtdt_kx) % 1.0
-                Ikx2dx_Ikxydy_Ikxtdt_kx = (Ikx2dx_Ikxydy_Ikxtdt_kx + kx2) % 1.0
-            # increment vertical integrals
-            Ikydy_Iktdt_k0 = (Ikydy_Iktdt_k0 + Iky2dy_Ikytdt_ky) % 1.0
-            Iky2dy_Ikytdt_ky = (Iky2dy_Ikytdt_ky + ky2) % 1.0
-            Ikxydy_Ikxtdt_kx = (Ikxydy_Ikxtdt_kx + kxy + kyx) % 1.0
+        # generate this frame
+        zone_frame(data, self.waveform, kx2, kxy, kyx, ky2,
+                   self.Iktdt_k0, self.Ikytdt_ky, self.Ikxtdt_kx)
         # increment temporal integrals
-        self.Iktdt_k0 = (self.Iktdt_k0 + self.Ikt2dt_kt) % 1.0
-        self.Ikt2dt_kt = (self.Ikt2dt_kt + kt2) % 1.0
-        self.Ikxtdt_kx = (self.Ikxtdt_kx + kxt + ktx) % 1.0
-        self.Ikytdt_ky = (self.Ikytdt_ky + kyt + kty) % 1.0
-        # convert to numpy arrays
+        self.Iktdt_k0 = (self.Iktdt_k0 + self.Ikt2dt_kt) % self.phases
+        self.Ikt2dt_kt = (self.Ikt2dt_kt + kt2) % self.phases
+        self.Ikxtdt_kx = (self.Ikxtdt_kx + kxt + ktx) % self.phases
+        self.Ikytdt_ky = (self.Ikytdt_ky + kyt + kty) % self.phases
+        # set output frame
         frame.data = [data]
         frame.type = self.frame_type
         frame.frame_no = self.frame_no
