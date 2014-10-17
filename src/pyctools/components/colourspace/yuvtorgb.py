@@ -41,14 +41,21 @@ from guild.actor import *
 import numpy
 
 from ...core import Transformer, ConfigEnum
+from ..interp.resize import resize_frame
 
 class YUVtoRGB(Transformer):
     mat_601 = numpy.array([[1.0,  0.0,       1.37071],
                            [1.0, -0.336455, -0.698196],
-                           [1.0,  1.73245,   0.0]])
+                           [1.0,  1.73245,   0.0]], dtype=numpy.float32)
     mat_709 = numpy.array([[1.0,  0.0,       1.539648],
                            [1.0, -0.183143, -0.457675],
-                           [1.0,  1.81418,   0.0]])
+                           [1.0,  1.81418,   0.0]], dtype=numpy.float32)
+    filter_21 = numpy.array([[
+        -0.002913300, 0.0,  0.010153700, 0.0, -0.022357799, 0.0,
+         0.044929001, 0.0, -0.093861297, 0.0,  0.314049691, 0.5,
+         0.314049691, 0.0, -0.093861297, 0.0,  0.044929001, 0.0,
+        -0.022357799, 0.0,  0.010153700, 0.0, -0.002913300
+        ]], dtype=numpy.float32)
     def __init__(self):
         super(YUVtoRGB, self).__init__()
         self.config['matrix'] = ConfigEnum(('auto', '601', '709'), dynamic=True)
@@ -61,17 +68,25 @@ class YUVtoRGB(Transformer):
             return False
         Y_data, U_data, V_data = in_frame.as_numpy()
         # apply offset (and promote to floating format)
-        Y_data = Y_data - 16.0
-        U_data = U_data - 128.0
-        V_data = V_data - 128.0
+        Y_data = Y_data.astype(numpy.float32) - 16.0
+        U_data = U_data.astype(numpy.float32) - 128.0
+        V_data = V_data.astype(numpy.float32) - 128.0
         # resample U & V
         v_ss = Y_data.shape[0] // U_data.shape[0]
         h_ss = Y_data.shape[1] // U_data.shape[1]
-        if v_ss != 1 or h_ss != 1:
+        if h_ss == 2:
+            U_data = resize_frame(U_data, self.filter_21, 2, 1, 1, 1)
+            V_data = resize_frame(V_data, self.filter_21, 2, 1, 1, 1)
+        elif h_ss != 1:
             U_data = cv2.resize(
-                U_data, None, fx=h_ss, fy=v_ss, interpolation=cv2.INTER_CUBIC)
+                U_data, None, fx=h_ss, fy=1, interpolation=cv2.INTER_CUBIC)
             V_data = cv2.resize(
-                V_data, None, fx=h_ss, fy=v_ss, interpolation=cv2.INTER_CUBIC)
+                V_data, None, fx=h_ss, fy=1, interpolation=cv2.INTER_CUBIC)
+        if v_ss != 1:
+            U_data = cv2.resize(
+                U_data, None, fx=1, fy=v_ss, interpolation=cv2.INTER_CUBIC)
+            V_data = cv2.resize(
+                V_data, None, fx=1, fy=v_ss, interpolation=cv2.INTER_CUBIC)
         # matrix to RGB
         if self.config['matrix'] == '601':
             matrix = self.mat_601
@@ -81,7 +96,7 @@ class YUVtoRGB(Transformer):
             matrix = self.mat_709
         else:
             matrix = self.mat_601
-        YUV = numpy.dstack((Y_data.astype(U_data.dtype), U_data, V_data))
+        YUV = numpy.dstack((Y_data, U_data, V_data))
         RGB = numpy.dot(YUV, matrix.T)
         # offset or scale
         if self.config['range'] == 'studio':
