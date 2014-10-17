@@ -79,9 +79,13 @@ class ConfigIntWidget(QtGui.QSpinBox):
     def __init__(self, config):
         super(ConfigIntWidget, self).__init__()
         self.config = config
-        if self.config.min_value is not None:
+        if self.config.min_value is None:
+            self.setMinimum(-(2**31))
+        else:
             self.setMinimum(self.config.min_value)
-        if self.config.max_value is not None:
+        if self.config.max_value is None:
+            self.setMaximum((2**31)-1)
+        else:
             self.setMaximum(self.config.max_value)
         self.setValue(self.config.get())
         self.valueChanged.connect(self.config.set)
@@ -91,9 +95,13 @@ class ConfigFloatWidget(QtGui.QDoubleSpinBox):
         super(ConfigFloatWidget, self).__init__()
         self.config = config
         self.setDecimals(self.config.decimals)
-        if self.config.min_value is not None:
+        if self.config.min_value is None:
+            self.setMinimum(-(2**31))
+        else:
             self.setMinimum(self.config.min_value)
-        if self.config.max_value is not None:
+        if self.config.max_value is None:
+            self.setMaximum((2**31)-1)
+        else:
             self.setMaximum(self.config.max_value)
         self.setWrapping(self.config.wrapping)
         self.setValue(self.config.get())
