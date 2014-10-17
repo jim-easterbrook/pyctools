@@ -60,6 +60,22 @@ class ConfigInt(ConfigLeafNode):
         return (isinstance(value, int) and
                 value >= self.min_value and value <= self.max_value)
 
+class ConfigFloat(ConfigLeafNode):
+    def __init__(self, value=None, dynamic=False,
+                 min_value=-sys.float_info.max, max_value=sys.float_info.max,
+                 decimals=8, wrapping=False):
+        super(ConfigFloat, self).__init__(value, dynamic)
+        self.min_value = min_value
+        self.max_value = max_value
+        self.decimals = decimals
+        self.wrapping = wrapping
+        if value is None:
+            self.value = min(max(0.0, self.min_value), self.max_value)
+
+    def validate(self, value):
+        return (isinstance(value, float) and
+                value >= self.min_value and value <= self.max_value)
+
 class ConfigStr(ConfigLeafNode):
     def validate(self, value):
         return isinstance(value, str)

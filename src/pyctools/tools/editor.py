@@ -80,6 +80,17 @@ class ConfigIntWidget(QtGui.QSpinBox):
         self.setValue(self.config.get())
         self.valueChanged.connect(self.config.set)
 
+class ConfigFloatWidget(QtGui.QDoubleSpinBox):
+    def __init__(self, config):
+        super(ConfigFloatWidget, self).__init__()
+        self.config = config
+        self.setDecimals(self.config.decimals)
+        self.setMinimum(self.config.min_value)
+        self.setMaximum(self.config.max_value)
+        self.setWrapping(self.config.wrapping)
+        self.setValue(self.config.get())
+        self.valueChanged.connect(self.config.set)
+
 class ConfigStrWidget(QtGui.QLineEdit):
     def __init__(self, config):
         super(ConfigStrWidget, self).__init__()
@@ -131,6 +142,8 @@ def ConfigWidget(config):
         return ConfigPathWidget(config)
     elif isinstance(config, ConfigInt):
         return ConfigIntWidget(config)
+    elif isinstance(config, ConfigFloat):
+        return ConfigFloatWidget(config)
     elif isinstance(config, ConfigStr):
         return ConfigStrWidget(config)
     elif isinstance(config, ConfigEnum):
