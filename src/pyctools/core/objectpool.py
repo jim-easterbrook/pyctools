@@ -51,6 +51,11 @@ class ObjectPool(Actor):
         self.obj_list = []
 
     def gen_process(self):
+        # wait for self.output to be connected
+        while self.output.__self__ == self:
+            yield 1
+            time.sleep(0.01)
+        # send first objects
         for i in range(self.size):
             self.new_object()
             yield 1
