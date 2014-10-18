@@ -205,6 +205,7 @@ class ComponentLink(QtGui.QGraphicsLineItem):
         self.dest = dest
         self.inbox = inbox
         self.renew()
+        self.source.refresh()
         self.redraw()
 
     def itemChange(self, change, value):
