@@ -103,8 +103,7 @@ class FilterGenerator(Component):
             result[fil_dim + n] = coef
             n += 1
         # normalise gain of each phase
-##        phases = (up * down) // min(up, down)
-        phases = up * down
+        phases = (up * down) // min(up, down)
         for n in range(phases):
             result[n::phases] /= result[n::phases].sum()
         result /= float(phases)
