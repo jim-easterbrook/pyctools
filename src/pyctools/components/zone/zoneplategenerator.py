@@ -93,15 +93,6 @@ class ZonePlateGenerator(Component):
         self.metadata = Metadata()
         self.frame_type = 'Y'
         self.frame_no = 0
-        self.update_config()
-        k0 = self.config['k0']
-        kx = self.config['kx']
-        ky = 1.0 - self.config['ky']
-        kt = self.config['kt']
-        self.Iktdt_k0 = k0 * self.phases
-        self.Ikt2dt_kt = kt * self.phases
-        self.Ikxtdt_kx = kx * self.phases
-        self.Ikytdt_ky = ky * self.phases
 
     @actor_method
     def new_out_frame(self, frame):
@@ -114,6 +105,10 @@ class ZonePlateGenerator(Component):
             self.stop()
             return
         data = numpy.ndarray([ylen, xlen], dtype=numpy.float32)
+        k0 =        self.config['k0']  * self.phases
+        kx =        self.config['kx']  * self.phases
+        ky = (1.0 - self.config['ky']) * self.phases
+        kt =        self.config['kt' ] * self.phases
         kx2 =  self.config['kx2'] * self.phases / float(xlen)
         kxy = -self.config['kxy'] * self.phases / float(ylen)
         kxt =  self.config['kxt'] * self.phases / float(zlen)
@@ -123,18 +118,18 @@ class ZonePlateGenerator(Component):
         ktx =  self.config['ktx'] * self.phases / float(xlen)
         kty = -self.config['kty'] * self.phases / float(ylen)
         kt2 =  self.config['kt2'] * self.phases / float(zlen)
+        # compute temporal integrals
+        Ikxtdt_kx = kx + ((kxt + ktx) * (self.frame_no % zlen))
+        Ikytdt_ky = ky + ((kyt + kty) * (self.frame_no % zlen))
+        Ikt2dt_kt = kt +  (kt2        * (self.frame_no % zlen))
+        Iktdt_k0 = k0 + (Ikt2dt_kt * (self.frame_no % zlen))
         # initialise vertical integrals
-        Ikydy_Iktdt_k0 = self.Iktdt_k0
-        Iky2dy_Ikytdt_ky = self.Ikytdt_ky
-        Ikxydy_Ikxtdt_kx = self.Ikxtdt_kx
+        Ikydy_Iktdt_k0 = Iktdt_k0
+        Iky2dy_Ikytdt_ky = Ikytdt_ky
+        Ikxydy_Ikxtdt_kx = Ikxtdt_kx
         # generate this frame
         zone_frame(data, self.waveform, kx2, kxy, kyx, ky2,
-                   self.Iktdt_k0, self.Ikytdt_ky, self.Ikxtdt_kx)
-        # increment temporal integrals
-        self.Iktdt_k0 = (self.Iktdt_k0 + self.Ikt2dt_kt) % self.phases
-        self.Ikt2dt_kt = (self.Ikt2dt_kt + kt2) % self.phases
-        self.Ikxtdt_kx = (self.Ikxtdt_kx + kxt + ktx) % self.phases
-        self.Ikytdt_ky = (self.Ikytdt_ky + kyt + kty) % self.phases
+                   Iktdt_k0, Ikytdt_ky, Ikxtdt_kx)
         # set output frame
         frame.data = [data]
         frame.type = self.frame_type

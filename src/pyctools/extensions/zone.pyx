@@ -45,7 +45,7 @@ def zone_frame(numpy.ndarray[DTYPE_t, ndim=2] out_frame,
     Ikxydy_Ikxtdt_kx = Ikxtdt_kx
     for y in range(ylen):
         # initialise horizontal integrals
-        Ikxdx_Ikydy_Iktdt_k0 = Ikydy_Iktdt_k0
+        Ikxdx_Ikydy_Iktdt_k0 = Ikydy_Iktdt_k0 % phases
         Ikx2dx_Ikxydy_Ikxtdt_kx = Ikxydy_Ikxtdt_kx
         for x in range(xlen):
             out_frame[y, x] = waveform[int(Ikxdx_Ikydy_Iktdt_k0)]
