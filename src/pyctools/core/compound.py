@@ -39,30 +39,32 @@ class Compound(object):
     def __init__(self, **kw):
         super(Compound, self).__init__()
         # get child components
-        self.children = {}
+        self._compound_children = {}
         for key in kw:
             if key == 'linkages':
                 continue
-            self.children[key] = kw[key]
+            self._compound_children[key] = kw[key]
         # set up linkages
-        self.outputs = {}
+        self._compound_outputs = {}
         for source in kw['linkages']:
             src, outbox = source
             dest, inbox = kw['linkages'][source]
             if src == 'self':
-                setattr(self, inbox, getattr(self.children[dest], inbox))
+                setattr(self, inbox,
+                        getattr(self._compound_children[dest], inbox))
             elif dest == 'self':
-                self.outputs[inbox] = (src, outbox)
+                self._compound_outputs[inbox] = (src, outbox)
             else:
-                self.children[src].bind(outbox, self.children[dest], inbox)
+                self._compound_children[src].bind(
+                    outbox, self._compound_children[dest], inbox)
 
     def bind(self, source, dest, destmeth):
-        src, outbox = self.outputs[source]
-        self.children[src].bind(outbox, dest, destmeth)
+        src, outbox = self._compound_outputs[source]
+        self._compound_children[src].bind(outbox, dest, destmeth)
 
     def get_config(self):
         config = ConfigGrandParent()
-        for name, child in self.children.iteritems():
+        for name, child in self._compound_children.iteritems():
             child_config = child.get_config()
             child_config.name = name
             config[name] = child_config
@@ -70,20 +72,20 @@ class Compound(object):
 
     def set_config(self, config):
         for name, child_config in config.value.iteritems():
-            self.children[name].set_config(child_config)
+            self._compound_children[name].set_config(child_config)
 
     def go(self):
         self.start()
         return self
 
     def start(self):
-        for child in self.children.values():
+        for child in self._compound_children.values():
             child.start()
 
     def stop(self):
-        for child in self.children.values():
+        for child in self._compound_children.values():
             child.stop()
 
     def join(self):
-        for child in self.children.values():
+        for child in self._compound_children.values():
             child.join()
