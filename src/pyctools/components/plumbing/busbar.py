@@ -33,8 +33,21 @@ class Busbar(Splitter, ConfigMixin):
         self.outputs = ['output0', 'output1']
         self._busbar_connections = {}
 
+    @actor_method
+    def publish(self, data):
+        super(Busbar, self).publish(data)
+        if data is None:
+            self.stop()
+
     def bind(self, source, dest, destmeth):
         self._busbar_connections[source] = getattr(dest, destmeth)
         self.subscribe(self._busbar_connections[source])
+        if source not in self.outputs:
+            self.outputs.append(source)
+        n = 0
         while len(self.outputs) <= len(self._busbar_connections):
-            self.outputs.append('output%d' % len(self.outputs))
+            name = 'output%d' % n
+            if name not in self.outputs:
+                self.outputs.append(name)
+            n += 1
+        self.outputs.sort()
