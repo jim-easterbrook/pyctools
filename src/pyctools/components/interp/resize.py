@@ -30,7 +30,7 @@ from guild.actor import *
 import numpy
 
 from ...core import Transformer, ConfigInt
-from ...extensions.resize import resize_line1, resize_line2
+from .resizecore import resize_line1, resize_line2
 
 class Resize(Transformer):
     inputs = ['input', 'filter']
