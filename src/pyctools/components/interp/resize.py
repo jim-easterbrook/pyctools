@@ -54,8 +54,8 @@ class Resize(Transformer):
             xlen += 1
         if (ylen % 2) != 1:
             ylen += 1
-        self.filter = numpy.zeros((ylen, xlen), dtype=numpy.float32)
-        self.filter[0:yup, 0:xup] = 1.0 / float(xup * yup)
+        self.filter_coefs = numpy.zeros((ylen, xlen), dtype=numpy.float32)
+        self.filter_coefs[0:yup, 0:xup] = 1.0 / float(xup * yup)
 
     @actor_method
     def filter(self, new_filter):
@@ -69,7 +69,7 @@ class Resize(Transformer):
         if (xlen % 2) != 1 or (ylen % 2) != 1:
             self.logger.warning('Filter input must have odd dimensions')
             return
-        self.filter = new_filter
+        self.filter_coefs = new_filter
 
     def transform(self, in_frame, out_frame):
         self.update_config()
@@ -78,7 +78,7 @@ class Resize(Transformer):
         y_up = self.config['yup']
         y_down = self.config['ydown']
         in_data = in_frame.as_numpy()
-        norm_filter = self.filter * float(x_up * y_up)
+        norm_filter = self.filter_coefs * float(x_up * y_up)
         out_frame.data = []
         for in_comp in in_data:
             out_frame.data.append(resize_frame(
