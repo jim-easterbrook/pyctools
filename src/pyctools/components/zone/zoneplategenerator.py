@@ -30,7 +30,7 @@ from guild.actor import *
 import numpy
 
 from ...core import Metadata, Component, ConfigFloat, ConfigInt, ConfigEnum
-from ...extensions.zone import zone_frame
+from .zoneplategeneratorcore import zone_frame
 
 class ZonePlateGenerator(Component):
     inputs = []

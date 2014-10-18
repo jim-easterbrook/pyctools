@@ -44,15 +44,16 @@ for name in os.listdir('src/pyctools/tools'):
         'pyctools-{name} = pyctools.tools.{name}:main'.format(name=base))
 
 ext_modules = []
-for name in os.listdir('src/pyctools/extensions'):
-    base, ext = os.path.splitext(name)
-    if name.startswith('_') or ext != '.pyx':
-        continue
-    ext_modules.append(Extension(
-        'pyctools.extensions.' + base,
-        [os.path.join('src/pyctools/extensions', name)],
-        include_dirs = [numpy.get_include()],
-        ))
+for root, dirs, files in os.walk('src/pyctools'):
+    for name in files:
+        base, ext = os.path.splitext(name)
+        if ext != '.pyx':
+            continue
+        ext_modules.append(Extension(
+            '.'.join(root.split(os.sep)[1:] + [base]),
+            [os.path.join(root, name)],
+            include_dirs = [numpy.get_include()],
+            ))
 
 with open('README.rst') as f:
     long_description = f.read()
