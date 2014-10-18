@@ -46,6 +46,7 @@ class RawFileReader(Component):
 
     def process_start(self):
         super(RawFileReader, self).process_start()
+        self.update_config()
         path = self.config['path']
         self.file = io.open(path, 'rb', 0)
         self.metadata = Metadata().from_file(path)
@@ -129,6 +130,7 @@ class RawFileReader(Component):
 
     @actor_method
     def new_out_frame(self, frame):
+        self.update_config()
         if self.file_frame >= self.zlen:
             if self.config['looping'] == 'off':
                 self.output(None)

@@ -57,6 +57,7 @@ class FilterGenerator(Component):
 
     @actor_method
     def gen_filter(self):
+        self.update_config()
         x_up = self.config['xup']
         x_down = self.config['xdown']
         x_ap = self.config['xaperture']

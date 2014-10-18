@@ -24,6 +24,7 @@ different value types.
 
 """
 
+import collections
 import copy
 
 class ConfigLeafNode(object):
@@ -113,13 +114,22 @@ class ConfigGrandParent(ConfigParent):
 class ConfigMixin(object):
     def __init__(self):
         self.config = ConfigParent()
+        self._configmixin_queue = collections.deque()
 
     def get_config(self):
+        # get any queued changes
+        self.update_config()
         # make copy to allow changes without affecting running
         # component
         return copy.deepcopy(self.config)
 
     def set_config(self, config):
-        # single object assignment should be thread-safe, so can
-        # update running component
-        self.config = copy.deepcopy(config)
+        # put copy of config on queue for running component
+        self._configmixin_queue.append(copy.deepcopy(config))
+
+    def update_config(self):
+        result = False
+        while self._configmixin_queue:
+            self.config = self._configmixin_queue.popleft()
+            result = True
+        return result

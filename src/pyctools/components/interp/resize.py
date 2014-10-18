@@ -44,6 +44,7 @@ class Resize(Transformer):
 
     def process_start(self):
         super(Resize, self).process_start()
+        self.update_config()
         # make simple "nearest pixel" filter
         xup = self.config['xup']
         yup = self.config['yup']
@@ -71,6 +72,7 @@ class Resize(Transformer):
         self.filter = new_filter
 
     def transform(self, in_frame, out_frame):
+        self.update_config()
         x_up = self.config['xup']
         x_down = self.config['xdown']
         y_up = self.config['yup']

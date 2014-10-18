@@ -93,6 +93,7 @@ class ZonePlateGenerator(Component):
         self.metadata = Metadata()
         self.frame_type = 'Y'
         self.frame_no = 0
+        self.update_config()
         k0 = self.config['k0']
         kx = self.config['kx']
         ky = 1.0 - self.config['ky']
@@ -104,6 +105,7 @@ class ZonePlateGenerator(Component):
 
     @actor_method
     def new_out_frame(self, frame):
+        self.update_config()
         xlen = self.config['xlen']
         ylen = self.config['ylen']
         zlen = self.config['zlen']

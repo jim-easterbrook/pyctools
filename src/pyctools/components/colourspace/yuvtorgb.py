@@ -62,6 +62,7 @@ class YUVtoRGB(Transformer):
         self.config['range'] = ConfigEnum(('studio', 'computer'), dynamic=True)
 
     def transform(self, in_frame, out_frame):
+        self.update_config()
         # check input and get data
         if len(in_frame.data) != 3 or in_frame.type != 'YCbCr':
             self.logger.critical('Cannot convert "%s" images.', in_frame.type)

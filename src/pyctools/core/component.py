@@ -49,6 +49,7 @@ class Component(Actor, ConfigMixin):
 
     def process_start(self):
         if self.with_outframe_pool:
+            self.update_config()
             self.pool = ObjectPool(Frame, self.config['outframe_pool_len'])
             self.pool.bind("output", self, "new_out_frame")
             start(self.pool)

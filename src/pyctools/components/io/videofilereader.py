@@ -47,6 +47,7 @@ class VideoFileReader(Component):
 
     def process_start(self):
         super(VideoFileReader, self).process_start()
+        self.update_config()
         path = self.config['path']
         self.cap = cv2.VideoCapture(path)
         if not self.cap.isOpened():
@@ -58,6 +59,7 @@ class VideoFileReader(Component):
 
     @actor_method
     def new_out_frame(self, frame):
+        self.update_config()
         OK, data = self.cap.read()
         if not OK:
             if self.frame_no == 0 or self.config['looping'] == 'off':
