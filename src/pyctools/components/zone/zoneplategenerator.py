@@ -118,18 +118,9 @@ class ZonePlateGenerator(Component):
         ktx =  self.config['ktx'] * self.phases / float(xlen)
         kty = -self.config['kty'] * self.phases / float(ylen)
         kt2 =  self.config['kt2'] * self.phases / float(zlen)
-        # compute temporal integrals
-        Ikxtdt_kx = kx + ((kxt + ktx) * (self.frame_no % zlen))
-        Ikytdt_ky = ky + ((kyt + kty) * (self.frame_no % zlen))
-        Ikt2dt_kt = kt +  (kt2        * (self.frame_no % zlen))
-        Iktdt_k0 = k0 + (Ikt2dt_kt * (self.frame_no % zlen))
-        # initialise vertical integrals
-        Ikydy_Iktdt_k0 = Iktdt_k0
-        Iky2dy_Ikytdt_ky = Ikytdt_ky
-        Ikxydy_Ikxtdt_kx = Ikxtdt_kx
         # generate this frame
-        zone_frame(data, self.waveform, kx2, kxy, kyx, ky2,
-                   Iktdt_k0, Ikytdt_ky, Ikxtdt_kx)
+        zone_frame(data, self.waveform, self.frame_no % zlen,
+                   k0, kx, ky, kt, kx2, kxy, kxt, kyx, ky2, kyt, ktx, kty, kt2)
         # set output frame
         frame.data = [data]
         frame.type = self.frame_type

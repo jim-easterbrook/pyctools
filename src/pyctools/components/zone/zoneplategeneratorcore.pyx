@@ -21,7 +21,6 @@
 """
 
 cimport cython
-import numpy
 cimport numpy
 
 ctypedef numpy.float32_t DTYPE_t
@@ -29,23 +28,32 @@ ctypedef numpy.float32_t DTYPE_t
 @cython.boundscheck(False)
 def zone_frame(numpy.ndarray[DTYPE_t, ndim=2] out_frame,
                numpy.ndarray[DTYPE_t, ndim=1] waveform,
-               DTYPE_t kx2, DTYPE_t kxy, DTYPE_t kyx, DTYPE_t ky2,
-               DTYPE_t Iktdt_k0, DTYPE_t Ikytdt_ky, DTYPE_t Ikxtdt_kx):
+               unsigned int z, DTYPE_t k0,
+               DTYPE_t kx, DTYPE_t ky, DTYPE_t kt,
+               DTYPE_t kx2, DTYPE_t kxy, DTYPE_t kxt,
+               DTYPE_t kyx, DTYPE_t ky2, DTYPE_t kyt,
+               DTYPE_t ktx, DTYPE_t kty, DTYPE_t kt2):
     cdef:
         unsigned int xlen, ylen, x, y
         DTYPE_t phases
+        DTYPE_t Ikxtdt_kx, Ikytdt_ky, Ikt2dt_kt, Iktdt_k0
         DTYPE_t Ikydy_Iktdt_k0, Iky2dy_Ikytdt_ky, Ikxydy_Ikxtdt_kx
         DTYPE_t Ikxdx_Ikydy_Iktdt_k0, Ikx2dx_Ikxydy_Ikxtdt_kx
     xlen = out_frame.shape[1]
     ylen = out_frame.shape[0]
     phases = waveform.shape[0]
+    # compute temporal integrals
+    Ikxtdt_kx = kx + ((kxt + ktx) * z)
+    Ikytdt_ky = ky + ((kyt + kty) * z)
+    Ikt2dt_kt = kt +  (kt2        * z)
+    Iktdt_k0 = k0 + (Ikt2dt_kt * z)
     # initialise vertical integrals
-    Ikydy_Iktdt_k0 = Iktdt_k0
+    Ikydy_Iktdt_k0 = Iktdt_k0 % phases
     Iky2dy_Ikytdt_ky = Ikytdt_ky
     Ikxydy_Ikxtdt_kx = Ikxtdt_kx
     for y in range(ylen):
         # initialise horizontal integrals
-        Ikxdx_Ikydy_Iktdt_k0 = Ikydy_Iktdt_k0 % phases
+        Ikxdx_Ikydy_Iktdt_k0 = Ikydy_Iktdt_k0
         Ikx2dx_Ikxydy_Ikxtdt_kx = Ikxydy_Ikxtdt_kx
         for x in range(xlen):
             out_frame[y, x] = waveform[int(Ikxdx_Ikydy_Iktdt_k0)]
