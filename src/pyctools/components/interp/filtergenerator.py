@@ -25,9 +25,12 @@ changes to allow live viewing of the effect on images.
 
 """
 
+from __future__ import print_function
+
 __all__ = ['FilterGenerator']
 
 import math
+import time
 
 from guild.actor import *
 import numpy
@@ -46,18 +49,22 @@ class FilterGenerator(Component):
         self.config['ydown'] = ConfigInt(min_value=1)
         self.config['yaperture'] = ConfigInt(min_value=1)
 
-    def process_start(self):
-        super(FilterGenerator, self).process_start()
-        self.gen_filter()
-
-    def set_config(self, config):
-        super(FilterGenerator, self).set_config(config)
-        if self.is_alive():
-            self.gen_filter()
-
-    @actor_method
-    def gen_filter(self):
+    def gen_process(self):
+        # wait for self.output to be connected
+        while self.output.__self__ == self:
+            yield 1
+            time.sleep(0.01)
+        # send first filter coefs
         self.update_config()
+        self.make_filter()
+        # send more coefs if config changes
+        while True:
+            yield 1
+            time.sleep(0.1)
+            if self.update_config():
+                self.make_filter()
+
+    def make_filter(self):
         x_up = self.config['xup']
         x_down = self.config['xdown']
         x_ap = self.config['xaperture']
@@ -102,3 +109,32 @@ class FilterGenerator(Component):
             result[n::phases] /= result[n::phases].sum()
         result /= float(phases)
         return result
+
+def main():
+    import logging
+    import time
+    class Sink(Actor):
+        @actor_method
+        def input(self, coefs):
+            print(coefs)
+
+    logging.basicConfig(level=logging.DEBUG)
+    print('FilterGenerator demonstration')
+    source = FilterGenerator()
+    config = source.get_config()
+    config['xup'] = 2
+    config['xaperture'] = 8
+    source.set_config(config)
+    sink = Sink()
+    pipeline(source, sink)
+    start(source, sink)
+    time.sleep(5)
+    config['xaperture'] = 4
+    source.set_config(config)
+    time.sleep(5)
+    stop(source, sink)
+    wait_for(source, sink)
+    return 0
+
+if __name__ == '__main__':
+    main()
