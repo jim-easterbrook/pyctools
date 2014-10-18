@@ -600,13 +600,14 @@ class ComponentList(QtGui.QTreeView):
 
     def add_nodes(self, root_node, components):
         for name, item in components.items():
-            node = QtGui.QStandardItem(name)
-            node.setEditable(False)
-            root_node.appendRow(node)
-            if isinstance(item, dict):
-                self.add_nodes(node, item)
-            else:
-                node.setData(item)
+            if item:
+                node = QtGui.QStandardItem(name)
+                node.setEditable(False)
+                root_node.appendRow(node)
+                if isinstance(item, dict):
+                    self.add_nodes(node, item)
+                else:
+                    node.setData(item)
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
