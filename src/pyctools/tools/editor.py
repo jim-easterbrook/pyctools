@@ -285,6 +285,7 @@ class IOIcon(QtGui.QGraphicsRectItem):
                 self.scene().removeItem(link)
         link = ComponentLink(source, outbox, dest, inbox)
         self.scene().addItem(link)
+        source.refresh()
 
 class InputIcon(IOIcon):
     mime_type = _INPUT_MIMETYPE
@@ -319,7 +320,6 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
                       QtGui.QGraphicsItem.ItemIsSelectable |
                       QtGui.QGraphicsItem.ItemSendsGeometryChanges)
         self.component_class = component_class
-        self.setRect(0, 0, 100, 150)
         self.config_dialog = None
         # create component
         self.id = comp_id
@@ -348,6 +348,21 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
         for idx, name in enumerate(self.component.outputs):
             self.outputs[name] = OutputIcon(name, self)
             self.outputs[name].setPos(100, 100 + (idx * 20))
+        self.set_size()
+
+    def refresh(self):
+        if self.component_class != pyctools.components.plumbing.busbar.Busbar:
+            return
+        for idx, name in enumerate(self.component.outputs):
+            if name in self.outputs:
+                continue
+            self.outputs[name] = OutputIcon(name, self)
+            self.outputs[name].setPos(100, 100 + (idx * 20))
+        self.set_size()
+
+    def set_size(self):
+        height = 100 + (max(2, len(self.inputs), len(self.outputs)) * 20)
+        self.setRect(0, 0, 100, height)
 
     def renew(self):
         config = self.component.get_config()
