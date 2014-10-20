@@ -205,11 +205,12 @@ class ComponentLink(QtGui.QGraphicsLineItem):
         self.dest = dest
         self.inbox = inbox
         self.renew()
-        self.source.refresh()
-        self.redraw()
 
     def itemChange(self, change, value):
-        if change == QtGui.QGraphicsItem.ItemSelectedHasChanged:
+        if change == QtGui.QGraphicsItem.ItemSceneHasChanged:
+            if self.scene():
+                self.redraw()
+        elif change == QtGui.QGraphicsItem.ItemSelectedHasChanged:
             pen = self.pen()
             if isinstance(value, QtCore.QVariant):
                 value = value.toBool()
@@ -221,12 +222,13 @@ class ComponentLink(QtGui.QGraphicsLineItem):
         return super(ComponentLink, self).itemChange(change, value)
 
     def renew(self):
-        self.source.component.bind(self.outbox, self.dest.component, self.inbox)
+        self.source.connect(self.outbox, self.dest, self.inbox)
 
     def redraw(self):
-        self.setLine(QtCore.QLineF(
-            self.source.outputs[self.outbox].connect_pos(),
-            self.dest.inputs[self.inbox].connect_pos()))
+        source_pos = self.source.out_pos(self.outbox, None)
+        dest_pos = self.dest.in_pos(self.inbox, source_pos)
+        source_pos = self.source.out_pos(self.outbox, dest_pos)
+        self.setLine(QtCore.QLineF(source_pos, dest_pos))
 
 class IOIcon(QtGui.QGraphicsRectItem):
     def __init__(self, name, parent):
@@ -286,7 +288,6 @@ class IOIcon(QtGui.QGraphicsRectItem):
                 self.scene().removeItem(link)
         link = ComponentLink(source, outbox, dest, inbox)
         self.scene().addItem(link)
-        source.refresh()
 
 class InputIcon(IOIcon):
     mime_type = _INPUT_MIMETYPE
@@ -314,9 +315,10 @@ class OutputIcon(IOIcon):
         pos.setX(pos.x() + 6)
         return pos
 
-class ComponentIcon(QtGui.QGraphicsRectItem):
+class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
+    width = 100
     def __init__(self, comp_id, component_class, parent=None):
-        super(ComponentIcon, self).__init__(parent)
+        super(BasicComponentIcon, self).__init__(parent)
         self.setFlags(QtGui.QGraphicsItem.ItemIsMovable |
                       QtGui.QGraphicsItem.ItemIsSelectable |
                       QtGui.QGraphicsItem.ItemSendsGeometryChanges)
@@ -348,22 +350,17 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
         self.outputs = {}
         for idx, name in enumerate(self.component.outputs):
             self.outputs[name] = OutputIcon(name, self)
-            self.outputs[name].setPos(100, 100 + (idx * 20))
-        self.set_size()
+            self.outputs[name].setPos(self.width, 100 + (idx * 20))
+        self.draw_icon()
 
-    def refresh(self):
-        if self.component_class != pyctools.components.plumbing.busbar.Busbar:
-            return
-        for idx, name in enumerate(self.component.outputs):
-            if name in self.outputs:
-                continue
-            self.outputs[name] = OutputIcon(name, self)
-            self.outputs[name].setPos(100, 100 + (idx * 20))
-        self.set_size()
+    def in_pos(self, name, link_pos):
+        return self.inputs[name].connect_pos()
 
-    def set_size(self):
-        height = 100 + (max(2, len(self.inputs), len(self.outputs)) * 20)
-        self.setRect(0, 0, 100, height)
+    def out_pos(self, name, link_pos):
+        return self.outputs[name].connect_pos()
+
+    def connect(self, outbox, dest, inbox):
+        self.component.bind(outbox, dest.component, inbox)
 
     def renew(self):
         config = self.component.get_config()
@@ -386,11 +383,68 @@ class ComponentIcon(QtGui.QGraphicsRectItem):
             value.setY(value.y() + 25 - ((value.y() + 25) % 50))
             return value
         if change == QtGui.QGraphicsItem.ItemPositionHasChanged and self.scene():
-            for item in self.scene().matching_items(ComponentLink):
-                if item.source == self or item.dest == self:
-                    item.redraw()
+            for link in self.scene().matching_items(ComponentLink):
+                if link.source == self or link.dest == self:
+                    link.redraw()
             self.scene().update_scene_rect()
-        return super(ComponentIcon, self).itemChange(change, value)
+        return super(BasicComponentIcon, self).itemChange(change, value)
+
+class ComponentIcon(BasicComponentIcon):
+    def draw_icon(self):
+        height = 100 + (max(2, len(self.inputs), len(self.outputs)) * 20)
+        self.setPolygon(QtGui.QPolygonF(QtGui.QPolygon(
+            [0, 0, self.width, 0, self.width, height, 0, height, 0, 0])))
+
+class BusbarIcon(BasicComponentIcon):
+    width = 50
+    def connect(self, outbox, dest, inbox):
+        super(BusbarIcon, self).connect(outbox, dest, inbox)
+        for name in self.component.outputs:
+            if name in self.outputs:
+                continue
+            self.outputs[name] = OutputIcon(name, self)
+            self.outputs[name].setPos(self.width, 0)
+        self.draw_icon()
+
+    def in_pos(self, name, link_pos):
+        if link_pos:
+            y = self.mapFromScene(link_pos).y()
+            self.inputs[name].setPos(0, y)
+            self.draw_icon()
+        return self.inputs[name].connect_pos()
+
+    def out_pos(self, name, link_pos):
+        if link_pos:
+            y = self.mapFromScene(link_pos).y()
+            while not self.out_pos_free(name, y):
+                y += 20
+            self.outputs[name].setPos(self.width, y)
+            self.draw_icon()
+        return self.outputs[name].connect_pos()
+
+    def out_pos_free(self, ignore, y):
+        for name, output in self.outputs.items():
+            if name != ignore and abs(output.pos().y() - y) < 10:
+                return False
+        return True
+
+    def draw_icon(self):
+        y0 = 0
+        y1 = 100
+        for conn in self.inputs.values():
+            y = self.mapFromScene(conn.connect_pos()).y()
+            y0 = min(y0, y)
+            y1 = max(y1, y)
+        for conn in self.outputs.values():
+            y = self.mapFromScene(conn.connect_pos()).y()
+            y0 = min(y0, y)
+            y1 = max(y1, y)
+        y0 -= 20
+        y1 += 20
+        self.setPolygon(QtGui.QPolygonF(QtGui.QPolygon(
+            [0, y0, -5, y0, self.width // 2, y0 - 10, self.width + 5,
+             y0, self.width, y0, self.width, y1, self.width + 5, y1,
+             self.width // 2, y1 + 10, -5, y1, 0, y1, 0, y0])))
 
 class NetworkArea(QtGui.QGraphicsScene):
     def __init__(self, parent=None):
@@ -421,7 +475,7 @@ class NetworkArea(QtGui.QGraphicsScene):
         for child in self.items():
             if not child.isSelected():
                 continue
-            if isinstance(child, ComponentIcon):
+            if isinstance(child, BasicComponentIcon):
                 for link in self.matching_items(ComponentLink):
                     if link.source == child or link.dest == child:
                         self.removeItem(link)
@@ -448,13 +502,18 @@ class NetworkArea(QtGui.QGraphicsScene):
             comp_id = str(comp_id)
             if not self.id_in_use(comp_id):
                 break
-        icon = ComponentIcon(comp_id, component_class)
+        icon = self.get_icon(comp_id, component_class)
         icon.setPos(position)
         self.addItem(icon)
         self.update_scene_rect()
 
+    def get_icon(self, comp_id, component_class):
+        if component_class == pyctools.components.plumbing.busbar.Busbar:
+            return BusbarIcon(comp_id, component_class)
+        return ComponentIcon(comp_id, component_class)
+
     def id_in_use(self, comp_id):
-        for child in self.matching_items(ComponentIcon):
+        for child in self.matching_items(BasicComponentIcon):
             if child.id == comp_id:
                 return True
         return False
@@ -466,18 +525,18 @@ class NetworkArea(QtGui.QGraphicsScene):
 
     def run_graph(self):
         # replace components with fresh instances
-        for child in self.matching_items(ComponentIcon):
+        for child in self.matching_items(BasicComponentIcon):
             child.component.stop()
             child.renew()
         # rebuild connections
         for child in self.matching_items(ComponentLink):
             child.renew()
         # run it!
-        for child in self.matching_items(ComponentIcon):
+        for child in self.matching_items(BasicComponentIcon):
             child.component.start()
 
     def stop_graph(self):
-        for child in self.matching_items(ComponentIcon):
+        for child in self.matching_items(BasicComponentIcon):
             child.component.stop()
 
     def load_script(self, file_name):
@@ -493,7 +552,7 @@ class NetworkArea(QtGui.QGraphicsScene):
         network = local_vars['Network']()
         comps = {}
         for comp_id, comp in network.components.items():
-            comps[comp_id] = ComponentIcon(comp_id, eval(comp['class']))
+            comps[comp_id] = self.get_icon(comp_id, eval(comp['class']))
             comps[comp_id].setPos(*comp['pos'])
             self.addItem(comps[comp_id])
             cnf = comps[comp_id].component.get_config()
@@ -512,7 +571,7 @@ class NetworkArea(QtGui.QGraphicsScene):
         modules = []
         linkages = {}
         for child in self.items():
-            if isinstance(child, ComponentIcon):
+            if isinstance(child, BasicComponentIcon):
                 components[child.id] = {
                     'class' : '%s.%s' % (
                         child.component_class.__module__,
