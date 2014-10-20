@@ -39,29 +39,30 @@ class Transformer(Component):
         super(Transformer, self).__init__(with_outframe_pool=True)
         self._transformer_in_frames = deque()
         self._transformer_out_frames = deque()
+        self.ready = True
 
     @actor_method
     def input(self, frame):
         self._transformer_in_frames.append(frame)
-        if self._transformer_out_frames:
-            self._transformer_transform()
+        self._transformer_transform()
 
     @actor_method
     def new_out_frame(self, frame):
         self._transformer_out_frames.append(frame)
-        if self._transformer_in_frames:
-            self._transformer_transform()
+        self._transformer_transform()
 
     def _transformer_transform(self):
-        in_frame = self._transformer_in_frames.popleft()
-        if not in_frame:
-            self.output(None)
-            self.stop()
-            return
-        out_frame = self._transformer_out_frames.popleft()
-        out_frame.initialise(in_frame)
-        if self.transform(in_frame, out_frame):
-            self.output(out_frame)
-        else:
-            self.output(None)
-            self.stop()
+        while (self.ready and self._transformer_out_frames and
+               self._transformer_in_frames):
+            in_frame = self._transformer_in_frames.popleft()
+            if not in_frame:
+                self.output(None)
+                self.stop()
+                return
+            out_frame = self._transformer_out_frames.popleft()
+            out_frame.initialise(in_frame)
+            if self.transform(in_frame, out_frame):
+                self.output(out_frame)
+            else:
+                self.output(None)
+                self.stop()
