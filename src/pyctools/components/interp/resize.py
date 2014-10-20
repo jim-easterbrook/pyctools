@@ -41,21 +41,7 @@ class Resize(Transformer):
         self.config['xdown'] = ConfigInt(min_value=1)
         self.config['yup'] = ConfigInt(min_value=1)
         self.config['ydown'] = ConfigInt(min_value=1)
-
-    def process_start(self):
-        super(Resize, self).process_start()
-        self.update_config()
-        # make simple "nearest pixel" filter
-        xup = self.config['xup']
-        yup = self.config['yup']
-        xlen = xup
-        ylen = yup
-        if (xlen % 2) != 1:
-            xlen += 1
-        if (ylen % 2) != 1:
-            ylen += 1
-        self.filter_coefs = numpy.zeros((ylen, xlen), dtype=numpy.float32)
-        self.filter_coefs[0:yup, 0:xup] = 1.0 / float(xup * yup)
+        self.ready = False
 
     @actor_method
     def filter(self, new_filter):
@@ -70,6 +56,7 @@ class Resize(Transformer):
             self.logger.warning('Filter input must have odd dimensions')
             return
         self.filter_coefs = new_filter
+        self.ready = True
 
     def transform(self, in_frame, out_frame):
         self.update_config()
@@ -77,13 +64,12 @@ class Resize(Transformer):
         x_down = self.config['xdown']
         y_up = self.config['yup']
         y_down = self.config['ydown']
-        in_data = in_frame.as_numpy()
+        in_data = in_frame.as_numpy(numpy.float32)
         norm_filter = self.filter_coefs * float(x_up * y_up)
         out_frame.data = []
         for in_comp in in_data:
             out_frame.data.append(resize_frame(
-                in_comp.astype(numpy.float32), norm_filter,
-                x_up, x_down, y_up, y_down))
+                in_comp, norm_filter, x_up, x_down, y_up, y_down))
         return True
 
 def resize_frame(in_comp, norm_filter, x_up, x_down, y_up, y_down):
