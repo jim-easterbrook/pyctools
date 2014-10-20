@@ -38,6 +38,8 @@ from .config import ConfigGrandParent
 class Compound(object):
     def __init__(self, **kw):
         super(Compound, self).__init__()
+        self.inputs = []
+        self.outputs = []
         # get child components
         self._compound_children = {}
         for key in kw:
@@ -54,6 +56,7 @@ class Compound(object):
                         getattr(self._compound_children[dest], inbox))
             elif dest == 'self':
                 self._compound_outputs[inbox] = (src, outbox)
+                self.outputs.append(inbox)
             else:
                 self._compound_children[src].bind(
                     outbox, self._compound_children[dest], inbox)
@@ -66,7 +69,6 @@ class Compound(object):
         config = ConfigGrandParent()
         for name, child in self._compound_children.iteritems():
             child_config = child.get_config()
-            child_config.name = name
             config[name] = child_config
         return config
 
