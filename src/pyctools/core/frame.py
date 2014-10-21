@@ -67,6 +67,8 @@ class Frame(object):
             if dtype is not None and new_data.dtype != dtype:
                 if dtype == numpy.uint8:
                     new_data = new_data.clip(0, 255)
+                elif dtype == numpy.uint16:
+                    new_data = new_data.clip(0, 2**16 - 1)
                 new_data = new_data.astype(dtype)
             result.append(new_data)
         return result
