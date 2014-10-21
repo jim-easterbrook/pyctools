@@ -54,6 +54,7 @@ class Compound(object):
             if src == 'self':
                 setattr(self, inbox,
                         getattr(self._compound_children[dest], inbox))
+                self.inputs.append(outbox)
             elif dest == 'self':
                 self._compound_outputs[inbox] = (src, outbox)
                 self.outputs.append(inbox)
