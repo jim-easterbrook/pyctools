@@ -40,14 +40,6 @@ class Transformer(Component):
         self._transformer_in_frames = deque()
         self._transformer_out_frames = deque()
         self.ready = True
-        self.initialise()
-
-    def initialise(self):
-        """Over ride this in your derived class if you want to do any
-        initialisation, such as setting up the config object.
-
-        """
-        pass
 
     @actor_method
     def input(self, frame):

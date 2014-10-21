@@ -46,6 +46,14 @@ class Component(Actor, ConfigMixin):
         self.with_outframe_pool = with_outframe_pool
         if self.with_outframe_pool:
             self.config['outframe_pool_len'] = ConfigInt(min_value=2, value=3)
+        self.initialise()
+
+    def initialise(self):
+        """Over ride this in your derived class if you want to do any
+        initialisation, such as adding to the config object.
+
+        """
+        pass
 
     def process_start(self):
         if self.with_outframe_pool:
