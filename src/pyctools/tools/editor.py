@@ -557,7 +557,7 @@ class NetworkArea(QtGui.QGraphicsScene):
             self.addItem(comps[comp_id])
             cnf = comps[comp_id].component.get_config()
             for key, value in eval(comp['config']).items():
-                cnf[key] = value
+                self.set_config(cnf, key, value)
             comps[comp_id].component.set_config(cnf)
         for source, dest in network.linkages.items():
             source, outbox = source
@@ -565,6 +565,13 @@ class NetworkArea(QtGui.QGraphicsScene):
             link = ComponentLink(comps[source], outbox, comps[dest], inbox)
             self.addItem(link)
         self.update_scene_rect()
+
+    def set_config(self, cnf, key, value):
+        if isinstance(value, dict):
+            for k, v in value.items():
+                self.set_config(cnf[key], k, v)
+        else:
+            cnf[key] = value
 
     def save_script(self, file_name):
         components = {}
