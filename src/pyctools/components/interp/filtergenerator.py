@@ -71,7 +71,8 @@ class FilterGenerator(Component):
         y_up = self.config['yup']
         y_down = self.config['ydown']
         y_ap = self.config['yaperture']
-        self.output(FilterGeneratorCore(x_up, x_down, x_ap, y_up, y_down, y_ap))
+        self.output([
+            FilterGeneratorCore(x_up, x_down, x_ap, y_up, y_down, y_ap)])
 
 def FilterGeneratorCore(x_up, x_down, x_ap, y_up, y_down, y_ap):
     def filter_1D(up, down, ap):

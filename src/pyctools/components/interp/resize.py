@@ -45,16 +45,20 @@ class Resize(Transformer):
 
     @actor_method
     def filter(self, new_filter):
-        if not isinstance(new_filter, numpy.ndarray):
-            self.logger.warning('Filter input must be a numpy array')
+        if not isinstance(new_filter, (list, tuple)):
+            self.logger.warning('Filter input must be a list of numpy arrays')
             return
-        if new_filter.ndim != 2:
-            self.logger.warning('Filter input must be 2 dimensional')
-            return
-        ylen, xlen = new_filter.shape
-        if (xlen % 2) != 1 or (ylen % 2) != 1:
-            self.logger.warning('Filter input must have odd dimensions')
-            return
+        for filt in new_filter:
+            if not isinstance(filt, numpy.ndarray):
+                self.logger.warning('Each filter input must be a numpy array')
+                return
+            if filt.ndim != 2:
+                self.logger.warning('Each filter input must be 2 dimensional')
+                return
+            ylen, xlen = filt.shape
+            if (xlen % 2) != 1 or (ylen % 2) != 1:
+                self.logger.warning('Each filter input must have odd dimensions')
+                return
         self.filter_coefs = new_filter
         self.ready = True
 
@@ -65,9 +69,10 @@ class Resize(Transformer):
         y_up = self.config['yup']
         y_down = self.config['ydown']
         in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=False)
-        norm_filter = self.filter_coefs * float(x_up * y_up)
         out_frame.data = []
-        for in_comp in in_data:
+        for c, in_comp in enumerate(in_data):
+            norm_filter = (self.filter_coefs[c % len(self.filter_coefs)] *
+                           float(x_up * y_up))
             out_frame.data.append(resize_frame(
                 in_comp, norm_filter, x_up, x_down, y_up, y_down))
         return True
