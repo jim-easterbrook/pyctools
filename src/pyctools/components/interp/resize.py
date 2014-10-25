@@ -30,7 +30,7 @@ from guild.actor import *
 import numpy
 
 from ...core import Transformer, ConfigInt
-from .resizecore import resize_line1
+from .resizecore import resize_line
 
 class Resize(Transformer):
     inputs = ['input', 'filter']
@@ -80,29 +80,20 @@ def resize_frame(in_comp, norm_filter, x_up, x_down, y_up, y_down):
     xlen_out = max(xlen_out, 1)
     ylen_out = max(ylen_out, 1)
     ylen_fil, xlen_fil = norm_filter.shape
-    out_comp = numpy.zeros(
-        [ylen_out, xlen_out] + list(in_shape[2:]), dtype=numpy.float32)
+    out_comp = numpy.zeros(([ylen_out, xlen_out]), dtype=numpy.float32)
     # choice of filter coefficient is according to
     #   filter_pos = (out_pos * down) - (in_pos * up)
-    # save computation by using increments and decrements
-    # on each loop iteration
-    dy_in = 1 + ((y_down - 1) // y_up)
-    dy_fil = y_down - (dy_in * y_up)
-    y_in_0 = 0
-    y_fil_0 = (ylen_fil - 1) // 2
-    while y_fil_0 >= y_up and y_in_0 < ylen_in - 1:
-        y_fil_0 -= y_up
-        y_in_0 += 1
+    # offset as filter is symmetrical
+    y_fil_off = (ylen_fil - 1) // 2
     for y_out in range(ylen_out):
-        y_fil_1 = min(ylen_fil, y_fil_0 + (y_in_0 * y_up) + 1)
-        y_in = y_in_0
-        for y_fil in range(y_fil_0, y_fil_1, y_up):
-            resize_line1(out_comp[y_out], in_comp[y_in],
-                         norm_filter[y_fil], x_up, x_down)
-            y_in -= 1
-        y_fil_0 += dy_fil
-        y_in_0 += dy_in
-        while y_fil_0 < 0 or y_in_0 >= ylen_in:
-            y_fil_0 += y_up
-            y_in_0 -= 1
+        y_fil_0 = -y_fil_off
+        y_in_1 = min(((y_out * y_down) + y_up - y_fil_0) // y_up, ylen_in)
+        y_fil_0 = (ylen_fil - 1) - y_fil_off
+        y_in_0 = max(((y_out * y_down) + (y_up - 1) - y_fil_0) // y_up, 0)
+        y_fil_0 = ((y_out * y_down) - (y_in_0 * y_up)) + y_fil_off
+        y_fil = y_fil_0
+        for y_in in range(y_in_0, y_in_1):
+            resize_line(out_comp[y_out], in_comp[y_in],
+                        norm_filter[y_fil], x_up, x_down)
+            y_fil -= y_up
     return out_comp
