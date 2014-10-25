@@ -47,7 +47,7 @@ class Frame(object):
         self.type = other.type
         self.metadata.copy(other.metadata)
 
-    def as_numpy(self, dtype=None):
+    def as_numpy(self, dtype=None, dstack=None):
         result = []
         for data in self.data:
             if isinstance(data, numpy.ndarray):
@@ -71,6 +71,18 @@ class Frame(object):
                     new_data = new_data.clip(0, 2**16 - 1)
                 new_data = new_data.astype(dtype)
             result.append(new_data)
+        if dstack is None:
+            pass
+        elif dstack:
+            if len(result) > 1 or result[0].ndim < 3:
+                result = [numpy.dstack(result)]
+        else:
+            if result[0].ndim > 2:
+                new_result = []
+                for data in result:
+                    for c in range(data.shape[2]):
+                        new_result.append(data[:,:,c])
+                result = new_result
         return result
 
     def as_PIL(self):
