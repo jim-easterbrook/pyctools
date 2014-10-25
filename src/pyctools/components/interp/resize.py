@@ -30,7 +30,7 @@ from guild.actor import *
 import numpy
 
 from ...core import Transformer, ConfigInt
-from .resizecore import resize_line1, resize_line2
+from .resizecore import resize_line1
 
 class Resize(Transformer):
     inputs = ['input', 'filter']
@@ -64,7 +64,7 @@ class Resize(Transformer):
         x_down = self.config['xdown']
         y_up = self.config['yup']
         y_down = self.config['ydown']
-        in_data = in_frame.as_numpy(numpy.float32)
+        in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=False)
         norm_filter = self.filter_coefs * float(x_up * y_up)
         out_frame.data = []
         for in_comp in in_data:
@@ -97,12 +97,8 @@ def resize_frame(in_comp, norm_filter, x_up, x_down, y_up, y_down):
         y_fil_1 = min(ylen_fil, y_fil_0 + (y_in_0 * y_up) + 1)
         y_in = y_in_0
         for y_fil in range(y_fil_0, y_fil_1, y_up):
-            if in_comp.ndim == 2:
-                resize_line1(out_comp[y_out], in_comp[y_in],
-                             norm_filter[y_fil], x_up, x_down)
-            else:
-                resize_line2(out_comp[y_out], in_comp[y_in],
-                             norm_filter[y_fil], x_up, x_down)
+            resize_line1(out_comp[y_out], in_comp[y_in],
+                         norm_filter[y_fil], x_up, x_down)
             y_in -= 1
         y_fil_0 += dy_fil
         y_in_0 += dy_in
