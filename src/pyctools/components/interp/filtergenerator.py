@@ -71,15 +71,10 @@ class FilterGenerator(Component):
         y_up = self.config['yup']
         y_down = self.config['ydown']
         y_ap = self.config['yaperture']
-        x_fil = self.filter_1D(x_up, x_down, x_ap)
-        y_fil = self.filter_1D(y_up, y_down, y_ap)
-        result = numpy.empty(y_fil.shape + x_fil.shape, dtype=numpy.float32)
-        for y in range(y_fil.shape[0]):
-            for x in range(x_fil.shape[0]):
-                result[y, x] = x_fil[x] * y_fil[y]
-        self.output(result)
+        self.output(FilterGeneratorCore(x_up, x_down, x_ap, y_up, y_down, y_ap))
 
-    def filter_1D(self, up, down, ap):
+def FilterGeneratorCore(x_up, x_down, x_ap, y_up, y_down, y_ap):
+    def filter_1D(up, down, ap):
         cut_freq = float(min(up, down)) / float(2 * up * down)
         coefs = []
         n = 1
@@ -108,6 +103,20 @@ class FilterGenerator(Component):
             result[n::phases] /= result[n::phases].sum()
         result /= float(phases)
         return result
+
+    x_up = max(x_up, 1)
+    x_down = max(x_down, 1)
+    x_ap = max(x_ap, 1)
+    y_up = max(y_up, 1)
+    y_down = max(y_down, 1)
+    y_ap = max(y_ap, 1)
+    x_fil = filter_1D(x_up, x_down, x_ap)
+    y_fil = filter_1D(y_up, y_down, y_ap)
+    result = numpy.empty(y_fil.shape + x_fil.shape, dtype=numpy.float32)
+    for y in range(y_fil.shape[0]):
+        for x in range(x_fil.shape[0]):
+            result[y, x] = x_fil[x] * y_fil[y]
+    return result
 
 def main():
     import logging
