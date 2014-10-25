@@ -92,8 +92,14 @@ def resize_frame(in_comp, norm_filter, x_up, x_down, y_up, y_down):
         y_in_0 = max(((y_out * y_down) + (y_up - 1) - y_fil_0) // y_up, 0)
         y_fil_0 = ((y_out * y_down) - (y_in_0 * y_up)) + y_fil_off
         y_fil = y_fil_0
-        for y_in in range(y_in_0, y_in_1):
-            resize_line(out_comp[y_out], in_comp[y_in],
-                        norm_filter[y_fil], x_up, x_down)
-            y_fil -= y_up
+        if x_up == 1 and x_down == 1 and xlen_fil == 1:
+            # pure vertical filter
+            for y_in in range(y_in_0, y_in_1):
+                out_comp[y_out] += in_comp[y_in] * norm_filter[y_fil][0]
+                y_fil -= y_up
+        else:
+            for y_in in range(y_in_0, y_in_1):
+                resize_line(out_comp[y_out], in_comp[y_in],
+                            norm_filter[y_fil], x_up, x_down)
+                y_fil -= y_up
     return out_comp
