@@ -32,10 +32,9 @@ __all__ = ['GaussianFilter']
 import math
 import time
 
-from guild.actor import *
 import numpy
 
-from ...core import Component, ConfigFloat
+from pyctools.core import Component, ConfigFloat
 
 class GaussianFilter(Component):
     inputs = []
@@ -71,12 +70,12 @@ class GaussianFilter(Component):
         self.output(result)
 
     def filter_1D(self, sigma):
+        alpha = 1.0 / (2.0 * (sigma ** 2.0))
         coefs = []
-        while True:
-            coef = math.exp(-((float(len(coefs)) / sigma) ** 2) / 2)
-            if coef < 0.0001:
-                break
+        coef = 1.0
+        while coef > 0.0001:
             coefs.append(coef)
+            coef = math.exp(-(alpha * (float(len(coefs) ** 2))))
         fil_dim = len(coefs) - 1
         result = numpy.zeros(1 + (fil_dim * 2), dtype=numpy.float32)
         for n, coef in enumerate(coefs):
@@ -88,7 +87,7 @@ class GaussianFilter(Component):
 
 def main():
     import logging
-    import time
+    from guild.actor import Actor, actor_method, pipeline, start, stop, wait_for
     class Sink(Actor):
         @actor_method
         def input(self, coefs):
