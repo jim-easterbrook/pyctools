@@ -61,15 +61,10 @@ class GaussianFilter(Component):
     def make_filter(self):
         x_sigma = self.config['xsigma']
         y_sigma = self.config['ysigma']
-        x_fil = self.filter_1D(x_sigma)
-        y_fil = self.filter_1D(y_sigma)
-        result = numpy.empty(y_fil.shape + x_fil.shape, dtype=numpy.float32)
-        for y in range(y_fil.shape[0]):
-            for x in range(x_fil.shape[0]):
-                result[y, x] = x_fil[x] * y_fil[y]
-        self.output(result)
+        self.output(GaussianFilterCore(x_sigma, y_sigma))
 
-    def filter_1D(self, sigma):
+def GaussianFilterCore(x_sigma, y_sigma):
+    def filter_1D(sigma):
         alpha = 1.0 / (2.0 * (sigma ** 2.0))
         coefs = []
         coef = 1.0
@@ -84,6 +79,16 @@ class GaussianFilter(Component):
         # normalise result
         result /= result.sum()
         return result
+
+    x_sigma = max(x_sigma, 0.001)
+    y_sigma = max(y_sigma, 0.001)
+    x_fil = filter_1D(x_sigma)
+    y_fil = filter_1D(y_sigma)
+    result = numpy.empty(y_fil.shape + x_fil.shape, dtype=numpy.float32)
+    for y in range(y_fil.shape[0]):
+        for x in range(x_fil.shape[0]):
+            result[y, x] = x_fil[x] * y_fil[y]
+    return result
 
 def main():
     import logging
