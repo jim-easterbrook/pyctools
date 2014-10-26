@@ -58,6 +58,7 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
     def process_start(self):
         self.update_config()
         self.next_frame = deque()
+        self.last_frame_type = None
         # start timer to show frames at regular intervals
         self.timer.timeout.connect(self.show_frame)
         self.timer.start(1000 // self.config['framerate'])
@@ -78,21 +79,26 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
         if not self.isVisible():
             self.show()
         numpy_image = frame.as_numpy(dtype=numpy.uint8, dstack=True)[0]
-        if frame.type == 'RGB':
-            ylen, xlen, bpc = numpy_image.shape
+        ylen, xlen, bpc = numpy_image.shape
+        if bpc == 3:
+            if frame.type != 'RGB' and frame.type != self.last_frame_type:
+                self.logger.warning('Expected RGB input, got %s', frame.type)
             image = QtGui.QImage(numpy_image.data, xlen, ylen, xlen * bpc,
                                  QtGui.QImage.Format_RGB888)
-        elif frame.type == 'Y':
-            ylen, xlen = numpy_image.shape
+        elif bpc == 1:
+            if frame.type != 'Y' and frame.type != self.last_frame_type:
+                self.logger.warning('Expected Y input, got %s', frame.type)
             image = QtGui.QImage(numpy_image.data, xlen, ylen, xlen,
                                  QtGui.QImage.Format_Indexed8)
             image.setNumColors(256)
             for i in range(256):
                 image.setColor(i, QtGui.qRgba(i, i, i, 255))
         else:
-            self.logger.critical('Cannot display %s frame', frame.type)
+            self.logger.critical(
+                'Cannot display %s frame with %d components', frame.type, bpc)
             self.stop()
             return
+        self.last_frame_type = frame.type
         pixmap = QtGui.QPixmap.fromImage(image)
         shrink = self.config['shrink']
         expand = self.config['expand']
