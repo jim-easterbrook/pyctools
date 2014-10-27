@@ -53,12 +53,12 @@ class RGBtoYUV(Transformer):
         if in_frame.type != 'RGB':
             self.logger.critical('Cannot convert "%s" images.', in_frame.type)
             return False
-        RGB = in_frame.as_numpy(numpy.float32)[0]
+        RGB = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
         # offset or scale
         if self.config['range'] == 'studio':
-            RGB -= 16.0
+            RGB = RGB - 16.0
         else:
-            RGB *= (219.0 / 255.0)
+            RGB = RGB * (219.0 / 255.0)
         # matrix to YUV
         if self.config['matrix'] == '601':
             matrix = self.mat_601
