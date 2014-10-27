@@ -29,8 +29,8 @@ __all__ = ['Resize']
 from guild.actor import *
 import numpy
 
-from ...core import Transformer, ConfigInt
-from .resizecore import resize_line
+from pyctools.core import Transformer, ConfigInt
+from .resizecore import resize_frame
 
 class Resize(Transformer):
     inputs = ['input', 'filter']
@@ -82,35 +82,3 @@ class Resize(Transformer):
             out_frame.data.append(resize_frame(
                 in_comp, norm_filter, x_up, x_down, y_up, y_down))
         return True
-
-def resize_frame(in_comp, norm_filter, x_up, x_down, y_up, y_down):
-    in_shape = in_comp.shape
-    ylen_in, xlen_in = in_shape[:2]
-    xlen_out = (xlen_in * x_up) // x_down
-    ylen_out = (ylen_in * y_up) // y_down
-    xlen_out = max(xlen_out, 1)
-    ylen_out = max(ylen_out, 1)
-    ylen_fil, xlen_fil = norm_filter.shape
-    out_comp = numpy.zeros(([ylen_out, xlen_out]), dtype=numpy.float32)
-    # choice of filter coefficient is according to
-    #   filter_pos = (out_pos * down) - (in_pos * up)
-    # offset as filter is symmetrical
-    y_fil_off = (ylen_fil - 1) // 2
-    for y_out in range(ylen_out):
-        y_fil_0 = -y_fil_off
-        y_in_1 = min(((y_out * y_down) + y_up - y_fil_0) // y_up, ylen_in)
-        y_fil_0 = (ylen_fil - 1) - y_fil_off
-        y_in_0 = max(((y_out * y_down) + (y_up - 1) - y_fil_0) // y_up, 0)
-        y_fil_0 = ((y_out * y_down) - (y_in_0 * y_up)) + y_fil_off
-        y_fil = y_fil_0
-        if x_up == 1 and x_down == 1 and xlen_fil == 1:
-            # pure vertical filter
-            for y_in in range(y_in_0, y_in_1):
-                out_comp[y_out] += in_comp[y_in] * norm_filter[y_fil][0]
-                y_fil -= y_up
-        else:
-            for y_in in range(y_in_0, y_in_1):
-                resize_line(out_comp[y_out], in_comp[y_in],
-                            norm_filter[y_fil], x_up, x_down)
-                y_fil -= y_up
-    return out_comp
