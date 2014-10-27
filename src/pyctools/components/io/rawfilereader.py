@@ -33,7 +33,7 @@ import sys
 from guild.actor import *
 import numpy
 
-from ...core import Metadata, Component, ConfigPath, ConfigEnum
+from pyctools.core import Metadata, Component, ConfigPath, ConfigEnum
 
 class RawFileReader(Component):
     inputs = []
@@ -155,8 +155,10 @@ class RawFileReader(Component):
             start, end, step = slc
             raw_data = raw_array[start:end:step]
             frame.data.append(raw_data.reshape(shape))
-        if len(frame.data) > 1 and self.frame_type != 'YCbCr':
-            frame.data = [numpy.dstack(frame.data)]
+        if self.frame_type == 'YCbCr':
+            # remove offset
+            frame.data[1] = frame.data[1].astype(numpy.float32) - 128.0
+            frame.data[2] = frame.data[2].astype(numpy.float32) - 128.0
         frame.type = self.frame_type
         frame.frame_no = self.frame_no
         self.frame_no += 1

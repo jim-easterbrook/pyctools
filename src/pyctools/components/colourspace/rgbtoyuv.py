@@ -70,8 +70,8 @@ class RGBtoYUV(Transformer):
             matrix = self.mat_601
         out_frame.data = [
             numpy.dot(RGB, matrix[0].T) + 16.0,
-            numpy.dot(RGB, matrix[1].T) + 128.0,
-            numpy.dot(RGB, matrix[2].T) + 128.0,
+            numpy.dot(RGB, matrix[1].T),
+            numpy.dot(RGB, matrix[2].T),
             ]
         out_frame.type = 'YCbCr'
         return True

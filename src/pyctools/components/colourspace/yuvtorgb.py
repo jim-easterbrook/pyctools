@@ -67,11 +67,10 @@ class YUVtoRGB(Transformer):
         if len(in_frame.data) != 3 or in_frame.type != 'YCbCr':
             self.logger.critical('Cannot convert "%s" images.', in_frame.type)
             return False
-        Y_data, U_data, V_data = in_frame.as_numpy()
-        # apply offset (and promote to floating format)
-        Y_data = Y_data.astype(numpy.float32) - 16.0
-        U_data = U_data.astype(numpy.float32) - 128.0
-        V_data = V_data.astype(numpy.float32) - 128.0
+        Y_data, U_data, V_data = in_frame.as_numpy(
+            dtype=numpy.float32, dstack=False)
+        # apply offset
+        Y_data = Y_data - 16.0
         # resample U & V
         v_ss = Y_data.shape[0] // U_data.shape[0]
         h_ss = Y_data.shape[1] // U_data.shape[1]
