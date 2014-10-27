@@ -72,9 +72,10 @@ class FilterGenerator(Component):
         y_down = self.config['ydown']
         y_ap = self.config['yaperture']
         self.output([
-            FilterGeneratorCore(x_up, x_down, x_ap, y_up, y_down, y_ap)])
+            FilterGeneratorCore(x_up=x_up, x_down=x_down, x_ap=x_ap,
+                                y_up=y_up, y_down=y_down, y_ap=y_ap)])
 
-def FilterGeneratorCore(x_up, x_down, x_ap, y_up, y_down, y_ap):
+def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, y_up=1, y_down=1, y_ap=1):
     def filter_1D(up, down, ap):
         cut_freq = float(min(up, down)) / float(2 * up * down)
         coefs = []

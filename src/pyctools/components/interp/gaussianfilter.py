@@ -61,9 +61,9 @@ class GaussianFilter(Component):
     def make_filter(self):
         x_sigma = self.config['xsigma']
         y_sigma = self.config['ysigma']
-        self.output([GaussianFilterCore(x_sigma, y_sigma)])
+        self.output([GaussianFilterCore(x_sigma=x_sigma, y_sigma=y_sigma)])
 
-def GaussianFilterCore(x_sigma, y_sigma):
+def GaussianFilterCore(x_sigma=0.0, y_sigma=0.0):
     def filter_1D(sigma):
         alpha = 1.0 / (2.0 * (sigma ** 2.0))
         coefs = []
