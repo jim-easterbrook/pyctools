@@ -60,6 +60,7 @@ class Resize(Transformer):
                 self.logger.warning('Each filter input must have odd dimensions')
                 return
         self.filter_coefs = new_filter
+        self.fil_count = None
         self.ready = True
 
     def transform(self, in_frame, out_frame):
@@ -69,10 +70,15 @@ class Resize(Transformer):
         y_up = self.config['yup']
         y_down = self.config['ydown']
         in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=False)
+        if self.fil_count != len(self.filter_coefs):
+            self.fil_count = len(self.filter_coefs)
+            if self.fil_count != 1 and self.fil_count != len(in_data):
+                self.logger.warning('Mismatch between %d filters and %d images',
+                                    self.fil_count, len(in_data))
         out_frame.data = []
         for c, in_comp in enumerate(in_data):
-            norm_filter = (self.filter_coefs[c % len(self.filter_coefs)] *
-                           float(x_up * y_up))
+            norm_filter = (
+                self.filter_coefs[c % self.fil_count] * float(x_up * y_up))
             out_frame.data.append(resize_frame(
                 in_comp, norm_filter, x_up, x_down, y_up, y_down))
         return True

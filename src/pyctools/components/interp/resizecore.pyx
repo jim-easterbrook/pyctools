@@ -21,7 +21,6 @@
 """
 
 cimport cython
-import numpy
 cimport numpy
 
 ctypedef numpy.float32_t DTYPE_t
