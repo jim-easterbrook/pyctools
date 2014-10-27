@@ -22,19 +22,27 @@ cimport numpy
 ctypedef numpy.float32_t DTYPE_t
 
 @cython.boundscheck(False)
+cdef void modulate_frame_c(DTYPE_t[:, :] out_comp,
+                           DTYPE_t[:, :] in_comp,
+                           DTYPE_t[:, :] cell) nogil:
+    cdef:
+        unsigned int xlen, ylen
+        unsigned int i, j, x, y
+    ylen = cell.shape[0]
+    xlen = cell.shape[1]
+    for y in range(in_comp.shape[0]):
+        j = y % ylen
+        for x in range(in_comp.shape[1]):
+            i = x % xlen
+            out_comp[y, x] = in_comp[y, x] * cell[j, i]
+
+@cython.boundscheck(False)
 def modulate_frame(numpy.ndarray[DTYPE_t, ndim=2] out_comp,
                    numpy.ndarray[DTYPE_t, ndim=2] in_comp,
                    numpy.ndarray[DTYPE_t, ndim=3] cell,
                    unsigned int frame_no):
     cdef:
-        unsigned int xlen, ylen, zlen
-        unsigned int i, j, k, x, y
+        unsigned int zlen, k
     zlen = cell.shape[0]
-    ylen = cell.shape[1]
-    xlen = cell.shape[2]
     k = frame_no % zlen
-    for y in range(in_comp.shape[0]):
-        j = y % ylen
-        for x in range(in_comp.shape[1]):
-            i = x % xlen
-            out_comp[y, x] = in_comp[y, x] * cell[k, j, i]
+    modulate_frame_c(out_comp, in_comp, cell[k])

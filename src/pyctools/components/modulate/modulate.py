@@ -63,9 +63,11 @@ class Modulate(Transformer):
                                     self.cell_count, len(in_data))
         out_frame.data = []
         for c, in_comp in enumerate(in_data):
-            out_comp = numpy.empty(in_comp.shape, dtype=numpy.float32)
-            modulate_frame(
-                out_comp, in_comp,
-                self.cell_data[c % self.cell_count], in_frame.frame_no)
+            cell = self.cell_data[c % self.cell_count]
+            if cell.size == 1:
+                out_comp = in_comp * cell[0, 0, 0]
+            else:
+                out_comp = numpy.empty(in_comp.shape, dtype=numpy.float32)
+                modulate_frame(out_comp, in_comp, cell, in_frame.frame_no)
             out_frame.data.append(out_comp)
         return True
