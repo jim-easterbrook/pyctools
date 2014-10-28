@@ -75,9 +75,9 @@ class VideoFileWriter(Component):
             self.stop()
             return
         if self.bit16:
-            numpy_image = frame.as_numpy(numpy.uint16)[0]
+            numpy_image = frame.as_numpy(dtype=numpy.uint16, dstack=True)[0]
         else:
-            numpy_image = frame.as_numpy(numpy.uint8)[0]
+            numpy_image = frame.as_numpy(dtype=numpy.uint8, dstack=True)[0]
         if not self.ffmpeg:
             ylen, xlen = numpy_image.shape[:2]
             self.ffmpeg = subprocess.Popen(
