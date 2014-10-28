@@ -48,6 +48,7 @@ class VideoFileWriter(Component):
         self.config['fps'] = ConfigInt(value=25)
         self.config['16bit'] = ConfigEnum(('off', 'on'))
         self.ffmpeg = None
+        self.last_frame_type = None
 
     @actor_method
     def input(self, frame):
@@ -60,26 +61,32 @@ class VideoFileWriter(Component):
             encoder = self.config['encoder']
             fps = self.config['fps']
             self.bit16 = self.config['16bit'] != 'off'
-        if frame.type == 'RGB':
+        if self.bit16:
+            numpy_image = frame.as_numpy(dtype=numpy.uint16, dstack=True)[0]
+        else:
+            numpy_image = frame.as_numpy(dtype=numpy.uint8, dstack=True)[0]
+        ylen, xlen, bpc = numpy_image.shape
+        if bpc == 3:
+            if frame.type != 'RGB' and frame.type != self.last_frame_type:
+                self.logger.warning('Expected RGB input, got %s', frame.type)
             if self.bit16:
                 pix_fmt = 'rgb48le'
             else:
                 pix_fmt = 'rgb24'
-        elif frame.type == 'Y':
+        elif bpc == 1:
+            if frame.type != 'Y' and frame.type != self.last_frame_type:
+                self.logger.warning('Expected Y input, got %s', frame.type)
             if self.bit16:
                 pix_fmt = 'gray16le'
             else:
                 pix_fmt = 'gray'
         else:
-            self.logger.critical('Cannot write %s frame', frame.type)
+            self.logger.critical(
+                'Cannot write %s frame with %d components', frame.type, bpc)
             self.stop()
             return
-        if self.bit16:
-            numpy_image = frame.as_numpy(dtype=numpy.uint16, dstack=True)[0]
-        else:
-            numpy_image = frame.as_numpy(dtype=numpy.uint8, dstack=True)[0]
+        self.last_frame_type = frame.type
         if not self.ffmpeg:
-            ylen, xlen = numpy_image.shape[:2]
             self.ffmpeg = subprocess.Popen(
                 ['ffmpeg', '-v', 'warning', '-y', '-an',
                  '-s', '%dx%d' % (xlen, ylen),
