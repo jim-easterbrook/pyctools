@@ -43,8 +43,8 @@ class Component(Actor, ConfigMixin):
         super(Component, self).__init__()
         ConfigMixin.__init__(self)
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.with_outframe_pool = with_outframe_pool
-        if self.with_outframe_pool:
+        self._component_with_outframe_pool = with_outframe_pool
+        if self._component_with_outframe_pool:
             self.config['outframe_pool_len'] = ConfigInt(min_value=2, value=3)
         self.initialise()
 
@@ -56,12 +56,7 @@ class Component(Actor, ConfigMixin):
         pass
 
     def process_start(self):
-        if self.with_outframe_pool:
+        if self._component_with_outframe_pool:
             self.update_config()
-            self.pool = ObjectPool(Frame, self.config['outframe_pool_len'])
-            self.pool.bind("output", self, "new_out_frame")
-            start(self.pool)
-
-    def onStop(self):
-        if self.with_outframe_pool:
-            stop(self.pool)
+            self._component_outframe_pool = ObjectPool(
+                Frame, self.config['outframe_pool_len'], self.new_out_frame)

@@ -33,32 +33,19 @@ object, i.e. when it gets deleted.
 
 """
 
-from __future__ import print_function
-
 __all__ = ['ObjectPool']
 
-import sys
-import time
 import weakref
 
-from guild.actor import *
-
-class ObjectPool(Actor):
-    def __init__(self, factory, size):
+class ObjectPool(object):
+    def __init__(self, factory, size, callback):
         super(ObjectPool, self).__init__()
         self.factory = factory
-        self.size = size
+        self.callback = callback
         self.obj_list = []
-
-    def gen_process(self):
-        # wait for self.output to be connected
-        while self.output.__self__ == self:
-            yield 1
-            time.sleep(0.01)
         # send first objects
-        for i in range(self.size):
+        for i in range(size):
             self.new_object()
-            yield 1
 
     def release(self, obj):
         self.obj_list.remove(obj)
@@ -67,44 +54,4 @@ class ObjectPool(Actor):
     def new_object(self):
         obj = self.factory()
         self.obj_list.append(weakref.ref(obj, self.release))
-        self.output(obj)
-
-def main():
-    class Frame(object):
-        pass
-
-    class Source(Actor):
-        def process_start(self):
-            self.n = 0
-            self.pool = ObjectPool(Frame, 3)
-            self.pool.bind("output", self, "new_frame")
-            start(self.pool)
-
-        @actor_method
-        def new_frame(self, frame):
-            print('source', self.n)
-            frame.n = self.n
-            self.output(frame)
-            self.n += 1
-
-        def onStop(self):
-            stop(self.pool)
-
-    class Sink(Actor):
-        @actor_method
-        def input(self, frame):
-            print('sink', frame.n)
-            time.sleep(1.0)
-
-    print('ObjectPool demonstration')
-    source = Source()
-    sink = Sink()
-    pipeline(source, sink)
-    start(source, sink)
-    time.sleep(10)
-    stop(source, sink)
-    wait_for(source, sink)
-    return 0
-
-if __name__ == '__main__':
-    sys.exit(main())
+        self.callback(obj)
