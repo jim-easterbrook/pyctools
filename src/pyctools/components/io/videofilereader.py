@@ -30,53 +30,101 @@ __all__ = ['VideoFileReader']
 
 import logging
 import os
+import re
+import subprocess
 import sys
 
-import cv2
 from guild.actor import *
+import numpy
 
-from ...core import Metadata, Component, ConfigPath, ConfigEnum
+from pyctools.core import Metadata, Component, ConfigPath, ConfigEnum
 
 class VideoFileReader(Component):
     inputs = []
 
     def __init__(self):
         super(VideoFileReader, self).__init__(with_outframe_pool=True)
+        self.ffmpeg = None
         self.config['path'] = ConfigPath()
         self.config['looping'] = ConfigEnum(('off', 'repeat'), dynamic=True)
+        self.config['type'] = ConfigEnum(('RGB', 'Y'))
+        self.config['16bit'] = ConfigEnum(('off', 'on'))
 
     def process_start(self):
         super(VideoFileReader, self).process_start()
         self.update_config()
         path = self.config['path']
-        self.cap = cv2.VideoCapture(path)
-        if not self.cap.isOpened():
+        # open file to get dimensions
+        self.ffmpeg = subprocess.Popen(
+            ['ffmpeg', '-v', 'info', '-y', '-an', '-vn', '-i', path, '-'],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        for line in self.ffmpeg.stderr.read().split('\n'):
+            match = re.search('(\d{2,})x(\d{2,})', line)
+            if match:
+                self.xlen, self.ylen = map(int, match.groups())
+                break
+        else:
             self.logger.critical('Failed to open %s', path)
             self.output(None)
             self.stop()
+            return
+        self.ffmpeg.stderr.flush()
+        self.open_file()
         self.metadata = Metadata().from_file(path)
         self.frame_no = 0
+
+    def close_file(self):
+        if self.ffmpeg:
+            self.ffmpeg.terminate()
+            self.ffmpeg.stdout.flush()
+            self.ffmpeg = None
+
+    def open_file(self):
+        self.close_file()
+        path = self.config['path']
+        self.bit16 = self.config['16bit'] != 'off'
+        self.frame_type = self.config['type']
+        if self.frame_type == 'RGB':
+            self.bps = 3
+            if self.bit16:
+                pix_fmt = 'rgb48le'
+            else:
+                pix_fmt = 'rgb24'
+        else:
+            self.bps = 1
+            if self.bit16:
+                pix_fmt = 'gray16le'
+            else:
+                pix_fmt = 'gray'
+        self.bytes_per_line = self.xlen * self.ylen * self.bps
+        if self.bit16:
+            self.bytes_per_line *= 2
+        # open file to read data
+        self.ffmpeg = subprocess.Popen(
+            ['ffmpeg', '-v', 'warning', '-an', '-i', path,
+             '-f', 'image2pipe', '-pix_fmt', pix_fmt,
+             '-c:v', 'rawvideo', '-'],
+            stdout=subprocess.PIPE, bufsize=self.bytes_per_line)
 
     @actor_method
     def new_out_frame(self, frame):
         self.update_config()
-        OK, data = self.cap.read()
-        if not OK:
+        while True:
+            raw_data = self.ffmpeg.stdout.read(self.bytes_per_line)
+            if len(raw_data) >= self.bytes_per_line:
+                break
+            self.close_file()
             if self.frame_no == 0 or self.config['looping'] == 'off':
                 self.output(None)
                 self.stop()
                 return
-            self.cap.release()
-            path = self.config['path']
-            self.cap = cv2.VideoCapture(path)
-            OK, data = self.cap.read()
-            if not OK:
-                self.logger.critical('Cannot repeat file')
-                self.output(None)
-                self.stop()
-                return
-        frame.data = [cv2.cvtColor(data, cv2.COLOR_BGR2RGB)]
-        frame.type = 'RGB'
+            self.open_file()
+        if self.bit16:
+            image = numpy.fromstring(raw_data, dtype=numpy.uint16)
+        else:
+            image = numpy.fromstring(raw_data, dtype=numpy.uint8)
+        frame.data = [image.reshape((self.ylen, self.xlen, self.bps))]
+        frame.type = self.frame_type
         frame.frame_no = self.frame_no
         self.frame_no += 1
         frame.metadata.copy(self.metadata)
@@ -84,7 +132,7 @@ class VideoFileReader(Component):
 
     def onStop(self):
         super(VideoFileReader, self).onStop()
-        self.cap.release()
+        self.close_file()
 
 def main():
     from PyQt4 import QtGui
