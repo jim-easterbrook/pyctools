@@ -22,6 +22,7 @@ from __future__ import print_function
 import argparse
 import logging
 import os
+import pprint
 import re
 import six
 from six.moves import cPickle
@@ -591,6 +592,8 @@ class NetworkArea(QtGui.QGraphicsScene):
             elif isinstance(child, ComponentLink):
                 linkages[(child.source.id, child.outbox)] = (
                     child.dest.id, child.inbox)
+        components = pprint.pformat(components, indent=4)
+        linkages = pprint.pformat(linkages, indent=4)
         with open(file_name, 'w') as of:
             of.write("""#!/usr/bin/env python
 # File written by pyctools-editor. Do not edit.
@@ -605,8 +608,10 @@ from pyctools.core.compound import Compound
             of.write("""
 class Network(object):
     def __init__(self):
-        self.components = %s
-        self.linkages = %s
+        self.components = \\
+%s
+        self.linkages = \\
+%s
 
     def make(self):
         comps = {}
