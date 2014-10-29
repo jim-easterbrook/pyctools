@@ -96,6 +96,7 @@ class VideoFileWriter(Component):
                  '-r', '%d' % fps, '-pix_fmt', pix_fmt, '-i', '-',
                  '-r', '%d' % fps] + encoder.split() + [path],
                 stdin=subprocess.PIPE)
+            frame.metadata.to_file(path)
         self.ffmpeg.stdin.write(numpy_image.tostring())
 
     def onStop(self):
