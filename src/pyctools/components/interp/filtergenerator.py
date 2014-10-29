@@ -35,13 +35,12 @@ import time
 from guild.actor import *
 import numpy
 
-from ...core import Component, ConfigInt
+from pyctools.core import Component, ConfigInt, Frame
 
 class FilterGenerator(Component):
     inputs = []
 
-    def __init__(self):
-        super(FilterGenerator, self).__init__()
+    def initialise(self):
         self.config['xup'] = ConfigInt(min_value=1)
         self.config['xdown'] = ConfigInt(min_value=1)
         self.config['xaperture'] = ConfigInt(min_value=1)
@@ -71,9 +70,9 @@ class FilterGenerator(Component):
         y_up = self.config['yup']
         y_down = self.config['ydown']
         y_ap = self.config['yaperture']
-        self.output([
+        self.output(
             FilterGeneratorCore(x_up=x_up, x_down=x_down, x_ap=x_ap,
-                                y_up=y_up, y_down=y_down, y_ap=y_ap)])
+                                y_up=y_up, y_down=y_down, y_ap=y_ap))
 
 def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, y_up=1, y_down=1, y_ap=1):
     def filter_1D(up, down, ap):
@@ -118,7 +117,17 @@ def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, y_up=1, y_down=1, y_ap=1):
     for y in range(y_fil.shape[0]):
         for x in range(x_fil.shape[0]):
             result[y, x] = x_fil[x] * y_fil[y]
-    return result
+    out_frame = Frame()
+    out_frame.data = [result]
+    out_frame.type = 'fil'
+    audit = out_frame.metadata.get('audit')
+    audit += 'data = FilterGenerator()\n'
+    if x_up != 1 or x_down != 1:
+        audit += '    x_up: %d, x_down: %d, x_ap: %d\n' % (x_up, x_down, x_ap)
+    if y_up != 1 or y_down != 1:
+        audit += '    y_up: %d, y_down: %d, y_ap: %d\n' % (y_up, y_down, y_ap)
+    out_frame.metadata.set('audit', audit)
+    return out_frame
 
 def main():
     import logging
@@ -126,7 +135,7 @@ def main():
     class Sink(Actor):
         @actor_method
         def input(self, coefs):
-            print(coefs)
+            print(coefs.data)
 
     logging.basicConfig(level=logging.DEBUG)
     print('FilterGenerator demonstration')

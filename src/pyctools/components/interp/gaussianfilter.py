@@ -34,7 +34,7 @@ import time
 
 import numpy
 
-from pyctools.core import Component, ConfigFloat
+from pyctools.core import Component, ConfigFloat, Frame
 
 class GaussianFilter(Component):
     inputs = []
@@ -61,11 +61,11 @@ class GaussianFilter(Component):
     def make_filter(self):
         x_sigma = self.config['xsigma']
         y_sigma = self.config['ysigma']
-        self.output([GaussianFilterCore(x_sigma=x_sigma, y_sigma=y_sigma)])
+        self.output(GaussianFilterCore(x_sigma=x_sigma, y_sigma=y_sigma))
 
 def GaussianFilterCore(x_sigma=0.0, y_sigma=0.0):
     def filter_1D(sigma):
-        alpha = 1.0 / (2.0 * (sigma ** 2.0))
+        alpha = 1.0 / (2.0 * (max(sigma, 0.0001) ** 2.0))
         coefs = []
         coef = 1.0
         while coef > 0.0001:
@@ -80,15 +80,25 @@ def GaussianFilterCore(x_sigma=0.0, y_sigma=0.0):
         result /= result.sum()
         return result
 
-    x_sigma = max(x_sigma, 0.001)
-    y_sigma = max(y_sigma, 0.001)
+    x_sigma = max(x_sigma, 0.0)
+    y_sigma = max(y_sigma, 0.0)
     x_fil = filter_1D(x_sigma)
     y_fil = filter_1D(y_sigma)
     result = numpy.empty(y_fil.shape + x_fil.shape, dtype=numpy.float32)
     for y in range(y_fil.shape[0]):
         for x in range(x_fil.shape[0]):
             result[y, x] = x_fil[x] * y_fil[y]
-    return result
+    out_frame = Frame()
+    out_frame.data = [result]
+    out_frame.type = 'fil'
+    audit = out_frame.metadata.get('audit')
+    audit += 'data = GaussianFilter()\n'
+    if x_sigma != 0.0:
+        audit += '    x_sigma: %g\n' % (x_sigma)
+    if y_sigma != 0.0:
+        audit += '    y_sigma: %g\n' % (y_sigma)
+    out_frame.metadata.set('audit', audit)
+    return out_frame
 
 def main():
     import logging
@@ -96,7 +106,7 @@ def main():
     class Sink(Actor):
         @actor_method
         def input(self, coefs):
-            print(coefs)
+            print(coefs.data)
 
     logging.basicConfig(level=logging.DEBUG)
     print('GaussianFilter demonstration')

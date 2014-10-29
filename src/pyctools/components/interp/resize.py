@@ -40,14 +40,11 @@ class Resize(Transformer):
         self.config['xdown'] = ConfigInt(min_value=1)
         self.config['yup'] = ConfigInt(min_value=1)
         self.config['ydown'] = ConfigInt(min_value=1)
-        self.ready = False
+        self.set_ready(False)
 
     @actor_method
     def filter(self, new_filter):
-        if not isinstance(new_filter, (list, tuple)):
-            self.logger.warning('Filter input must be a list of numpy arrays')
-            return
-        for filt in new_filter:
+        for filt in new_filter.data:
             if not isinstance(filt, numpy.ndarray):
                 self.logger.warning('Each filter input must be a numpy array')
                 return
@@ -60,7 +57,7 @@ class Resize(Transformer):
                 return
         self.filter_coefs = new_filter
         self.fil_count = None
-        self.ready = True
+        self.set_ready(True)
 
     def transform(self, in_frame, out_frame):
         self.update_config()
@@ -69,15 +66,15 @@ class Resize(Transformer):
         y_up = self.config['yup']
         y_down = self.config['ydown']
         in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=False)
-        if self.fil_count != len(self.filter_coefs):
-            self.fil_count = len(self.filter_coefs)
+        if self.fil_count != len(self.filter_coefs.data):
+            self.fil_count = len(self.filter_coefs.data)
             if self.fil_count != 1 and self.fil_count != len(in_data):
                 self.logger.warning('Mismatch between %d filters and %d images',
                                     self.fil_count, len(in_data))
         out_frame.data = []
         for c, in_comp in enumerate(in_data):
             norm_filter = (
-                self.filter_coefs[c % self.fil_count] * float(x_up * y_up))
+                self.filter_coefs.data[c % self.fil_count] * float(x_up * y_up))
             out_frame.data.append(resize_frame(
                 in_comp, norm_filter, x_up, x_down, y_up, y_down))
         audit = out_frame.metadata.get('audit')
@@ -86,5 +83,7 @@ class Resize(Transformer):
             audit += '    x_up: %d, x_down: %d\n' % (x_up, x_down)
         if y_up != 1 or y_down != 1:
             audit += '    y_up: %d, y_down: %d\n' % (y_up, y_down)
+        audit += '    filter: {\n%s}\n' % (
+            self.filter_coefs.metadata.get('audit'))
         out_frame.metadata.set('audit', audit)
         return True
