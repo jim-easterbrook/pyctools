@@ -44,6 +44,7 @@ class Frame(object):
 
     def initialise(self, other):
         self.frame_no = other.frame_no
+        self.data = other.data
         self.type = other.type
         self.metadata.copy(other.metadata)
 
