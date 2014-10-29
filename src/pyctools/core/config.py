@@ -33,6 +33,7 @@ class ConfigLeafNode(object):
         self.dynamic = dynamic
         self.min_value = min_value
         self.max_value = max_value
+        self.default = value
 
     def get(self):
         return self.value
@@ -61,6 +62,7 @@ class ConfigInt(ConfigLeafNode):
         super(ConfigInt, self).__init__(**kw)
         if self.value is None:
             self.value = self.clip(0)
+            self.default = self.value
 
     def validate(self, value):
         return isinstance(value, int) and self.clip(value) == value
@@ -72,6 +74,7 @@ class ConfigFloat(ConfigLeafNode):
         self.wrapping = wrapping
         if self.value is None:
             self.value = self.clip(0.0)
+            self.default = self.value
 
     def validate(self, value):
         return isinstance(value, float) and self.clip(value) == value
@@ -94,6 +97,13 @@ class ConfigParent(ConfigLeafNode):
 
     def validate(self, value):
         return isinstance(value, dict)
+
+    def __repr__(self):
+        result = {}
+        for key, value in self.value.items():
+            if value.value != value.default:
+                result[key] = value
+        return repr(result)
 
     def __getitem__(self, key):
         return self.value[key].get()
