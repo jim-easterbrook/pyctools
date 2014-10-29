@@ -62,7 +62,9 @@ class VideoFileWriter(Component):
             fps = self.config['fps']
             self.bit16 = self.config['16bit'] != 'off'
         if self.bit16:
-            numpy_image = frame.as_numpy(dtype=numpy.uint16, dstack=True)[0]
+            numpy_image = frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+            numpy_image = numpy_image * 256.0
+            numpy_image = numpy_image.clip(0, 2**16 - 1).astype(numpy.uint16)
         else:
             numpy_image = frame.as_numpy(dtype=numpy.uint8, dstack=True)[0]
         ylen, xlen, bpc = numpy_image.shape

@@ -19,8 +19,7 @@
 
 """Video file reader.
 
-Reads conventional video files (mp4, flv, etc. depends on installed
-GStreamer plugins).
+Reads conventional video files (mp4, flv, etc. depends on ffmpeg).
 
 """
 
@@ -122,6 +121,7 @@ class VideoFileReader(Component):
             self.open_file()
         if self.bit16:
             image = numpy.fromstring(raw_data, dtype=numpy.uint16)
+            image = image.astype(numpy.float32) / 256.0
         else:
             image = numpy.fromstring(raw_data, dtype=numpy.uint8)
         frame.data = [image.reshape((self.ylen, self.xlen, self.bps))]
