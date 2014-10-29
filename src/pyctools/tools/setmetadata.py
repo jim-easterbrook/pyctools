@@ -42,10 +42,10 @@ def main():
         '-t', '--tag', metavar=('name', 'value'), action='append', nargs=2,
         help='tag name and value')
     args = parser.parse_args()
-    if len(args.tag) < 1:
+    if not args.tag:
         return 0
-    # open or create metadata
-    md = Metadata().from_file(args.path, create=True)
+    # open existing metadata
+    md = Metadata().from_file(args.path)
     # set tag(s)
     for tag, value in args.tag:
         md.set(tag, value)

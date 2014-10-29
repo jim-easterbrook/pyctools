@@ -32,53 +32,68 @@ from gi.repository import GObject, GExiv2
 
 class Metadata(object):
     def __init__(self):
-        self.md = GExiv2.Metadata()
+        self.data = {}
+        self.comment = None
 
-    def from_file(self, path, create=False):
-        xmp_path = path + '.xmp'
-        try:
-            self.md.open_path(xmp_path)
-            return self._add_pyctools_ns()
-        except GObject.GError:
-            pass
-        try:
-            self.md.open_path(path)
-            return self._add_pyctools_ns()
-        except GObject.GError:
-            pass
-        if create:
-            # create empty XMP
-            with open(xmp_path, 'w') as of:
-                of.write('<x:xmpmeta x:xmptk="XMP Core 4.4.0-Exiv2" ')
-                of.write('xmlns:x="adobe:ns:meta/">\n</x:xmpmeta>')
-            self.md.open_path(xmp_path)
-            return self._add_pyctools_ns()
-        return self
-
-    def _add_pyctools_ns(self):
-        self.md.register_xmp_namespace(
-            'https://github.com/jim-easterbrook/pyctools', 'pyctools')
+    def from_file(self, path):
+        for xmp_path in (path + '.xmp', path):
+            md = GExiv2.Metadata()
+            try:
+                md.open_path(xmp_path)
+            except GObject.GError:
+                continue
+            for tag in (md.get_exif_tags() +
+                        md.get_iptc_tags() + md.get_xmp_tags()):
+                if md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
+                    self.data[tag] = md.get_tag_multiple(tag)
+                else:
+                    self.data[tag] = md.get_tag_string(tag)
+            self.comment = md.get_comment()
+            break
         return self
 
     def to_file(self, path):
         xmp_path = path + '.xmp'
-        self.md.save_file(xmp_path)
+        # create empty XMP
+        with open(xmp_path, 'w') as of:
+            of.write('<x:xmpmeta x:xmptk="XMP Core 4.4.0-Exiv2" ')
+            of.write('xmlns:x="adobe:ns:meta/">\n</x:xmpmeta>')
+        # open empty XMP
+        md = GExiv2.Metadata()
+        md.open_path(xmp_path)
+        # add our namespace
+        md.register_xmp_namespace(
+            'https://github.com/jim-easterbrook/pyctools', 'pyctools')
+        # copy metadata
+        for tag, value in self.data.items():
+            if md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
+                md.set_tag_multiple(tag, value)
+            else:
+                md.set_tag_string(tag, value)
+        if self.comment is not None:
+            md.set_comment(self.comment)
+        # save file
+        md.save_file(xmp_path)
     
     def copy(self, other):
+        # copy from other to self
+        self.data.update(other.data)
+        if other.comment is not None:
+            self.comment = other.comment
         return self
 
     def image_size(self):
         xlen = None
         ylen = None
-        for tag in ('Xmp.pyctools.xlen',
+        for tag in ('Xmp.pyctools.xlen', 'Exif.Photo.PixelXDimension',
                     'Exif.Image.ImageWidth', 'Xmp.tiff.ImageWidth'):
-            if self.md.has_tag(tag):
-                xlen = self.md.get_tag_long(tag)
+            if tag in self.data:
+                xlen = int(self.data[tag])
                 break
-        for tag in ('Xmp.pyctools.ylen',
+        for tag in ('Xmp.pyctools.ylen', 'Exif.Photo.PixelYDimension',
                     'Exif.Image.ImageLength', 'Xmp.tiff.ImageLength'):
-            if self.md.has_tag(tag):
-                ylen = self.md.get_tag_long(tag)
+            if tag in self.data:
+                ylen = int(self.data[tag])
                 break
         if xlen and ylen:
             return xlen, ylen
@@ -86,10 +101,8 @@ class Metadata(object):
 
     def get(self, tag):
         full_tag = 'Xmp.pyctools.' + tag
-        if self.md.has_tag(full_tag):
-            return self.md.get_tag_string(full_tag)
-        raise RuntimeError('Metadata does not have tag %s' % full_tag)
+        return self.data[full_tag]
 
     def set(self, tag, value):
         full_tag = 'Xmp.pyctools.' + tag
-        self.md.set_tag_string(full_tag, value)
+        self.data[full_tag] = value
