@@ -40,7 +40,7 @@ import cv2
 from guild.actor import *
 import numpy
 
-from ...core import Transformer, ConfigEnum
+from pyctools.core import Transformer, ConfigEnum
 from ..interp.resize import resize_frame
 
 class YUVtoRGB(Transformer):
@@ -69,6 +69,8 @@ class YUVtoRGB(Transformer):
             return False
         Y_data, U_data, V_data = in_frame.as_numpy(
             dtype=numpy.float32, dstack=False)
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = YUVtoRGB(data)\n'
         # apply offset
         Y_data = Y_data - 16.0
         # resample U & V
@@ -88,14 +90,14 @@ class YUVtoRGB(Transformer):
             V_data = cv2.resize(
                 V_data, None, fx=1, fy=v_ss, interpolation=cv2.INTER_CUBIC)
         # matrix to RGB
-        if self.config['matrix'] == '601':
+        audit += '    range: %s' % (self.config['range'])
+        if (self.config['matrix'] == '601' or
+                (self.config['matrix'] == 'auto' and Y_data.shape[0] <= 576)):
             matrix = self.mat_601
-        elif self.config['matrix'] == '709':
-            matrix = self.mat_709
-        elif Y_data.shape[0] > 576:
-            matrix = self.mat_709
+            audit += ', matrix: 601\n'
         else:
-            matrix = self.mat_601
+            matrix = self.mat_709
+            audit += ', matrix: 709\n'
         YUV = numpy.dstack((Y_data, U_data, V_data))
         RGB = numpy.dot(YUV, matrix.T)
         # offset or scale
@@ -105,6 +107,7 @@ class YUVtoRGB(Transformer):
             RGB *= (255.0 / 219.0)
         out_frame.data = [RGB]
         out_frame.type = 'RGB'
+        out_frame.metadata.set('audit', audit)
         return True
 
 def main():

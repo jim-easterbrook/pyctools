@@ -71,6 +71,11 @@ class VideoFileReader(Component):
         self.ffmpeg.stderr.flush()
         self.open_file()
         self.metadata = Metadata().from_file(path)
+        audit = self.metadata.get('audit')
+        audit += 'data = %s\n' % path
+        audit += '    type: %s, 16bit: %s\n' % (
+            self.config['type'], self.config['16bit'])
+        self.metadata.set('audit', audit)
         self.frame_no = 0
 
     def close_file(self):

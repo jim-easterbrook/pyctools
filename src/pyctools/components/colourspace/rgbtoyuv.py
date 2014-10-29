@@ -32,7 +32,7 @@ __all__ = ['RGBtoYUV']
 from guild.actor import *
 import numpy
 
-from ...core import Transformer, ConfigEnum
+from pyctools.core import Transformer, ConfigEnum
 
 class RGBtoYUV(Transformer):
     mat_601 = numpy.array(
@@ -54,24 +54,27 @@ class RGBtoYUV(Transformer):
             self.logger.critical('Cannot convert "%s" images.', in_frame.type)
             return False
         RGB = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = RGBtoYUV(data)\n'
         # offset or scale
         if self.config['range'] == 'studio':
             RGB = RGB - 16.0
         else:
             RGB = RGB * (219.0 / 255.0)
         # matrix to YUV
-        if self.config['matrix'] == '601':
+        audit += '    range: %s' % (self.config['range'])
+        if (self.config['matrix'] == '601' or
+                (self.config['matrix'] == 'auto' and RGB.shape[0] <= 576)):
             matrix = self.mat_601
-        elif self.config['matrix'] == '709':
-            matrix = self.mat_709
-        elif RGB.shape[0] > 576:
-            matrix = self.mat_709
+            audit += ', matrix: 601\n'
         else:
-            matrix = self.mat_601
+            matrix = self.mat_709
+            audit += ', matrix: 709\n'
         out_frame.data = [
             numpy.dot(RGB, matrix[0].T) + 16.0,
             numpy.dot(RGB, matrix[1].T),
             numpy.dot(RGB, matrix[2].T),
             ]
         out_frame.type = 'YCbCr'
+        out_frame.metadata.set('audit', audit)
         return True

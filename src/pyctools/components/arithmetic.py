@@ -40,4 +40,7 @@ class Arithmetic(Transformer):
         out_frame.data = []
         for data in in_data:
             out_frame.data.append(eval(func))
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = %s\n' % func
+        out_frame.metadata.set('audit', audit)
         return True

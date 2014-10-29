@@ -104,21 +104,66 @@ class ZonePlateGenerator(Component):
             self.output(None)
             self.stop()
             return
-        data = numpy.ndarray([ylen, xlen], dtype=numpy.float32)
-        k0 =        self.config['k0']  * self.phases
-        kx =        self.config['kx']  * self.phases
-        ky = (1.0 - self.config['ky']) * self.phases
-        kt =        self.config['kt' ] * self.phases
-        kx2 =  self.config['kx2'] * self.phases / float(xlen)
-        kxy = -self.config['kxy'] * self.phases / float(ylen)
-        kxt =  self.config['kxt'] * self.phases / float(zlen)
-        kyx = -self.config['kyx'] * self.phases / float(xlen)
-        ky2 =  self.config['ky2'] * self.phases / float(ylen)
-        kyt = -self.config['kyt'] * self.phases / float(zlen)
-        ktx =  self.config['ktx'] * self.phases / float(xlen)
-        kty = -self.config['kty'] * self.phases / float(ylen)
-        kt2 =  self.config['kt2'] * self.phases / float(zlen)
+        k0  = self.config['k0']
+        kx  = self.config['kx']
+        ky  = self.config['ky']
+        kt  = self.config['kt']
+        kx2 = self.config['kx2']
+        kxy = self.config['kxy']
+        kxt = self.config['kxt']
+        kyx = self.config['kyx']
+        ky2 = self.config['ky2']
+        kyt = self.config['kyt']
+        ktx = self.config['ktx']
+        kty = self.config['kty']
+        kt2 = self.config['kt2']
+        frame.metadata.copy(self.metadata)
+        audit = frame.metadata.get('audit')
+        audit += 'data = ZonePlateGenerator()\n'
+        audit += '    '
+        if k0 != 0.0:
+            audit += 'k0: %g, ' % k0
+        if kx != 0.0:
+            audit += 'kx: %g, ' % kx
+        if ky != 0.0:
+            audit += 'ky: %g, ' % ky
+        if kt != 0.0:
+            audit += 'kt: %g, ' % kt
+        if kx2 != 0.0:
+            audit += 'kx2: %g, ' % kx2
+        if kxy != 0.0:
+            audit += 'kxy: %g, ' % kxy
+        if kxt != 0.0:
+            audit += 'kxt: %g, ' % kxt
+        if kyx != 0.0:
+            audit += 'kyx: %g, ' % kyx
+        if ky2 != 0.0:
+            audit += 'ky2: %g, ' % ky2
+        if kyt != 0.0:
+            audit += 'kyt: %g, ' % kyt
+        if ktx != 0.0:
+            audit += 'ktx: %g, ' % ktx
+        if kty != 0.0:
+            audit += 'kty: %g, ' % kty
+        if kt2 != 0.0:
+            audit += 'kt2: %g, ' % kt2
+        audit += 'xlen: %d, ylen: %d, zlen: %d\n' % (xlen, ylen, zlen)
+        frame.metadata.set('audit', audit)
+        k0 =        k0  * self.phases
+        kx =        kx  * self.phases
+        ky = (1.0 - ky) * self.phases
+        kt =        kt  * self.phases
+        kx2 =       kx2 * self.phases / float(xlen)
+        kxy =      -kxy * self.phases / float(ylen)
+        kxt =       kxt * self.phases / float(zlen)
+        kyx =      -kyx * self.phases / float(xlen)
+        ky2 =       ky2 * self.phases / float(ylen)
+        kyt =      -kyt * self.phases / float(zlen)
+        ktx =       ktx * self.phases / float(xlen)
+        kty =      -kty * self.phases / float(ylen)
+        kt2 =       kt2 * self.phases / float(zlen)
         # generate this frame
+        data = numpy.ndarray([ylen, xlen], dtype=numpy.float32)
         zone_frame(data, self.waveform, self.frame_no % zlen,
                    k0, kx, ky, kt, kx2, kxy, kxt, kyx, ky2, kyt, ktx, kty, kt2)
         # set output frame
@@ -126,5 +171,4 @@ class ZonePlateGenerator(Component):
         frame.type = self.frame_type
         frame.frame_no = self.frame_no
         self.frame_no += 1
-        frame.metadata.copy(self.metadata)
         self.output(frame)

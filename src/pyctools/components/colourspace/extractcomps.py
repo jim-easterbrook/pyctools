@@ -29,8 +29,7 @@ __all__ = ['ExtractComps']
 from pyctools.core import Transformer, ConfigInt
 
 class ExtractComps(Transformer):
-    def __init__(self):
-        super(ExtractComps, self).__init__()
+    def initialise(self):
         self.config['start'] = ConfigInt(min_value=0)
         self.config['end'] = ConfigInt(min_value=1)
 
@@ -43,4 +42,7 @@ class ExtractComps(Transformer):
             out_frame.data = in_data[start:end]
         else:
             out_frame.data = [in_data[0][:,:,start:end]]
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = data[%d:%d]\n' % (start, end)
+        out_frame.metadata.set('audit', audit)
         return True

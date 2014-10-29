@@ -34,6 +34,7 @@ class Metadata(object):
     def __init__(self):
         self.data = {}
         self.comment = None
+        self.set('audit', '')
 
     def from_file(self, path):
         for xmp_path in (path + '.xmp', path):

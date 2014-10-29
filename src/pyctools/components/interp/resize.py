@@ -35,8 +35,7 @@ from .resizecore import resize_frame
 class Resize(Transformer):
     inputs = ['input', 'filter']
 
-    def __init__(self):
-        super(Resize, self).__init__()
+    def initialise(self):
         self.config['xup'] = ConfigInt(min_value=1)
         self.config['xdown'] = ConfigInt(min_value=1)
         self.config['yup'] = ConfigInt(min_value=1)
@@ -81,4 +80,11 @@ class Resize(Transformer):
                 self.filter_coefs[c % self.fil_count] * float(x_up * y_up))
             out_frame.data.append(resize_frame(
                 in_comp, norm_filter, x_up, x_down, y_up, y_down))
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = Resize(data)\n'
+        if x_up != 1 or x_down != 1:
+            audit += '    x_up: %d, x_down: %d\n' % (x_up, x_down)
+        if y_up != 1 or y_down != 1:
+            audit += '    y_up: %d, y_down: %d\n' % (y_up, y_down)
+        out_frame.metadata.set('audit', audit)
         return True

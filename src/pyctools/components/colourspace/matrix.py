@@ -52,4 +52,8 @@ class Matrix(Transformer):
                                  data_in.shape[2], self.matrix_coefs.shape[1])
             return False
         out_frame.data = [numpy.dot(data_in, self.matrix_coefs.T)]
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = Matrix(data)\n'
+        audit += '    matrix: %s\n' % (str(self.matrix_coefs))
+        out_frame.metadata.set('audit', audit)
         return True

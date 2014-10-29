@@ -50,6 +50,9 @@ class RawFileReader(Component):
         path = self.config['path']
         self.file = io.open(path, 'rb', 0)
         self.metadata = Metadata().from_file(path)
+        audit = self.metadata.get('audit')
+        audit += 'data = %s\n' % path
+        self.metadata.set('audit', audit)
         self.fourcc = self.metadata.get('fourcc')
         xlen, ylen = self.metadata.image_size()
         # set bits per pixel and component dimensions

@@ -30,7 +30,7 @@ import subprocess
 from guild.actor import *
 import numpy
 
-from pyctools.core import Component, ConfigPath, ConfigInt, ConfigEnum
+from pyctools.core import Component, ConfigPath, ConfigInt, ConfigEnum, Metadata
 
 class VideoFileWriter(Component):
     outputs = []
@@ -96,7 +96,13 @@ class VideoFileWriter(Component):
                  '-r', '%d' % fps, '-pix_fmt', pix_fmt, '-i', '-',
                  '-r', '%d' % fps] + encoder.split() + [path],
                 stdin=subprocess.PIPE)
-            frame.metadata.to_file(path)
+            md = Metadata().copy(frame.metadata)
+            audit = md.get('audit')
+            audit += '%s = data\n' % path
+            audit += '    encoder: "%s"\n' % (encoder)
+            audit += '    16bit: %s\n' % (self.config['16bit'])
+            md.set('audit', audit)
+            md.to_file(path)
         self.ffmpeg.stdin.write(numpy_image.tostring())
 
     def onStop(self):

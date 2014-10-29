@@ -70,4 +70,7 @@ class Modulate(Transformer):
                 out_comp = numpy.empty(in_comp.shape, dtype=numpy.float32)
                 modulate_frame(out_comp, in_comp, cell, in_frame.frame_no)
             out_frame.data.append(out_comp)
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = Modulate(data)\n'
+        out_frame.metadata.set('audit', audit)
         return True
