@@ -57,8 +57,9 @@ class VideoFileReader(Component):
         # open file to get dimensions
         self.ffmpeg = subprocess.Popen(
             ['ffmpeg', '-v', 'info', '-y', '-an', '-vn', '-i', path, '-'],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        for line in self.ffmpeg.stderr.read().split('\n'):
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            universal_newlines=True)
+        for line in self.ffmpeg.stderr.read().splitlines():
             match = re.search('(\d{2,})x(\d{2,})', line)
             if match:
                 self.xlen, self.ylen = map(int, match.groups())

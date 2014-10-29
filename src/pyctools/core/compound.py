@@ -68,13 +68,13 @@ class Compound(object):
 
     def get_config(self):
         config = ConfigGrandParent()
-        for name, child in self._compound_children.iteritems():
+        for name, child in self._compound_children.items():
             child_config = child.get_config()
             config[name] = child_config
         return config
 
     def set_config(self, config):
-        for name, child_config in config.value.iteritems():
+        for name, child_config in config.value.items():
             self._compound_children[name].set_config(child_config)
 
     def go(self):
