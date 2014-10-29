@@ -37,5 +37,11 @@ class DumpMetadata(Transformer):
         self.last_metadata = in_frame.metadata
         print('Frame %04d' % in_frame.frame_no)
         print('==========')
-        print(in_frame.metadata.get('audit'))
+        indent = 0
+        for line in in_frame.metadata.get('audit').splitlines():
+            print(' ' * indent, line)
+            if '{' in line:
+                indent += 8
+            if '}' in line:
+                indent -= 8
         return True
