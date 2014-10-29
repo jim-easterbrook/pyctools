@@ -36,10 +36,14 @@ from .component import Component
 
 class Transformer(Component):
     def __init__(self):
-        super(Transformer, self).__init__(with_outframe_pool=True)
         self._transformer_in_frames = deque()
         self._transformer_out_frames = deque()
-        self.ready = True
+        self._transformer_ready = True
+        super(Transformer, self).__init__(with_outframe_pool=True)
+
+    def set_ready(self, value):
+        self._transformer_ready = value
+        self._transformer_transform()
 
     @actor_method
     def input(self, frame):
@@ -52,7 +56,7 @@ class Transformer(Component):
         self._transformer_transform()
 
     def _transformer_transform(self):
-        while (self.ready and self._transformer_out_frames and
+        while (self._transformer_ready and self._transformer_out_frames and
                self._transformer_in_frames):
             in_frame = self._transformer_in_frames.popleft()
             if not in_frame:

@@ -36,7 +36,7 @@ class Modulate(Transformer):
     inputs = ['input', 'cell']
 
     def initialise(self):
-        self.ready = False
+        self.set_ready(False)
 
     @actor_method
     def cell(self, cell_data):
@@ -52,7 +52,7 @@ class Modulate(Transformer):
                 return
         self.cell_data = cell_data
         self.cell_count = None
-        self.ready = True
+        self.set_ready(True)
 
     def transform(self, in_frame, out_frame):
         in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=False)

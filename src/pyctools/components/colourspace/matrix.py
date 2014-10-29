@@ -32,7 +32,7 @@ class Matrix(Transformer):
     inputs = ['input', 'matrix']
 
     def initialise(self):
-        self.ready = False
+        self.set_ready(False)
 
     @actor_method
     def matrix(self, new_matrix):
@@ -43,7 +43,7 @@ class Matrix(Transformer):
             self.logger.warning('Matrix input must be 2 dimensional')
             return
         self.matrix_coefs = new_matrix
-        self.ready = True
+        self.set_ready(True)
 
     def transform(self, in_frame, out_frame):
         data_in = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
