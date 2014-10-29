@@ -56,19 +56,24 @@ class YUVtoRGB(Transformer):
          0.314049691, 0.0, -0.093861297, 0.0,  0.044929001, 0.0,
         -0.022357799, 0.0,  0.010153700, 0.0, -0.002913300
         ]], dtype=numpy.float32)
-    def __init__(self):
-        super(YUVtoRGB, self).__init__()
+
+    def initialise(self):
         self.config['matrix'] = ConfigEnum(('auto', '601', '709'), dynamic=True)
         self.config['range'] = ConfigEnum(('studio', 'computer'), dynamic=True)
+        self.last_frame_type = None
 
     def transform(self, in_frame, out_frame):
         self.update_config()
         # check input and get data
-        if len(in_frame.data) != 3 or in_frame.type != 'YCbCr':
-            self.logger.critical('Cannot convert "%s" images.', in_frame.type)
+        data = in_frame.as_numpy(dtype=numpy.float32, dstack=False)
+        if len(data) != 3:
+            self.logger.critical('Cannot convert %s images with %d components',
+                                 in_frame.type, len(data))
             return False
-        Y_data, U_data, V_data = in_frame.as_numpy(
-            dtype=numpy.float32, dstack=False)
+        if in_frame.type != 'YCbCr' and in_frame.type != self.last_frame_type:
+            self.logger.warning('Expected YCbCr input, got %s', in_frame.type)
+        self.last_frame_type = in_frame.type
+        Y_data, U_data, V_data = data
         audit = out_frame.metadata.get('audit')
         audit += 'data = YUVtoRGB(data)\n'
         # apply offset

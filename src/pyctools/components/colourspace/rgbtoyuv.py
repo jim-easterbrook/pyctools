@@ -43,17 +43,23 @@ class RGBtoYUV(Transformer):
         [[ 0.2126,    0.7152,    0.0722],
          [-0.117188, -0.394228,  0.511415],
          [ 0.511415, -0.464522, -0.046894]], dtype=numpy.float32)
+
     def initialise(self):
         self.config['matrix'] = ConfigEnum(('auto', '601', '709'), dynamic=True)
         self.config['range'] = ConfigEnum(('studio', 'computer'), dynamic=True)
+        self.last_frame_type = None
 
     def transform(self, in_frame, out_frame):
         self.update_config()
         # check input and get data
-        if in_frame.type != 'RGB':
-            self.logger.critical('Cannot convert "%s" images.', in_frame.type)
-            return False
         RGB = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        if RGB.shape[2] != 3:
+            self.logger.critical('Cannot convert %s images with %d components',
+                                 in_frame.type, RGB.shape[2])
+            return False
+        if in_frame.type != 'RGB' and in_frame.type != self.last_frame_type:
+            self.logger.warning('Expected RGB input, got %s', in_frame.type)
+        self.last_frame_type = in_frame.type
         audit = out_frame.metadata.get('audit')
         audit += 'data = RGBtoYUV(data)\n'
         # offset or scale
