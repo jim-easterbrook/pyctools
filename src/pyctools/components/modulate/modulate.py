@@ -40,10 +40,7 @@ class Modulate(Transformer):
 
     @actor_method
     def cell(self, cell_data):
-        if not isinstance(cell_data, (list, tuple)):
-            self.logger.warning('Cell input must be a list of numpy arrays')
-            return
-        for cell in cell_data:
+        for cell in cell_data.data:
             if not isinstance(cell, numpy.ndarray):
                 self.logger.warning('Each cell input must be a numpy array')
                 return
@@ -56,14 +53,14 @@ class Modulate(Transformer):
 
     def transform(self, in_frame, out_frame):
         in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=False)
-        if self.cell_count != len(self.cell_data):
-            self.cell_count = len(self.cell_data)
+        if self.cell_count != len(self.cell_data.data):
+            self.cell_count = len(self.cell_data.data)
             if self.cell_count != 1 and self.cell_count != len(in_data):
                 self.logger.warning('Mismatch between %d cells and %d images',
                                     self.cell_count, len(in_data))
         out_frame.data = []
         for c, in_comp in enumerate(in_data):
-            cell = self.cell_data[c % self.cell_count]
+            cell = self.cell_data.data[c % self.cell_count]
             if cell.size == 1:
                 out_comp = in_comp * cell[0, 0, 0]
             else:
@@ -72,5 +69,7 @@ class Modulate(Transformer):
             out_frame.data.append(out_comp)
         audit = out_frame.metadata.get('audit')
         audit += 'data = Modulate(data)\n'
+        audit += '    cell: {\n%s}\n' % (
+            self.cell_data.metadata.get('audit'))
         out_frame.metadata.set('audit', audit)
         return True

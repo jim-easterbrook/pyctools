@@ -36,24 +36,29 @@ class Matrix(Transformer):
 
     @actor_method
     def matrix(self, new_matrix):
-        if not isinstance(new_matrix, numpy.ndarray):
-            self.logger.warning('Matrix input must be a numpy array')
-            return
-        if new_matrix.ndim != 2:
-            self.logger.warning('Matrix input must be 2 dimensional')
-            return
+        for matrix in new_matrix.data:
+            if not isinstance(matrix, numpy.ndarray):
+                self.logger.warning('Each matrix input must be a numpy array')
+                return
+            if matrix.ndim != 2:
+                self.logger.warning('Each matrix input must be 2 dimensional')
+                return
         self.matrix_coefs = new_matrix
         self.set_ready(True)
 
     def transform(self, in_frame, out_frame):
         data_in = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
-        if data_in.shape[2] != self.matrix_coefs.shape[1]:
-            self.logger.critical('Input has %d components, matrix expects %d',
-                                 data_in.shape[2], self.matrix_coefs.shape[1])
-            return False
-        out_frame.data = [numpy.dot(data_in, self.matrix_coefs.T)]
+        out_frame.data = []
+        for matrix in self.matrix_coefs.data:
+            if data_in.shape[2] != matrix.shape[1]:
+                self.logger.critical(
+                    'Input has %d components, matrix expects %d',
+                    data_in.shape[2], matrix.shape[1])
+                return False
+            out_frame.data.append(numpy.dot(data_in, matrix.T))
         audit = out_frame.metadata.get('audit')
         audit += 'data = Matrix(data)\n'
-        audit += '    matrix: %s\n' % (str(self.matrix_coefs))
+        audit += '    matrix: {\n%s}\n' % (
+            self.matrix_coefs.metadata.get('audit'))
         out_frame.metadata.set('audit', audit)
         return True
