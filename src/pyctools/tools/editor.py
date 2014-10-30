@@ -34,7 +34,7 @@ from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import Qt
 
 import pyctools.components
-from ..core.config import *
+from pyctools.core.config import *
 
 _COMP_MIMETYPE = 'application/x-pyctools-component'
 _INPUT_MIMETYPE = 'application/x-pyctools-component-input'
@@ -369,7 +369,20 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
         self.component = self.component_class()
         self.component.set_config(config)
 
+    def contextMenuEvent(self, event):
+        menu = QtGui.QMenu()
+        delete_action = menu.addAction('Delete')
+        config_action = menu.addAction('Configure')
+        action = menu.exec_(event.screenPos())
+        if action == delete_action:
+            self.scene().delete_child(self)
+        elif action == config_action:
+            self.do_config()
+
     def mouseDoubleClickEvent(self, event):
+        self.do_config()
+
+    def do_config(self):
         if self.config_dialog and self.config_dialog.isVisible():
             return
         self.config_dialog = ConfigDialog(self)
@@ -475,13 +488,15 @@ class NetworkArea(QtGui.QGraphicsScene):
             return
         event.accept()
         for child in self.items():
-            if not child.isSelected():
-                continue
-            if isinstance(child, BasicComponentIcon):
-                for link in self.matching_items(ComponentLink):
-                    if link.source == child or link.dest == child:
-                        self.removeItem(link)
-            self.removeItem(child)
+            if child.isSelected():
+                self.delete_child(child)
+
+    def delete_child(self, child):
+        if isinstance(child, BasicComponentIcon):
+            for link in self.matching_items(ComponentLink):
+                if link.source == child or link.dest == child:
+                    self.removeItem(link)
+        self.removeItem(child)
 
     def update_scene_rect(self):
         rect = self.itemsBoundingRect()
