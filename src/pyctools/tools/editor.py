@@ -664,20 +664,27 @@ class ComponentList(QtGui.QTreeView):
         for module_loader, name, ispkg in pkgutil.walk_packages(
                 path=pyctools.components.__path__,
                 prefix='pyctools.components.'):
-            parts = name.split('.')[2:]
-            parent = components
-            while parts:
-                if parts[0] not in parent:
-                    parent[parts[0]] = {}
-                parent = parent[parts[0]]
-                parts = parts[1:]
+            # import module
             try:
                 mod = __import__(name, globals(), locals(), ['*'])
             except ImportError:
                 continue
-            if hasattr(mod, '__all__'):
-                for comp in mod.__all__:
-                    parent[comp] = getattr(mod, comp)
+            if not hasattr(mod, '__all__') or not mod.__all__:
+                continue
+            # convert 'pyctools.components.a.b.c' to components['a']['b']['c']
+            parts = name.split('.')[2:]
+            if len(mod.__all__) == 1:
+                # single component in module
+                parts = parts[:-1]
+            # descend hierarchy to this module
+            parent = components
+            for part in parts:
+                if part not in parent:
+                    parent[part] = {}
+                parent = parent[part]
+            # add this module's components to hierarchy
+            for comp in mod.__all__:
+                parent[comp] = getattr(mod, comp)
         # build tree from list
         root_node = self.model().invisibleRootItem()
         self.add_nodes(root_node, components)
