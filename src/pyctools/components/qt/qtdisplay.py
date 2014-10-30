@@ -21,73 +21,74 @@
 
 Shows incoming images in a Qt window.
 
-Note: this (currently) requires my branch of guild:
-https://github.com/jim-easterbrook/guild which adds Qt support.
-
 """
 
 __all__ = ['QtDisplay']
 
 from collections import deque
-import copy
-import logging
 import sys
 
-from guild.actor import *
-from guild.qtactor import ActorSignal, QtActorMixin
 import numpy
 from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import Qt
 
-from ...core import ConfigMixin, ConfigInt
+from pyctools.core import ConfigInt, Transformer
 
-class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
-    inputs = ['input']
-    outputs = []
+class SimpleDisplay(QtGui.QLabel):
+    def __init__(self, *arg, **kw):
+        super(SimpleDisplay, self).__init__(*arg, **kw)
+        self.in_queue = deque()
+        self.framerate = 25
+        # start timer to show frames at regular intervals
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self.timer_show_frame)
+        self.timer.start(1000 // self.framerate)
 
-    def __init__(self):
-        super(QtDisplay, self).__init__(
-            None, Qt.Window | Qt.WindowStaysOnTopHint)
-        ConfigMixin.__init__(self)
-        self.logger = logging.getLogger(self.__class__.__name__)
+    def show_frame(self, frame, image, framerate):
+        # this method will be called from another thread, so do
+        # nothing except put stuff on queue
+        self.in_queue.append((frame, image, framerate))
+
+    def timer_show_frame(self):
+        if not self.in_queue:
+            return
+        frame, image, framerate = self.in_queue.popleft()
+        if framerate != self.framerate:
+            self.framerate = framerate
+            self.timer.setInterval(1000 // self.framerate)
+        if not self.isVisible():
+            self.show()
+        pixmap = QtGui.QPixmap.fromImage(image)
+        self.resize(pixmap.size())
+        self.setPixmap(pixmap)
+
+    def shut_down(self):
+        self.timer.stop()
+        self.close()
+
+class QtDisplay(Transformer):
+    def initialise(self):
         self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
         self.config['expand'] = ConfigInt(min_value=1, dynamic=True)
         self.config['framerate'] = ConfigInt(min_value=1, value=25)
-        self.timer = QtCore.QTimer(self)
-
-    def process_start(self):
-        self.update_config()
-        self.next_frame = deque()
         self.last_frame_type = None
-        # start timer to show frames at regular intervals
-        self.timer.timeout.connect(self.show_frame)
-        self.timer.start(1000 // self.config['framerate'])
+        self.display = SimpleDisplay(None, Qt.Window | Qt.WindowStaysOnTopHint)
 
-    @actor_method
-    def input(self, frame):
-        self.next_frame.append(frame)
-
-    def show_frame(self):
-        if not self.next_frame:
-            return
+    def transform(self, in_frame, out_frame):
         self.update_config()
-        self.timer.setInterval(1000 // self.config['framerate'])
-        frame = self.next_frame.popleft()
-        if not frame:
-            self.stop()
-            return
-        if not self.isVisible():
-            self.show()
-        numpy_image = frame.as_numpy(dtype=numpy.uint8, dstack=True)[0]
+        shrink = self.config['shrink']
+        expand = self.config['expand']
+        framerate = self.config['framerate']
+        numpy_image = in_frame.as_numpy(dtype=numpy.uint8, dstack=True)[0]
         ylen, xlen, bpc = numpy_image.shape
         if bpc == 3:
-            if frame.type != 'RGB' and frame.type != self.last_frame_type:
-                self.logger.warning('Expected RGB input, got %s', frame.type)
+            if in_frame.type != 'RGB' and in_frame.type != self.last_frame_type:
+                self.logger.warning('Expected RGB input, got %s', in_frame.type)
             image = QtGui.QImage(numpy_image.data, xlen, ylen, xlen * bpc,
                                  QtGui.QImage.Format_RGB888)
         elif bpc == 1:
-            if frame.type != 'Y' and frame.type != self.last_frame_type:
-                self.logger.warning('Expected Y input, got %s', frame.type)
+            if in_frame.type != 'Y' and in_frame.type != self.last_frame_type:
+                self.logger.warning('Expected Y input, got %s', in_frame.type)
             image = QtGui.QImage(numpy_image.data, xlen, ylen, xlen,
                                  QtGui.QImage.Format_Indexed8)
             image.setNumColors(256)
@@ -95,27 +96,25 @@ class QtDisplay(QtActorMixin, QtGui.QLabel, ConfigMixin):
                 image.setColor(i, QtGui.qRgba(i, i, i, 255))
         else:
             self.logger.critical(
-                'Cannot display %s frame with %d components', frame.type, bpc)
-            self.stop()
-            return
-        self.last_frame_type = frame.type
-        pixmap = QtGui.QPixmap.fromImage(image)
-        shrink = self.config['shrink']
-        expand = self.config['expand']
+                'Cannot display %s frame with %d components', in_frame.type, bpc)
+            return False
+        self.last_frame_type = in_frame.type
         if shrink > 1 or expand > 1:
-            pixmap = pixmap.scaled(
-                xlen * expand // shrink, ylen * expand // shrink)
-        self.resize(pixmap.size())
-        self.setPixmap(pixmap)
+            image = image.scaled(
+                xlen * expand // shrink, ylen * expand // shrink,
+                transformMode=Qt.SmoothTransformation)
+        self.display.show_frame(in_frame, image, framerate)
+        return True
 
     def onStop(self):
         super(QtDisplay, self).onStop()
-        self.timer.stop()
-        self.close()
+        self.display.shut_down()
 
 def main():
+    import logging
     from ..io.rawfilereader import RawFileReader
     from ..colourspace.yuvtorgb import YUVtoRGB
+    from guild.actor import pipeline, start, stop, wait_for
 
     if len(sys.argv) != 2:
         print('usage: %s yuv_video_file' % sys.argv[0])
