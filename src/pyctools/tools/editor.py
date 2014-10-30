@@ -28,6 +28,7 @@ import six
 from six.moves import cPickle
 import pkgutil
 import sys
+import types
 
 from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import Qt
@@ -574,10 +575,11 @@ class NetworkArea(QtGui.QGraphicsScene):
         else:
             cnf[key] = value
 
-    def save_script(self, file_name):
+    def save_script(self, file_name, needs_qt):
         components = {}
         modules = []
         linkages = {}
+        with_qt = False
         for child in self.items():
             if isinstance(child, BasicComponentIcon):
                 components[child.id] = {
@@ -587,8 +589,10 @@ class NetworkArea(QtGui.QGraphicsScene):
                     'config' : repr(child.component.get_config()),
                     'pos' : (child.pos().x(), child.pos().y()),
                     }
-                if child.component_class.__module__ not in modules:
-                    modules.append(child.component_class.__module__)
+                mod = child.component_class.__module__
+                if mod not in modules:
+                    modules.append(mod)
+                    with_qt = with_qt or needs_qt[mod]
             elif isinstance(child, ComponentLink):
                 linkages[(child.source.id, child.outbox)] = (
                     child.dest.id, child.inbox)
@@ -599,9 +603,7 @@ class NetworkArea(QtGui.QGraphicsScene):
 # File written by pyctools-editor. Do not edit.
 
 import logging
-from PyQt4 import QtGui
 from pyctools.core.compound import Compound
-
 """)
             for module in modules:
                 of.write('import %s\n' % module)
@@ -624,14 +626,19 @@ class Network(object):
         return Compound(linkages=self.linkages, **comps)
 
 if __name__ == '__main__':
+""" % (components, linkages))
+            if with_qt:
+                of.write('    from PyQt4 import QtGui\n' +
+                         '    app = QtGui.QApplication([])\n')
+            of.write("""
     logging.basicConfig(level=logging.DEBUG)
-    app = QtGui.QApplication([])
     comp = Network().make()
     comp.start()
-    app.exec_()
-    comp.stop()
-    comp.join()
-""" % (components, linkages))
+""")
+            if with_qt:
+                of.write('    app.exec_()\n' +
+                         '    comp.stop()\n')
+            of.write('    comp.join()\n')
 
 class ComponentItemModel(QtGui.QStandardItemModel):
     def mimeTypes(self):
@@ -661,6 +668,7 @@ class ComponentList(QtGui.QTreeView):
         self.setHeaderHidden(True)
         # get list of available components (and import them!)
         components = {}
+        self.needs_qt = {}
         for module_loader, name, ispkg in pkgutil.walk_packages(
                 path=pyctools.components.__path__,
                 prefix='pyctools.components.'):
@@ -685,6 +693,17 @@ class ComponentList(QtGui.QTreeView):
             # add this module's components to hierarchy
             for comp in mod.__all__:
                 parent[comp] = getattr(mod, comp)
+            # try to find out if module needs Qt
+            self.needs_qt[name] = False
+            for item in dir(mod):
+                if not 'Qt' in item:
+                    continue
+                item = getattr(mod, item)
+                if not isinstance(item, types.ModuleType):
+                    continue
+                if item.__name__.startswith('PyQt'):
+                    self.needs_qt[name] = True
+                    break
         # build tree from list
         root_node = self.model().invisibleRootItem()
         self.add_nodes(root_node, components)
@@ -763,7 +782,8 @@ class MainWindow(QtGui.QMainWindow):
             self, 'Save file', self.script_file, 'Python scripts (*.py)'))
         if file_name:
             self.set_window_title(file_name)
-            self.network_area.save_script(file_name)
+            self.network_area.save_script(
+                file_name, self.component_list.needs_qt)
 
     def set_window_title(self, file_name):
         self.script_file = file_name
