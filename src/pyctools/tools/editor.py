@@ -699,11 +699,12 @@ class ComponentList(QtGui.QTreeView):
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
-        self.setWindowTitle("Pyctools network editor")
+        self.setWindowTitle("Pyctools graph editor")
+        self.script_file = os.getcwd()
         ## file menu
         file_menu = self.menuBar().addMenu('File')
         load_action = QtGui.QAction('Load script', self)
-        load_action.setShortcuts(['Ctrl+L'])
+        load_action.setShortcuts(['Ctrl+L', 'Ctrl+O'])
         load_action.triggered.connect(self.load_script)
         file_menu.addAction(load_action)
         save_action = QtGui.QAction('Save script', self)
@@ -745,15 +746,22 @@ class MainWindow(QtGui.QMainWindow):
 
     def load_script(self):
         file_name = str(QtGui.QFileDialog.getOpenFileName(
-            self, 'Load file', filter='Python scripts (*.py)'))
+            self, 'Load file', self.script_file, 'Python scripts (*.py)'))
         if file_name:
+            self.set_window_title(file_name)
             self.network_area.load_script(file_name)
 
     def save_script(self):
         file_name = str(QtGui.QFileDialog.getSaveFileName(
-            self, 'Save file', filter='Python scripts (*.py)'))
+            self, 'Save file', self.script_file, 'Python scripts (*.py)'))
         if file_name:
+            self.set_window_title(file_name)
             self.network_area.save_script(file_name)
+
+    def set_window_title(self, file_name):
+        self.script_file = file_name
+        self.setWindowTitle(
+            "Pyctools graph editor - %s" % os.path.basename(file_name))
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
