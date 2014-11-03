@@ -3,12 +3,47 @@ Pyctools
 
 A picture processing algorithm development kit.
 
-This is nothing more than a declaration of intent at present.
-Eventually Pyctools will be a collection of picture processing primitive components that you can easily interconnect to make complex algorithm simulations.
-It will work with stills or video, and utilise popular libraries such as `Python Imaging Library <http://www.pythonware.com/products/pil/>`_, `NumPy <http://www.numpy.org/>`_ and `OpenCV <http://opencv.org/>`_.
+Pyctools is a collection of picture processing primitive components that you can easily interconnect to make complex algorithm simulations.
+It works with stills or video, and utilises popular libraries such as `Python Imaging Library <http://www.pythonware.com/products/pil/>`_, `NumPy <http://www.numpy.org/>`_ and `OpenCV <http://opencv.org/>`_.
 
-History
--------
+Requirements
+------------
+
+* `Python <https://www.python.org/>`_ version 2 or 3.
+* `Guild <https://github.com/sparkslabs/guild>`_.
+* `NumPy <http://www.numpy.org/>`_.
+* `Python Imaging Library <http://www.pythonware.com/products/pil/>`_.
+* `Cython <http://cython.org/>`_.
+
+Installation
+------------
+
+The easiest way to install Pyctools is with `pip <https://pip.pypa.io/en/latest/>`_::
+
+  sudo pip install pyctools.core
+
+Note the use of ``sudo`` to install into system-wide directories.
+If you don't have root access (e.g. on a corporate machine) you can create a local installation with the ``--user`` option::
+
+  pip install --user pyctools.core
+
+An alternative is to use a `virtual environment <http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_.
+(Although you probably need root access to install the ``virtualenv`` tool.)
+
+If you want easy access to the pyctools source files (e.g. to write your own extensions) or want to use the latest development version you should clone the GitHub repository and use ``setup.py`` in the usual way::
+
+  git clone https://github.com/jim-easterbrook/pyctools.git
+  cd pyctools
+  python setup.py build
+  sudo python setup.py install
+
+Documentation
+-------------
+
+The next thing on my todo list.
+
+Background
+----------
 
 A lot of my work at `BBC R&D <http://www.bbc.co.uk/rd>`_ involved experimenting with different picture processing algorithms.
 My colleagues and I developed a set of programs we called "pictools".
@@ -22,20 +57,17 @@ This used `Kamaelia <http://www.kamaelia.org/>`_ to connect simple components to
 Core technologies
 -----------------
 
-Pyctools will use `Guild <https://github.com/sparkslabs/guild>`_ at its core.
+Pyctools uses `Guild <https://github.com/sparkslabs/guild>`_ at its core.
 This is ideally suited to writing "reactive" components that do nothing until a video frame arrives on their input, then process the frame and (probably) send it to their output.
 Guild makes it easy to interconnect such processes.
 
-Although Pyctools will be written in Python this should not have any adverse impact on processing speeds.
-All the computationally intensive work should be done in C/C++/Ada/whatever - as long as it can be interfaced to Python it can be used.
-I'm hoping to be able to use a range of existing image processing libraries.
+Although Pyctools is written in Python this does not have any adverse impact on processing speeds.
+All the computationally intensive work is done in Python extensions.
+These can be written in a variety of languages, but I've found `Cython <http://cython.org/>`_ easiest to use.
 
-Pyctools will be primarily targeted at Python3.
-I expect there will be some libraries that are only available in Python2 for a while yet, but I hope that situation won't last much longer.
+Pyctools is primarily targeted at Python3.
+There are some libraries that are only available in Python2 for a while yet, but I hope that situation won't last much longer.
 My intention is to write Python3 that's compatible with Python2, not *vice versa*.
-
-Pyctool components should be configurable in a consistent manner, using a tree of configuration objects that can be introspected.
-This will allow development of a GUI to assemble networks of components that can then (optionally) be run as a batch script.
 
 Metadata
 --------
@@ -44,14 +76,14 @@ One of the better features of the BBC pictools was the "audit trail".
 Every tool extended this block of text with details of what it did - the program name, its parameters, the time and machine it ran on, etc.
 This often proved useful when seeking to find out what a particular file was supposed to be.
 
-Pyctools will probably use XMP "sidecar" files to store metadata like this.
+Pyctools uses XMP "sidecar" files to store metadata like this.
 Using sidecar files means we won't need to restrict the video or still image file formats to those that support metadata.
 
 Extensible
 ----------
 
-The core parts of Pyctools will be open source and available from places such as `GitHub <https://github.com/>`_ and `PyPI <https://pypi.python.org/pypi>`_.
-The intention is to structure it so that Pyctools extensions can be obtained from elsewhere and installed into a common Pyctools installation.
+The core parts of Pyctools are open source and available from `GitHub <https://github.com/jim-easterbrook/pyctools>`_ and `PyPI <https://pypi.python.org/pypi/pyctools.core/0.0.0>`_.
+Python `namespace packages <http://legacy.python.org/dev/peps/pep-0420/>`_ are used (via `setuptools <https://pythonhosted.org/setuptools/setuptools.html#namespace-packages>`_) to allow Pyctools to be easily extended by other people.
 There should be nothing to stop commercial developers writing their own extensions, either for release or purely for internal use.
 
 Licence
