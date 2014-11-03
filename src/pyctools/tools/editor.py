@@ -172,9 +172,9 @@ def ConfigWidget(config):
 class ConfigDialog(QtGui.QDialog):
     def __init__(self, parent):
         super(ConfigDialog, self).__init__()
-        self.setWindowTitle('%s configuration' % parent.id)
-        self.component = parent.component
-        self.config = self.component.get_config()
+        self.setWindowTitle('%s configuration' % parent.name)
+        self.component = parent
+        self.config = self.component.obj.get_config()
         self.setLayout(QtGui.QGridLayout())
         self.layout().setColumnStretch(0, 1)
         # central area
@@ -196,7 +196,7 @@ class ConfigDialog(QtGui.QDialog):
         self.close()
 
     def apply_changes(self):
-        self.component.set_config(self.config)
+        self.component.obj.set_config(self.config)
 
 class ComponentLink(QtGui.QGraphicsLineItem):
     def __init__(self, source, outbox, dest, inbox, parent=None):
@@ -319,25 +319,24 @@ class OutputIcon(IOIcon):
 
 class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
     width = 100
-    def __init__(self, comp_id, component_class, parent=None):
+    def __init__(self, name, klass, obj, parent=None):
         super(BasicComponentIcon, self).__init__(parent)
         self.setFlags(QtGui.QGraphicsItem.ItemIsMovable |
                       QtGui.QGraphicsItem.ItemIsSelectable |
                       QtGui.QGraphicsItem.ItemSendsGeometryChanges)
-        self.component_class = component_class
+        self.name = name
+        self.klass = klass
+        self.obj = obj
         self.config_dialog = None
-        # create component
-        self.id = comp_id
-        self.component = self.component_class()
-        # id label
-        text = QtGui.QGraphicsSimpleTextItem(self.id, self)
-        font = text.font()
+        # name label
+        self.name_label = QtGui.QGraphicsSimpleTextItem(self.name, self)
+        font = self.name_label.font()
         font.setBold(True)
-        text.setFont(font)
-        text.setPos(8, 8)
+        self.name_label.setFont(font)
+        self.name_label.setPos(8, 8)
         # type label
         text = QtGui.QGraphicsSimpleTextItem(
-            self.component_class.__name__ + '()', self)
+            self.klass.__name__ + '()', self)
         font = text.font()
         font.setPointSizeF(font.pointSize() * 0.8)
         font.setItalic(True)
@@ -345,15 +344,22 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
         text.setPos(8, 30)
         # inputs
         self.inputs = {}
-        for idx, name in enumerate(self.component.inputs):
+        for idx, name in enumerate(self.obj.inputs):
             self.inputs[name] = InputIcon(name, self)
             self.inputs[name].setPos(0, 100 + (idx * 20))
         # output
         self.outputs = {}
-        for idx, name in enumerate(self.component.outputs):
+        for idx, name in enumerate(self.obj.outputs):
             self.outputs[name] = OutputIcon(name, self)
             self.outputs[name].setPos(self.width, 100 + (idx * 20))
         self.draw_icon()
+
+    def rename(self, name):
+        self.name = name
+        if self.config_dialog:
+            self.config_dialog.setWindowTitle(
+                '%s configuration' % self.name)
+        self.name_label.setText(self.name)
 
     def in_pos(self, name, link_pos):
         return self.inputs[name].connect_pos()
@@ -362,19 +368,22 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
         return self.outputs[name].connect_pos()
 
     def connect(self, outbox, dest, inbox):
-        self.component.bind(outbox, dest.component, inbox)
+        self.obj.bind(outbox, dest.obj, inbox)
 
     def renew(self):
-        config = self.component.get_config()
-        self.component = self.component_class()
-        self.component.set_config(config)
+        config = self.obj.get_config()
+        self.obj = self.klass()
+        self.obj.set_config(config)
 
     def contextMenuEvent(self, event):
         menu = QtGui.QMenu()
+        rename_action = menu.addAction('Rename')
         delete_action = menu.addAction('Delete')
         config_action = menu.addAction('Configure')
         action = menu.exec_(event.screenPos())
-        if action == delete_action:
+        if action == rename_action:
+            self.scene().rename_component(self)
+        elif action == delete_action:
             self.scene().delete_child(self)
         elif action == config_action:
             self.do_config()
@@ -383,10 +392,9 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
         self.do_config()
 
     def do_config(self):
-        if self.config_dialog and self.config_dialog.isVisible():
-            return
-        self.config_dialog = ConfigDialog(self)
-        self.config_dialog.show()
+        if not (self.config_dialog and self.config_dialog.isVisible()):
+            self.config_dialog = ConfigDialog(self)
+            self.config_dialog.show()
         self.config_dialog.raise_()
         self.config_dialog.activateWindow()
 
@@ -414,11 +422,14 @@ class BusbarIcon(BasicComponentIcon):
     width = 50
     def connect(self, outbox, dest, inbox):
         super(BusbarIcon, self).connect(outbox, dest, inbox)
-        for name in self.component.outputs:
+        for name in self.obj.outputs:
             if name in self.outputs:
                 continue
             self.outputs[name] = OutputIcon(name, self)
-            self.outputs[name].setPos(self.width, 0)
+            y = 0
+            while not self.out_pos_free(name, y):
+                y += 20
+            self.outputs[name].setPos(self.width, y)
         self.draw_icon()
 
     def in_pos(self, name, link_pos):
@@ -479,8 +490,8 @@ class NetworkArea(QtGui.QGraphicsScene):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
             return super(NetworkArea, self).dropEvent(event)
         data = event.mimeData().data(_COMP_MIMETYPE).data()
-        component_class = cPickle.loads(data)
-        self.add_component(component_class, event.scenePos())
+        klass = cPickle.loads(data)
+        self.add_component(klass, event.scenePos())
 
     def keyPressEvent(self, event):
         if not event.matches(QtGui.QKeySequence.Delete):
@@ -503,35 +514,50 @@ class NetworkArea(QtGui.QGraphicsScene):
         rect.adjust(-150, -150, 150, 150)
         self.setSceneRect(rect.unite(self.sceneRect()))
 
-    def add_component(self, component_class, position):
-        while True:
-            base_name = re.sub('[^A-Z]', '', component_class.__name__).lower()
-            comp_id = base_name
-            n = 0
-            while self.id_in_use(comp_id):
-                comp_id = base_name + str(n)
-                n += 1
-            comp_id, OK = QtGui.QInputDialog.getText(
-                self.views()[0], 'Component id',
-                'Please enter a unique component id', text=comp_id)
-            if not OK:
-                return
-            comp_id = str(comp_id)
-            if not self.id_in_use(comp_id):
-                break
-        icon = self.get_icon(comp_id, component_class)
-        icon.setPos(position)
-        self.addItem(icon)
+    def add_component(self, klass, position):
+        base_name = re.sub('[^A-Z]', '', klass.__name__).lower()
+        name = base_name
+        n = 0
+        while self.name_in_use(name):
+            name = base_name + str(n)
+            n += 1
+        name = self.get_unique_name(name)
+        if name:
+            self.new_component(name, klass, position)
+
+    def new_component(self, name, klass, position):
+        obj = klass()
+        if isinstance(obj, pyctools.components.plumbing.busbar.Busbar):
+            component = BusbarIcon(name, klass, obj)
+        else:
+            component = ComponentIcon(name, klass, obj)
+        component.setPos(position)
+        self.addItem(component)
         self.update_scene_rect()
+        return component
 
-    def get_icon(self, comp_id, component_class):
-        if component_class == pyctools.components.plumbing.busbar.Busbar:
-            return BusbarIcon(comp_id, component_class)
-        return ComponentIcon(comp_id, component_class)
+    def rename_component(self, component):
+        old_name = component.name
+        component.name = None
+        name = self.get_unique_name(old_name)
+        component.name = old_name
+        if name:
+            component.rename(name)
 
-    def id_in_use(self, comp_id):
+    def get_unique_name(self, base_name):
+        while True:
+            name, OK = QtGui.QInputDialog.getText(
+                self.views()[0], 'Component name',
+                'Please enter a unique component name', text=base_name)
+            if not OK:
+                return ''
+            name = str(name)
+            if not self.name_in_use(name):
+                return name
+
+    def name_in_use(self, name):
         for child in self.matching_items(BasicComponentIcon):
-            if child.id == comp_id:
+            if child.name == name:
                 return True
         return False
 
@@ -543,18 +569,18 @@ class NetworkArea(QtGui.QGraphicsScene):
     def run_graph(self):
         # replace components with fresh instances
         for child in self.matching_items(BasicComponentIcon):
-            child.component.stop()
+            child.obj.stop()
             child.renew()
         # rebuild connections
         for child in self.matching_items(ComponentLink):
             child.renew()
         # run it!
         for child in self.matching_items(BasicComponentIcon):
-            child.component.start()
+            child.obj.start()
 
     def stop_graph(self):
         for child in self.matching_items(BasicComponentIcon):
-            child.component.stop()
+            child.obj.stop()
 
     def load_script(self, file_name):
         global_vars = {}
@@ -566,22 +592,22 @@ class NetworkArea(QtGui.QGraphicsScene):
             # not a recognised script
             print('Script not recognised')
             return
+        for child in self.items():
+            self.removeItem(child)
         network = local_vars['Network']()
         comps = {}
-        for comp_id, comp in network.components.items():
-            comps[comp_id] = self.get_icon(comp_id, eval(comp['class']))
-            comps[comp_id].setPos(*comp['pos'])
-            self.addItem(comps[comp_id])
-            cnf = comps[comp_id].component.get_config()
+        for name, comp in network.components.items():
+            comps[name] = self.new_component(
+                name, eval(comp['class']), QtCore.QPointF(*comp['pos']))
+            cnf = comps[name].obj.get_config()
             for key, value in eval(comp['config']).items():
                 self.set_config(cnf, key, value)
-            comps[comp_id].component.set_config(cnf)
+            comps[name].obj.set_config(cnf)
         for source, dest in network.linkages.items():
             source, outbox = source
             dest, inbox = dest
             link = ComponentLink(comps[source], outbox, comps[dest], inbox)
             self.addItem(link)
-        self.update_scene_rect()
 
     def set_config(self, cnf, key, value):
         if isinstance(value, dict):
@@ -597,20 +623,18 @@ class NetworkArea(QtGui.QGraphicsScene):
         with_qt = False
         for child in self.items():
             if isinstance(child, BasicComponentIcon):
-                components[child.id] = {
-                    'class' : '%s.%s' % (
-                        child.component_class.__module__,
-                        child.component_class.__name__),
-                    'config' : repr(child.component.get_config()),
+                mod = child.klass.__module__
+                components[child.name] = {
+                    'class' : '%s.%s' % (mod, child.klass.__name__),
+                    'config' : repr(child.obj.get_config()),
                     'pos' : (child.pos().x(), child.pos().y()),
                     }
-                mod = child.component_class.__module__
                 if mod not in modules:
                     modules.append(mod)
                     with_qt = with_qt or needs_qt[mod]
             elif isinstance(child, ComponentLink):
-                linkages[(child.source.id, child.outbox)] = (
-                    child.dest.id, child.inbox)
+                linkages[(child.source.name, child.outbox)] = (
+                    child.dest.name, child.inbox)
         components = pprint.pformat(components, indent=4)
         linkages = pprint.pformat(linkages, indent=4)
         with open(file_name, 'w') as of:
@@ -632,12 +656,12 @@ class Network(object):
 
     def make(self):
         comps = {}
-        for comp_id, component in self.components.items():
-            comps[comp_id] = eval(component['class'])()
-            cnf = comps[comp_id].get_config()
+        for name, component in self.components.items():
+            comps[name] = eval(component['class'])()
+            cnf = comps[name].get_config()
             for key, value in eval(component['config']).items():
                 cnf[key] = value
-            comps[comp_id].set_config(cnf)
+            comps[name].set_config(cnf)
         return Compound(linkages=self.linkages, **comps)
 
 if __name__ == '__main__':
