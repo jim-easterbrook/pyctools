@@ -18,10 +18,13 @@
 #  <http://www.gnu.org/licenses/>.
 
 from Cython.Distutils import build_ext
+from distutils.command.upload import upload
 import numpy
 import os
 from setuptools import setup, find_packages, Extension
 import sys
+
+version = '0.1.0'
 
 packages = find_packages('src')
 
@@ -55,19 +58,48 @@ for root, dirs, files in os.walk('src/pyctools'):
             include_dirs = [numpy.get_include()],
             ))
 
+# Use Cython version of 'build_ext' command
+cmdclass = {'build_ext': build_ext}
+
+# modify upload command to add appropriate tag
+# requires GitPython - 'sudo pip install gitpython --pre'
+try:
+    import git
+except ImportError:
+    pass
+else:
+    class upload_and_tag(upload):
+        def run(self):
+            tag_path = 'v%s' % version
+            message = '%s\n\n' % tag_path
+            with open('CHANGELOG.txt') as f:
+                while not f.readline().startswith('Changes'):
+                    pass
+                while True:
+                    line = f.readline().strip()
+                    if not line:
+                        break
+                    message += line + '\n'
+            repo = git.Repo()
+            tag = repo.create_tag(tag_path, message=message)
+            remote = repo.remotes.origin
+            remote.push(tags=True)
+            return upload.run(self)
+    cmdclass['upload'] = upload_and_tag
+
 with open('README.rst') as f:
     long_description = f.read()
 url = 'https://github.com/jim-easterbrook/pyctools'
 
 setup(name = 'pyctools.core',
-      version = '0.0.0',
+      version = version,
       author = 'Jim Easterbrook',
       author_email = 'jim@jim-easterbrook.me.uk',
       url = url,
       description = 'Picture processing algorithm development kit',
       long_description = long_description,
       classifiers = [
-          'Development Status :: 1 - Planning',
+          'Development Status :: 3 - Alpha',
           'Intended Audience :: Developers',
           'Intended Audience :: Science/Research',
           'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
@@ -91,5 +123,5 @@ setup(name = 'pyctools.core',
           'console_scripts' : console_scripts,
           },
       install_requires = ['cython', 'numpy'],
-      cmdclass = {'build_ext': build_ext},
+      cmdclass = cmdclass,
       )
