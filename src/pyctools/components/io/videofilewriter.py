@@ -27,16 +27,12 @@ __all__ = ['VideoFileWriter']
 
 import subprocess
 
-from guild.actor import *
 import numpy
 
-from pyctools.core import Component, ConfigPath, ConfigInt, ConfigEnum, Metadata
+from pyctools.core import Transformer, ConfigPath, ConfigInt, ConfigEnum, Metadata
 
-class VideoFileWriter(Component):
-    outputs = []
-
-    def __init__(self):
-        super(VideoFileWriter, self).__init__()
+class VideoFileWriter(Transformer):
+    def initialise(self):
         self.config['path'] = ConfigPath()
         self.config['encoder'] = ConfigEnum((
             '-c:v ffv1 -pix_fmt bgr0',
@@ -50,11 +46,7 @@ class VideoFileWriter(Component):
         self.ffmpeg = None
         self.last_frame_type = None
 
-    @actor_method
-    def input(self, frame):
-        if not frame:
-            self.stop()
-            return
+    def transform(self, in_frame, out_frame):
         if not self.ffmpeg:
             self.update_config()
             path = self.config['path']
@@ -62,32 +54,31 @@ class VideoFileWriter(Component):
             fps = self.config['fps']
             self.bit16 = self.config['16bit'] != 'off'
         if self.bit16:
-            numpy_image = frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+            numpy_image = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
             numpy_image = numpy_image * 256.0
             numpy_image = numpy_image.clip(0, 2**16 - 1).astype(numpy.uint16)
         else:
-            numpy_image = frame.as_numpy(dtype=numpy.uint8, dstack=True)[0]
+            numpy_image = in_frame.as_numpy(dtype=numpy.uint8, dstack=True)[0]
         ylen, xlen, bpc = numpy_image.shape
         if bpc == 3:
-            if frame.type != 'RGB' and frame.type != self.last_frame_type:
-                self.logger.warning('Expected RGB input, got %s', frame.type)
+            if in_frame.type != 'RGB' and in_frame.type != self.last_frame_type:
+                self.logger.warning('Expected RGB input, got %s', in_frame.type)
             if self.bit16:
                 pix_fmt = 'rgb48le'
             else:
                 pix_fmt = 'rgb24'
         elif bpc == 1:
-            if frame.type != 'Y' and frame.type != self.last_frame_type:
-                self.logger.warning('Expected Y input, got %s', frame.type)
+            if in_frame.type != 'Y' and in_frame.type != self.last_frame_type:
+                self.logger.warning('Expected Y input, got %s', in_frame.type)
             if self.bit16:
                 pix_fmt = 'gray16le'
             else:
                 pix_fmt = 'gray'
         else:
             self.logger.critical(
-                'Cannot write %s frame with %d components', frame.type, bpc)
-            self.stop()
-            return
-        self.last_frame_type = frame.type
+                'Cannot write %s frame with %d components', in_frame.type, bpc)
+            return False
+        self.last_frame_type = in_frame.type
         if not self.ffmpeg:
             self.ffmpeg = subprocess.Popen(
                 ['ffmpeg', '-v', 'warning', '-y', '-an',
@@ -96,7 +87,7 @@ class VideoFileWriter(Component):
                  '-r', '%d' % fps, '-pix_fmt', pix_fmt, '-i', '-',
                  '-r', '%d' % fps] + encoder.split() + [path],
                 stdin=subprocess.PIPE)
-            md = Metadata().copy(frame.metadata)
+            md = Metadata().copy(in_frame.metadata)
             audit = md.get('audit')
             audit += '%s = data\n' % path
             audit += '    encoder: "%s"\n' % (encoder)
@@ -104,6 +95,7 @@ class VideoFileWriter(Component):
             md.set('audit', audit)
             md.to_file(path)
         self.ffmpeg.stdin.write(numpy_image.tostring())
+        return True
 
     def onStop(self):
         super(VideoFileWriter, self).onStop()
