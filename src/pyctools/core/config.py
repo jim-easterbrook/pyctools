@@ -24,10 +24,26 @@ different value types.
 
 """
 
+__docformat__ = 'restructuredtext en'
+
 import collections
 import copy
 
 class ConfigLeafNode(object):
+    """Base class for configuration nodes.
+
+    :keyword object value: Initial value of the node.
+
+    :keyword bool dynamic: Whether the value can be changed while the
+        component is running. Not currently used anywhere.
+
+    :keyword object min_value: Minimum value of the node, for types
+        where it's relevant.
+
+    :keyword object max_value: Maximum value of the node, for types
+        where it's relevant.
+
+    """
     def __init__(self, value=None, dynamic=False, min_value=None, max_value=None):
         self.value = value
         self.dynamic = dynamic
@@ -54,10 +70,16 @@ class ConfigLeafNode(object):
         return repr(self.value)
 
 class ConfigPath(ConfigLeafNode):
+    """File pathname configuration node.
+
+    """
     def validate(self, value):
         return isinstance(value, str)
 
 class ConfigInt(ConfigLeafNode):
+    """Integer configuration node.
+
+    """
     def __init__(self, **kw):
         super(ConfigInt, self).__init__(**kw)
         if self.value is None:
@@ -68,6 +90,9 @@ class ConfigInt(ConfigLeafNode):
         return isinstance(value, int) and self.clip(value) == value
 
 class ConfigFloat(ConfigLeafNode):
+    """Float configuration node.
+
+    """
     def __init__(self, decimals=8, wrapping=False, **kw):
         super(ConfigFloat, self).__init__(**kw)
         self.decimals = decimals
@@ -80,10 +105,18 @@ class ConfigFloat(ConfigLeafNode):
         return isinstance(value, float) and self.clip(value) == value
 
 class ConfigStr(ConfigLeafNode):
+    """String configuration node.
+
+    """
     def validate(self, value):
         return isinstance(value, str)
 
 class ConfigEnum(ConfigLeafNode):
+    """'Enum' configuration node.
+
+    The value can be one of a list of choices.
+
+    """
     def __init__(self, choices, **kw):
         super(ConfigEnum, self).__init__(value=choices[0], **kw)
         self.choices = choices
@@ -92,6 +125,11 @@ class ConfigEnum(ConfigLeafNode):
         return value in self.choices
 
 class ConfigParent(ConfigLeafNode):
+    """Parent configuration node.
+
+    Stores a set of child nodes in a :py:class:`dict`.
+
+    """
     def __init__(self):
         super(ConfigParent, self).__init__(value={})
 
@@ -115,6 +153,12 @@ class ConfigParent(ConfigLeafNode):
             self.value[key] = value
 
 class ConfigGrandParent(ConfigParent):
+    """Grandparent configuration node.
+
+    Stores a set of :py:class:`ConfigParent` nodes in a
+    :py:class:`dict`.
+
+    """
     def __getitem__(self, key):
         return self.value[key]
 
@@ -122,11 +166,26 @@ class ConfigGrandParent(ConfigParent):
         self.value[key] = value
 
 class ConfigMixin(object):
+    """Add a config tree to a pyctools component.
+
+    """
     def __init__(self):
         self.config = ConfigParent()
         self._configmixin_queue = collections.deque()
 
     def get_config(self):
+        """Get a copy of the component's current configuration.
+
+        Using a copy allows the config to be updated in a threadsafe
+        manner while the component is running. Use
+        :py:meth:`set_config` method to update the component's
+        configuration after making changes to the copy.
+
+        :return: Copy of component's configuration.
+
+        :rtype: ConfigParent
+
+        """
         # get any queued changes
         self.update_config()
         # make copy to allow changes without affecting running
@@ -134,10 +193,31 @@ class ConfigMixin(object):
         return copy.deepcopy(self.config)
 
     def set_config(self, config):
+        """Update the component's configuration.
+
+        Use the :py:meth:`get_config` method to get a copy of the
+        component's configuration, update that copy then call
+        :py:meth:`set_config` to update the component. This enables
+        the configuration to be changed in a threadsafe manner while
+        the component is running, and allows several values to be
+        changed at once.
+
+        :param ConfigParent config: New configuration.
+
+        """
         # put copy of config on queue for running component
         self._configmixin_queue.append(copy.deepcopy(config))
 
     def update_config(self):
+        """Pull any changes made with :py:meth:`set_config`.
+
+        Call this from within your component before using any config
+        values to ensure you have the latest values set by the user.
+
+        :return: Whether the config was updated.
+        :rtype: bool
+
+        """
         result = False
         while self._configmixin_queue:
             self.config = self._configmixin_queue.popleft()

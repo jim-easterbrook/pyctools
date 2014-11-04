@@ -20,11 +20,13 @@ site.addsitedir(os.path.abspath('..'))
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary',
-	      'sphinx.ext.viewcode']
+	      'sphinx.ext.viewcode', 'sphinx.ext.intersphinx']
 
 autoclass_content = 'both'
 autodoc_member_order = 'bysource'
 autodoc_default_flags = ['members', 'undoc-members', 'show-inheritance']
+
+intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
 
 keep_warnings = True
 add_function_parentheses = False
@@ -36,7 +38,7 @@ add_module_names = False
 rst_epilog = """
 ----
 
-Comments or questions? Please eamil jim@jim-easterbrook.me.uk.
+Comments or questions? Please email jim@jim-easterbrook.me.uk.
 """
 
 # The suffix of source filenames.
