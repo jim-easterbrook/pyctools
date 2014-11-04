@@ -183,7 +183,7 @@ class ConfigMixin(object):
 
         :return: Copy of component's configuration.
 
-        :rtype: ConfigParent
+        :rtype: :py:class:`ConfigParent`
 
         """
         # get any queued changes

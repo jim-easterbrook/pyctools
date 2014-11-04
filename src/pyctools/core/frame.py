@@ -19,16 +19,10 @@
 
 """Pyctools "Frame" class.
 
-This is a fairly free-form container, but every Frame object must have:
-
-* a frame number
-* a list of zero or more data items, which may themselves be Frames
-* a type description string, such as "RGB"
-* a Metadata item
-
 """
 
 __all__ = ['Frame']
+__docformat__ = 'restructuredtext en'
 
 import numpy
 import PIL.Image
@@ -36,6 +30,22 @@ import PIL.Image
 from .metadata import Metadata
 
 class Frame(object):
+    """Container for a single image or frame of video.
+
+    This is a fairly free-form container (to which you can add other
+    data), but every :py:class:`Frame` object must have:
+
+    * a frame number
+    * a list of data items
+    * a type description string, such as "RGB"
+    * a :py:class:`~.metadata.Metadata` item
+
+    The data items can be :py:class:`numpy:numpy.ndarray` or
+    :py:class:`PIL.Image.Image` objects. The list should contain a
+    single 3 dimensional array or one 2 dimensional array for each
+    colour component (or band) in the image.
+
+    """
     def __init__(self):
         self.frame_no = -1
         self.data = []
@@ -43,12 +53,40 @@ class Frame(object):
         self.metadata = Metadata()
 
     def initialise(self, other):
+        """Initialise a :py:class:`Frame` from another :py:class:`Frame`.
+
+        Copies the metadata and (a reference to) the data from
+        :py:obj:`other`. Note that the data is not actually copied --
+        you must make a copy of the data before changing it.
+
+        :param Frame other: The frame to copy.
+
+        """
         self.frame_no = other.frame_no
         self.data = other.data
         self.type = other.type
         self.metadata.copy(other.metadata)
 
     def as_numpy(self, dtype=None, dstack=None):
+        """Get image data in :py:class:`numpy:numpy.ndarray` form.
+
+        Note that if the image data is already in the correct format
+        this is a null operation.
+
+        :keyword numpy.dtype dtype: What :py:class:`~numpy:numpy.dtype` the
+            data should be in, e.g. ``numpy.float32``. If ``dtype`` is
+            ``None`` then no conversion will be done.
+
+        :keyword bool dstack: Whether to return a single 3D array
+            (``dstack=True``) or a list of 2D arrays
+            (``dstack=False``). If ``dstack`` is ``None`` then no
+            conversion will be done.
+
+        :return: The image data as :py:class:`numpy:numpy.ndarray`.
+
+        :rtype: :py:class:`list` of :py:class:`numpy.ndarray`
+
+        """
         result = []
         for data in self.data:
             if isinstance(data, numpy.ndarray):
@@ -87,6 +125,16 @@ class Frame(object):
         return result
 
     def as_PIL(self):
+        """Get image data in :py:class:`PIL.Image.Image` form.
+
+        Note that if the image data is already in the correct format
+        this is a null operation.
+
+        :return: The image data as :py:class:`PIL.Image.Image`.
+
+        :rtype: :py:class:`list` of :py:class:`PIL.Image.Image`
+
+        """
         result = []
         for data in self.data:
             if isinstance(data, numpy.ndarray):

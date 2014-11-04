@@ -26,7 +26,11 @@ autoclass_content = 'both'
 autodoc_member_order = 'bysource'
 autodoc_default_flags = ['members', 'undoc-members', 'show-inheritance']
 
-intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('http://docs.scipy.org/doc/numpy/', None),
+    'PIL': ('http://pillow.readthedocs.org/', None),
+    }
 
 keep_warnings = True
 add_function_parentheses = False
