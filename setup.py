@@ -60,6 +60,26 @@ for root, dirs, files in os.walk('src/pyctools'):
 
 # Use Cython version of 'build_ext' command
 cmdclass = {'build_ext': build_ext}
+command_options = {}
+
+# if sphinx is installed, add command to build documentation
+try:
+    from sphinx.setup_command import BuildDoc
+except ImportError:
+    pass
+else:
+    cmdclass['build_sphinx'] = BuildDoc
+    command_options['build_sphinx'] = {
+        'all_files'  : ('setup.py', '1'),
+        'source_dir' : ('setup.py', 'src/doc'),
+        'build_dir'  : ('setup.py', 'doc'),
+        'builder'    : ('setup.py', 'html'),
+        }
+
+# set options for uploading documentation to PyPI
+command_options['upload_docs'] = {
+    'upload_dir' : ('setup.py', 'doc/html'),
+    }
 
 # modify upload command to add appropriate tag
 # requires GitPython - 'sudo pip install gitpython --pre'
@@ -124,4 +144,5 @@ setup(name = 'pyctools.core',
           },
       install_requires = ['cython', 'numpy'],
       cmdclass = cmdclass,
+      command_options = command_options,
       )

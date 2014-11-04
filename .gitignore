@@ -55,3 +55,7 @@ target/
 
 # Cython output
 *.c
+
+# Documentation output
+src/doc/api/
+doc
