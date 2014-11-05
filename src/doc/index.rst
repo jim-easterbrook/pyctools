@@ -25,5 +25,6 @@ There are three main parts to the documentation -- a manual containing general i
    :maxdepth: 4
 
    manual/index
+   api/tools/index
    api/core/index
    api/components/index

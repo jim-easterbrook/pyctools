@@ -19,3 +19,5 @@
 Pyctools manual
 ===============
 
+This will be a general discussion of the ideas behind Pyctools, and include a "getting started" guide, but most of the documentation should be in the individual modules.
+As a general rule, documentation should be in the source code.

@@ -83,7 +83,7 @@ def update_file(path, new_contents):
     with open(path, 'w') as f:
         f.write(new_contents)
 
-for subpackage in ('components', 'core'):
+for subpackage in ('components', 'core', 'tools'):
     modules = []
     for root, dirs, files in os.walk(
                             os.path.join('..', 'pyctools', subpackage)):

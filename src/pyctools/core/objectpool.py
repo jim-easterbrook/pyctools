@@ -22,36 +22,53 @@
 In a pipeline of processes it is useful to have some way of "load
 balancing", to prevent the first process in the pipeline doing all its
 work before the next process starts. A simple way to do this is to use
-a limited size "pool" of objects. When the first process has used all
-of the objects in the pool it has to wait for the next process in the
-pipeline to release an object (after consuming it) thus ensuring it
-doesn't get too far ahead.
+a limited size "pool" of objects. When the first process has used up
+all of the objects in the pool it has to wait for the next process in
+the pipeline to consume and release an object thus ensuring it doesn't
+get too far ahead.
 
-This object pool uses Python's "weakref" module to trigger the release
-of a new object when Python no longer holds a reference to an old
-object, i.e. when it gets deleted.
+This object pool uses Python's :py:class:`weakref.ref` class to trigger
+the release of a new object when Python no longer holds a reference to
+an old object, i.e. when it gets deleted.
+
+See the :py:class:`~.transformer.Transformer` source code for an
+example of how to add an outframe pool to a Pyctools
+:py:class:`~.component.Component`.
 
 """
 
 __all__ = ['ObjectPool']
+__docformat__ = 'restructuredtext en'
 
 import weakref
 
 class ObjectPool(object):
+    """
+
+    :param callable factory: The function to call to create new
+        objects.
+
+    :param int size: The maximum number of objects allowed to exist at
+        any time.
+
+    :param callable callback: A function to call when each new object
+        is created. It is passed one parameter -- the new object.
+
+    """
     def __init__(self, factory, size, callback):
         super(ObjectPool, self).__init__()
         self.factory = factory
         self.callback = callback
         self.obj_list = []
-        # send first objects
+        # create first objects
         for i in range(size):
-            self.new_object()
+            self._new_object()
 
-    def release(self, obj):
+    def _release(self, obj):
         self.obj_list.remove(obj)
-        self.new_object()
+        self._new_object()
 
-    def new_object(self):
+    def _new_object(self):
         obj = self.factory()
-        self.obj_list.append(weakref.ref(obj, self.release))
+        self.obj_list.append(weakref.ref(obj, self._release))
         self.callback(obj)

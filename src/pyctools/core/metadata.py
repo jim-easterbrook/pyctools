@@ -17,11 +17,12 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Pyctools "Metadata" class.
+"""Pyctools "Metadata" handler.
 
 """
 
 __all__ = ['Metadata']
+__docformat__ = 'restructuredtext en'
 
 try:
     import pgi
@@ -31,12 +32,48 @@ except ImportError:
 from gi.repository import GObject, GExiv2
 
 class Metadata(object):
+    """Store "data about the data" in a :py:class:`~.frame.Frame`.
+
+    This container stores information about an image or video sequence
+    that is not the actual image data. The main use of this is the
+    "audit trail". Each Pyctools component extends the audit trail
+    with a short description of what it does, creating a detailed
+    record of the processing. This can be useful in working out what
+    went wrong (or right!) in some cases.
+
+    Many image file formats (such as JPEG) allow storage of metadata
+    within the image file, but in Pyctools the metadata is always
+    stored in a separate "sidecar" file. This allows the use of any
+    image/video file format and, because the metadata is stored in XMP
+    text format, the sidecar can be read with any text editor.
+
+    "Raw" video files, often used to store YUV, have their image
+    dimensions and "`fourcc <http://www.fourcc.org/>`_" format stored
+    in a metadata file. The
+    :py:mod:`pyctools-setmetadata<pyctools.tools.setmetadata>` tool
+    can be used to create or modify the metadata file if this
+    information is missing.
+
+    """
     def __init__(self):
         self.data = {}
         self.comment = None
         self.set('audit', '')
 
     def from_file(self, path):
+        """Read metadata from an XMP sidecar file or, if there is no
+        sidecar, from the image/video file (if it has metadata).
+
+        Returns the :py:class:`Metadata` object, allowing convenient
+        code like this::
+
+            md = Metadata().from_file(path)
+
+        :param str path: The image/video file path name.
+
+        :rtype: :py:class:`Metadata`
+
+        """
         for xmp_path in (path + '.xmp', path):
             md = GExiv2.Metadata()
             try:
@@ -54,6 +91,11 @@ class Metadata(object):
         return self
 
     def to_file(self, path):
+        """Write metadata to an XMP sidecar file.
+
+        :param str path: The image/video file path name.
+
+        """
         xmp_path = path + '.xmp'
         # create empty XMP
         with open(xmp_path, 'w') as of:
@@ -75,8 +117,20 @@ class Metadata(object):
             md.set_comment(self.comment)
         # save file
         md.save_file(xmp_path)
-    
+
     def copy(self, other):
+        """Copy metadata from another :py:class:`Metadata` object.
+
+        Returns the :py:class:`Metadata` object, allowing convenient
+        code like this::
+
+            md = Metadata().copy(other_md)
+
+        :param Metadata other: The metadata to copy.
+
+        :rtype: :py:class:`Metadata`
+
+        """
         # copy from other to self
         self.data.update(other.data)
         if other.comment is not None:
@@ -84,6 +138,18 @@ class Metadata(object):
         return self
 
     def image_size(self):
+        """Get image dimensions from metadata.
+
+        This is primarily used by the
+        :py:class:`~pyctools.components.io.rawfilereader.RawFileReader`
+        component, as raw video files don't have a header in which to
+        store the dimensions.
+
+        :returns: width, height.
+
+        :rtype: :py:class:`int`, :py:class:`int`
+
+        """
         xlen = None
         ylen = None
         for tag in ('Xmp.pyctools.xlen', 'Exif.Photo.PixelXDimension',
@@ -101,9 +167,35 @@ class Metadata(object):
         raise RuntimeError('Metadata does not have image dimensions')
 
     def get(self, tag):
+        """Get a metadata value.
+
+        Each metadata value is referenced by a ``tag`` -- a short
+        string such as ``'xlen'`` or ``'audit'``. In the sidecar file
+        these tag names are prepended with ``'Xmp.pyctools.'``, which
+        corresponds to a custom namespace in the XML file.
+
+        :param str tag: The tag name.
+
+        :returns: The metadata value associated with ``tag``.
+
+        :rtype: :py:class:`str`
+
+        """
         full_tag = 'Xmp.pyctools.' + tag
         return self.data[full_tag]
 
     def set(self, tag, value):
+        """Set a metadata value.
+
+        Each metadata value is referenced by a ``tag`` -- a short
+        string such as ``'xlen'`` or ``'audit'``. In the sidecar file
+        these tag names are prepended with ``'Xmp.pyctools.'``, which
+        corresponds to a custom namespace in the XML file.
+
+        :param str tag: The tag name.
+
+        :param str value: The metadata value.
+
+        """
         full_tag = 'Xmp.pyctools.' + tag
         self.data[full_tag] = value
