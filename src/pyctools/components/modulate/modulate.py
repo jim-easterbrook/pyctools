@@ -17,19 +17,42 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Interpolating image resizer.
+"""Modulate or sample an image.
 
-Resize an image using a user supplied filter. If no filter is supplied
-then "nearest pixel" interpolation is used.
+Multiplies each pixel value by a modulating value that can vary
+horizontally, vertically and temporally. The modulating function is
+supplied in a small "cell" whose dimensions should be the repeat
+period of the function in each direction.
+
+The :py:meth:`~Modulate.cell` method is used to update the modulating
+function. No processing happens until a cell is received, and new
+cells can be applied while the component is running.
+
+The cell is supplied as a :py:class:`list` of
+:py:class:`numpy:numpy.ndarray` objects. If the list has one member
+then the same cell is applied to each component of the input.
+Alternatively the list should have one cell for each component,
+allowing a different modulation to be applied to each colour.
+
+For example, a cell to simulate a `Bayer filter
+<http://en.wikipedia.org/wiki/Bayer_filter>`_ could look like this::
+
+    [array([[[0, 0],
+             [0, 1]]]),
+     array([[[0, 1],
+             [1, 0]]]),
+     array([[[1, 0],
+             [0, 0]]])]
 
 """
 
 __all__ = ['Modulate']
+__docformat__ = 'restructuredtext en'
 
 from guild.actor import *
 import numpy
 
-from pyctools.core import Transformer, ConfigInt
+from pyctools.core import Transformer
 from .modulatecore import modulate_frame
 
 class Modulate(Transformer):
@@ -40,6 +63,14 @@ class Modulate(Transformer):
 
     @actor_method
     def cell(self, cell_data):
+        """cell(cell_data)
+
+        Cell data input.
+
+        :param list cell_data: A list of
+            :py:class:`numpy:numpy.ndarray` objects.
+
+        """
         for cell in cell_data.data:
             if not isinstance(cell, numpy.ndarray):
                 self.logger.warning('Each cell input must be a numpy array')
