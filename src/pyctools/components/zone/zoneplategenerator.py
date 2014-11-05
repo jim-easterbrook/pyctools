@@ -17,11 +17,76 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Raw file reader.
+"""Zone plate generator.
+
+A zone plate (in this context) is a 3 dimensional (horizontal,
+vertical & temporal) frequency sweep which can be a useful test
+pattern in some image processing applications. A static circular zone
+plate (see `recipes`_ below) resembles the `Fresnel zone plates
+<http://en.wikipedia.org/wiki/Zone_plate>`_ used in optics.
+
+At first sight there are an alarming number of configuration values,
+but you normally only need to set three or four of them. I suggest
+using the :py:mod:`pyctools-editor <pyctools.tools.editor>` tool to
+connect a zone plate generator and Qt display, open the generator's
+configuration dialog, set ``looping`` to ``repeat`` and run the
+network so you can experiment with the settings as you read this
+documentation.
+
+Each parameter is normalised so a value of ``1.0`` covers the entire
+frequency "gamut". For example, setting ``kx2`` to ``1.0`` will sweep
+the entire horizontal frequency range over the width of the picture.
+
+=======  ========
+name     controls
+=======  ========
+``k0``   phase at zero frequency
+``kx``   horizontal frequency at x=0 (left hand side of picture)
+``ky``   vertical frequency at y=0 (top of picture)
+``kt``   temporal frequency at t=0 (start of sequence)
+``kx2``  horizontal frequency with x
+``kxy``  horizontal frequency with y
+``kxt``  horizontal frequency with t
+``kyx``  vertical frequency with x
+``ky2``  vertical frequency with y
+``kyt``  vertical frequency with t
+``ktx``  temporal frequency with x
+``kty``  temporal frequency with y
+``kt2``  temporal frequency with t
+=======  ========
+
+Note that these controls are not all independent. For example, ``kxy``
+and ``kyx`` produce the same effect on a square image (and a subtly
+different effect on non-square images).
+
+Recipes
+-------
+
+* static circular (or eliptical for non-square images)::
+
+    kx=0.5, kx2 = 1.0, ky=0.5, ky2=1.0
+
+* static hyperbolic (entire horizontal gamut)::
+
+    kx=0.5, kxy = 1.0, ky=0.5
+
+* static hyperbolic (entire vertical gamut)::
+
+    kx=0.5, ky=0.5, kyx = 1.0
+
+* circular at temporal frequency of 1/4 the frame rate::
+
+    kx=0.5, kx2 = 1.0, ky=0.5, ky2=1.0, kt=0.25
+
+* all temporal frequencies across width, all vertical frequencies
+  across height::
+
+    ky=0.5, ky2=1.0, ktx=1.0
 
 """
 
 __all__ = ['ZonePlateGenerator']
+__docformat__ = 'restructuredtext en'
 
 import math
 import sys
@@ -29,7 +94,8 @@ import sys
 from guild.actor import *
 import numpy
 
-from ...core import Metadata, Component, ConfigFloat, ConfigInt, ConfigEnum
+from pyctools.core import Component
+from pyctools.core.config import ConfigFloat, ConfigInt, ConfigEnum
 from .zoneplategeneratorcore import zone_frame
 
 class ZonePlateGenerator(Component):
@@ -51,38 +117,35 @@ class ZonePlateGenerator(Component):
             wrapping=True, dynamic=True)
         self.config['kx2'] = ConfigFloat(
             value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
-            wrapping=True, dynamic=True)
+            dynamic=True)
         self.config['kxy'] = ConfigFloat(
             value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
-            wrapping=True, dynamic=True)
+            dynamic=True)
         self.config['kxt'] = ConfigFloat(
             value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
-            wrapping=True, dynamic=True)
+            dynamic=True)
         self.config['kyx'] = ConfigFloat(
             value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
-            wrapping=True, dynamic=True)
+            dynamic=True)
         self.config['ky2'] = ConfigFloat(
             value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
             wrapping=True, dynamic=True)
         self.config['kyt'] = ConfigFloat(
             value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
-            wrapping=True, dynamic=True)
+            dynamic=True)
         self.config['ktx'] = ConfigFloat(
             value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
-            wrapping=True, dynamic=True)
+            dynamic=True)
         self.config['kty'] = ConfigFloat(
             value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
-            wrapping=True, dynamic=True)
+            dynamic=True)
         self.config['kt2'] = ConfigFloat(
             value=0.0, min_value=-100.0, max_value=100.0, decimals=2,
-            wrapping=True, dynamic=True)
+            dynamic=True)
         self.config['xlen'] = ConfigInt(value=720, min_value=1, dynamic=True)
         self.config['ylen'] = ConfigInt(value=576, min_value=1, dynamic=True)
-        self.config['zlen'] = ConfigInt(value=32, min_value=1, dynamic=True)
+        self.config['zlen'] = ConfigInt(value=100, min_value=1, dynamic=True)
         self.config['looping'] = ConfigEnum(('off', 'repeat'), dynamic=True)
-
-    def process_start(self):
-        super(ZonePlateGenerator, self).process_start()
         # store sine wave in a lookup table
         self.phases = 1024
         self.waveform = numpy.ndarray([self.phases], dtype=numpy.float32)
@@ -90,12 +153,13 @@ class ZonePlateGenerator(Component):
             phase = float(i) / float(self.phases)
             self.waveform[i] = 16.0 + (
                 219.0 * (1.0 + math.cos(phase * math.pi * 2.0)) / 2.0)
-        self.metadata = Metadata()
-        self.frame_type = 'Y'
         self.frame_no = 0
 
     @actor_method
     def new_out_frame(self, frame):
+        """new_out_frame(frame)
+
+        """
         self.update_config()
         xlen = self.config['xlen']
         ylen = self.config['ylen']
@@ -117,7 +181,6 @@ class ZonePlateGenerator(Component):
         ktx = self.config['ktx']
         kty = self.config['kty']
         kt2 = self.config['kt2']
-        frame.metadata.copy(self.metadata)
         audit = frame.metadata.get('audit')
         audit += 'data = ZonePlateGenerator()\n'
         audit += '    '
@@ -168,7 +231,7 @@ class ZonePlateGenerator(Component):
                    k0, kx, ky, kt, kx2, kxy, kxt, kyx, ky2, kyt, ktx, kty, kt2)
         # set output frame
         frame.data = [data]
-        frame.type = self.frame_type
+        frame.type = 'Y'
         frame.frame_no = self.frame_no
         self.frame_no += 1
         self.output(frame)

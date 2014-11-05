@@ -107,7 +107,8 @@ for subpackage in ('components', 'core', 'tools'):
         idx_str += '   ' + mod + '\n'
     update_file(os.path.join(dir_name, 'index.rst'), idx_str)
     for mod in modules:
-        mod_str = (mod + '\n' + ('=' * len(mod)) + '\n\n' +
+        title = '.'.join(mod.split('.')[2:])
+        mod_str = (title + '\n' + ('=' * len(title)) + '\n\n' +
                    '.. automodule:: ' + mod + '\n')
         update_file(os.path.join(dir_name, mod + '.rst'), mod_str)
 

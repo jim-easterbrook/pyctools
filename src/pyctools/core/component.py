@@ -19,9 +19,8 @@
 
 """Component base class."""
 
-__docformat__ = 'restructuredtext en'
-
 __all__ = ['Component']
+__docformat__ = 'restructuredtext en'
 
 import logging
 
