@@ -19,17 +19,22 @@
 
 """RGB to YUV (YCbCr) converter.
 
-Convert RGB frames to YUV (with 4:4:4 sampling. The conversion
-can use a "Rec 601" or "Rec 709" matrix. In "auto" mode the matrix is
-chosen according to the number of lines in the image.
+Convert RGB frames to "YUV" (actually YCbCr) with 4:4:4 sampling.
 
-The input range can be "studio" (16..235) or "computer" (0..255).
+The ``matrix`` config item chooses the matrix coefficient set. It can
+be ``'601'`` ("Rec 601", standard definition) or ``'709'`` ("Rec 709",
+high definition). In ``'auto'`` mode the matrix is chosen according to
+the number of lines in the image.
+
+The ``range`` config item specifies the input video range. It can be
+either ``'studio'`` (16..235) or ``'computer'`` (0..255). Values are
+not clipped in either case.
 
 """
 
 __all__ = ['RGBtoYUV']
+__docformat__ = 'restructuredtext en'
 
-from guild.actor import *
 import numpy
 
 from pyctools.core import Transformer, ConfigEnum

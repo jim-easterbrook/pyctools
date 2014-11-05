@@ -17,11 +17,27 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Matrix any number of components.
+"""Apply a user supplied colour matrix.
+
+Converts ``n``-component input to ``m``-component output with a
+user-supplied ``m x n`` matrix.
+
+The :py:meth:`~Matrix.matrix` method is used to update the matrix. No
+processing happens until a matrix is received, and a new matrix can be
+applied while the component is running.
+
+The matrix is supplied as a :py:class:`~pyctools.core.frame.Frame` object,
+allowing an audit trail to be included describing the matrix. The
+matrix data can be either one ``m x n``
+:py:class:`numpy:numpy.ndarray` or ``m`` ``1 x n``
+:py:class:`numpy:numpy.ndarray` objects. In the former case the output
+data will be a single "dstacked" image, in the latter it will be a
+list of single component images.
 
 """
 
 __all__ = ['Matrix']
+__docformat__ = 'restructuredtext en'
 
 from guild.actor import *
 import numpy
@@ -36,6 +52,14 @@ class Matrix(Transformer):
 
     @actor_method
     def matrix(self, new_matrix):
+        """matrix(new_matrix)
+
+        Matrix data input.
+
+        :param Frame new_matrix: A :py:class:`~pyctools.core.frame.Frame`
+            containing the matrix data.
+
+        """
         for matrix in new_matrix.data:
             if not isinstance(matrix, numpy.ndarray):
                 self.logger.warning('Each matrix input must be a numpy array')

@@ -19,11 +19,25 @@
 
 """Do simple arithmetic.
 
-Applies a user supplied arithmetical expression to every pixel in each frame.
+Applies a user supplied arithmetical expression to every pixel in each
+frame. To set the expression, get the component's config and set its
+``func`` to a suitable string expression. The input data should appear
+in your expression as the word ``data``.
+
+For example, to convert video levels from 16..235 to 64..204 you could
+do this::
+
+    setlevel = Arithmetic()
+    cfg = setlevel.get_config()
+    cfg['func'] = '((data - 16.0) * (140.0 / 219.0)) + 64.0'
+    setlevel.set_config(cfg)
+    ...
+    pipeline(..., setlevel, ...)
 
 """
 
 __all__ = ['Arithmetic']
+__docformat__ = 'restructuredtext en'
 
 import numpy
 

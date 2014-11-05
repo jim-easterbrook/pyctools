@@ -20,29 +20,32 @@
 """Extract colour components.
 
 Extract one or more components from a multi-component (RGB, YCrCb,
-etc.) input.
+etc.) input. The output components are specified by the config items
+``start`` and ``stop``. Like a Python :py:class:`slice`, ``stop``
+should be one more than the last component required.
 
 """
 
 __all__ = ['ExtractComps']
+__docformat__ = 'restructuredtext en'
 
 from pyctools.core import Transformer, ConfigInt
 
 class ExtractComps(Transformer):
     def initialise(self):
         self.config['start'] = ConfigInt(min_value=0)
-        self.config['end'] = ConfigInt(min_value=1)
+        self.config['stop'] = ConfigInt(min_value=1)
 
     def transform(self, in_frame, out_frame):
         self.update_config()
         start = self.config['start']
-        end = self.config['end']
+        stop = self.config['stop']
         in_data = in_frame.as_numpy()
         if len(in_data) > 1:
-            out_frame.data = in_data[start:end]
+            out_frame.data = in_data[start:stop]
         else:
-            out_frame.data = [in_data[0][:,:,start:end]]
+            out_frame.data = [in_data[0][:,:,start:stop]]
         audit = out_frame.metadata.get('audit')
-        audit += 'data = data[%d:%d]\n' % (start, end)
+        audit += 'data = data[%d:%d]\n' % (start, stop)
         out_frame.metadata.set('audit', audit)
         return True

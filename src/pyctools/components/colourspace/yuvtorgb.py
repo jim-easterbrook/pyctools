@@ -19,18 +19,30 @@
 
 """YUV (YCbCr) to RGB converter.
 
-Convert YUV frames (with any UV subsampling) to RGB. The conversion
-can use a "Rec 601" or "Rec 709" matrix. In "auto" mode the matrix is
-chosen according to the number of lines in the image.
+Convert "YUV" (actually YCbCr) frames (with any UV subsampling) to
+RGB.
 
-The output range can be "studio" (16..235) or "computer" (0..255).
-Values are not clipped in either case.
+For ``4:2:2`` subsampling a high quality resampling filter is used, as
+specified in a `BBC R&D report
+<http://www.bbc.co.uk/rd/publications/rdreport_1984_04>`_. For other
+subsampling patterns, where the correct filtering is less well
+specified, simple bicubic interpolation is used.
+
+The ``matrix`` config item chooses the matrix coefficient set. It can
+be ``'601'`` ("Rec 601", standard definition) or ``'709'`` ("Rec 709",
+high definition). In ``'auto'`` mode the matrix is chosen according to
+the number of lines in the image.
+
+The ``range`` config item specifies the output video range. It can be
+either ``'studio'`` (16..235) or ``'computer'`` (0..255). Values are
+not clipped in either case.
 
 """
 
 from __future__ import print_function
 
 __all__ = ['YUVtoRGB']
+__docformat__ = 'restructuredtext en'
 
 import logging
 import sys
