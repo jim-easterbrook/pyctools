@@ -48,8 +48,9 @@ class Component(Actor, ConfigMixin):
 
     To help with load balancing components can have a limited size
     :py:class:`~.objectpool.ObjectPool` of output
-    :py:class:`~.frame.Frame` objects. To use this your component must
-    have a :py:meth:`new_out_frame` method with the
+    :py:class:`~.frame.Frame` objects. To use this your class must set
+    ``with_outframe_pool`` to ``True`` and have a
+    :py:meth:`new_out_frame` method with the
     :py:meth:`guild.actor.actor_method` decorator. This method is
     called when a new output frame is available. See the
     :py:class:`~.transformer.Transformer` class for an example.
@@ -57,18 +58,19 @@ class Component(Actor, ConfigMixin):
     Every component also has configuration methods. See
     :py:class:`~.config.ConfigMixin` for more information.
 
-    :keyword bool with_outframe_pool: Whether to use an outframe pool.
-
     """
+    with_outframe_pool = False
+    """Whether to use an outframe pool."""
     inputs = ['input']
+    """The component inputs"""
     outputs = ['output']
+    """The component outputs"""
 
-    def __init__(self, with_outframe_pool=False):
+    def __init__(self):
         super(Component, self).__init__()
         ConfigMixin.__init__(self)
         self.logger = logging.getLogger(self.__class__.__name__)
-        self._component_with_outframe_pool = with_outframe_pool
-        if self._component_with_outframe_pool:
+        if self.with_outframe_pool:
             self.config['outframe_pool_len'] = ConfigInt(min_value=2, value=3)
         self.initialise()
 
@@ -86,7 +88,7 @@ class Component(Actor, ConfigMixin):
         the base class method.
 
         """
-        if self._component_with_outframe_pool:
+        if self.with_outframe_pool:
             self.update_config()
             self._component_outframe_pool = ObjectPool(
                 Frame, self.config['outframe_pool_len'], self.new_out_frame)

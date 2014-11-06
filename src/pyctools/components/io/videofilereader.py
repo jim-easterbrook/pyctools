@@ -52,9 +52,9 @@ from pyctools.core import Metadata, Component, ConfigPath, ConfigEnum
 
 class VideoFileReader(Component):
     inputs = []
+    with_outframe_pool = True
 
-    def __init__(self):
-        super(VideoFileReader, self).__init__(with_outframe_pool=True)
+    def initialise(self):
         self.ffmpeg = None
         self.config['path'] = ConfigPath()
         self.config['looping'] = ConfigEnum(('off', 'repeat'), dynamic=True)

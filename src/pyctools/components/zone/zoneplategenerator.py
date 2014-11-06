@@ -102,9 +102,9 @@ from .zoneplategeneratorcore import zone_frame
 
 class ZonePlateGenerator(Component):
     inputs = []
+    with_outframe_pool = True
 
-    def __init__(self):
-        super(ZonePlateGenerator, self).__init__(with_outframe_pool=True)
+    def initialise(self):
         self.config['k0'] = ConfigFloat(
             value=0.0, min_value=0.0, max_value=1.0, decimals=2,
             wrapping=True, dynamic=True)

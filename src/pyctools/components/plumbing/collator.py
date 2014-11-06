@@ -35,9 +35,9 @@ from pyctools.core import Component
 
 class Collator(Component):
     inputs = ['input1', 'input2']
+    with_outframe_pool = True
 
-    def __init__(self):
-        super(Collator, self).__init__(with_outframe_pool=True)
+    def initialise(self):
         self.in_frames1 = deque()
         self.in_frames2 = deque()
         self.out_frames = deque()
