@@ -681,6 +681,8 @@ if __name__ == '__main__':
 """ % (components, linkages))
             if with_qt:
                 of.write('    from PyQt4 import QtGui\n' +
+                         '    from PyQt4.QtCore import Qt\n' +
+                         '    QtGui.QApplication.setAttribute(Qt.AA_X11InitThreads)\n' +
                          '    app = QtGui.QApplication([])\n')
             of.write("""
     logging.basicConfig(level=logging.DEBUG)
@@ -846,6 +848,7 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
     # let PyQt handle its options (need at least one argument after options)
     sys.argv.append('xxx')
+    QtGui.QApplication.setAttribute(Qt.AA_X11InitThreads)
     app = QtGui.QApplication(sys.argv)
     del sys.argv[-1]
     # get command args

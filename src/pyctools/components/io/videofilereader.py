@@ -164,6 +164,7 @@ def main():
         return 1
     logging.basicConfig(level=logging.DEBUG)
     print('VideoFileReader demonstration')
+    QtGui.QApplication.setAttribute(Qt.AA_X11InitThreads)
     app = QtGui.QApplication([])
     source = VideoFileReader()
     config = source.get_config()

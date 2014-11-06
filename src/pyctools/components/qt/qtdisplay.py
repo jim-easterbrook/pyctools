@@ -121,6 +121,7 @@ def main():
         return 1
     logging.basicConfig(level=logging.DEBUG)
     print('Qt display demonstration')
+    QtGui.QApplication.setAttribute(Qt.AA_X11InitThreads)
     app = QtGui.QApplication([])
     source = RawFileReader()
     config = source.get_config()
