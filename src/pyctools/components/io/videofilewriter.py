@@ -58,13 +58,13 @@ from pyctools.core import Transformer, ConfigPath, ConfigInt, ConfigEnum, Metada
 class VideoFileWriter(Transformer):
     def initialise(self):
         self.config['path'] = ConfigPath()
-        self.config['encoder'] = ConfigEnum((
-            '-c:v ffv1 -pix_fmt bgr0',
-            '-c:v ffv1 -pix_fmt gray',
-            '-c:v ffv1 -pix_fmt gray16le',
-            '-c:v libx264 -pix_fmt yuv444p -qp 0',
-            '-c:v libx264 -pix_fmt yuv444p -qp 0 -preset veryslow',
-            ))
+        self.config['encoder'] = ConfigEnum(
+            ('-c:v ffv1 -pix_fmt bgr0',
+             '-c:v ffv1 -pix_fmt gray',
+             '-c:v ffv1 -pix_fmt gray16le',
+             '-c:v libx264 -pix_fmt yuv444p -qp 0',
+             '-c:v libx264 -pix_fmt yuv444p -qp 0 -preset veryslow',
+             ), extendable=True)
         self.config['fps'] = ConfigInt(value=25)
         self.config['16bit'] = ConfigEnum(('off', 'on'))
         self.ffmpeg = None
