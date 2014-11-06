@@ -12,8 +12,9 @@ Requirements
 * `Python <https://www.python.org/>`_ version 2 or 3.
 * `Guild <https://github.com/sparkslabs/guild>`_.
 * `NumPy <http://www.numpy.org/>`_.
-* `Python Imaging Library <http://www.pythonware.com/products/pil/>`_. (The `pillow fork <http://python-pillow.github.io/>`_ of PIL is recommended.)
+* `Python Imaging Library <http://www.pythonware.com/products/pil/>`_. (The `pillow <http://python-pillow.github.io/>`_ fork of PIL is recommended.)
 * `Cython <http://cython.org/>`_.
+* `OpenCV <http://opencv.org/>`_ python bindings.
 
 Installation
 ------------
@@ -40,7 +41,7 @@ If you want easy access to the pyctools source files (e.g. to write your own ext
 Documentation
 -------------
 
-The next thing on my todo list.
+Pyctools documentation is a work in progress. See https://pythonhosted.org/pyctools.core/.
 
 Background
 ----------
