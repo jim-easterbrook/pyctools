@@ -85,6 +85,7 @@ def update_file(path, new_contents):
 
 for subpackage in ('components', 'core', 'tools'):
     modules = []
+    cython_modules = []
     for root, dirs, files in os.walk(
                             os.path.join('..', 'pyctools', subpackage)):
         package = '.'.join(root.split(os.sep)[1:])
@@ -92,9 +93,10 @@ for subpackage in ('components', 'core', 'tools'):
             if name.startswith('_'):
                 continue
             base, ext = os.path.splitext(name)
-            if ext != '.py':
-                continue
-            modules.append(package + '.' + base)
+            if ext == '.py':
+                modules.append(package + '.' + base)
+            elif ext == '.pyx':
+                cython_modules.append(package + '.' + base)
     modules.sort()
     dir_name = os.path.join('api', subpackage)
     if not os.path.isdir(dir_name):
@@ -106,7 +108,7 @@ for subpackage in ('components', 'core', 'tools'):
     for mod in modules:
         idx_str += '   ' + mod + '\n'
     update_file(os.path.join(dir_name, 'index.rst'), idx_str)
-    for mod in modules:
+    for mod in modules + cython_modules:
         title = '.'.join(mod.split('.')[2:])
         mod_str = (title + '\n' + ('=' * len(title)) + '\n\n' +
                    '.. automodule:: ' + mod + '\n')
@@ -124,7 +126,7 @@ for subpackage in ('components', 'core', 'tools'):
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = []
+exclude_patterns = ['api/components/*core.rst']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
