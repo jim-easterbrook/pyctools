@@ -109,6 +109,29 @@ cdef void resize_frame_core(DTYPE_t[:, :] out_comp,
 def resize_frame(numpy.ndarray[DTYPE_t, ndim=2] in_comp,
                  numpy.ndarray[DTYPE_t, ndim=2] norm_filter,
                  int x_up, int x_down, int y_up, int y_down):
+    """Filter and resize a single 2-D :py:class:`numpy.ndarray`.
+
+    The filter should be "normalised" so that the coefficients in each
+    phase sum to unity. This is typically done by multiplying the
+    filter coefficients by the horizontal and vertical up-conversion
+    factors.
+
+    :param numpy.ndarray in_comp: Input image.
+
+    :param numpy.ndarray norm_filter: Normalised filter.
+
+    :param int x_up: Horizontal up-conversion factor.
+
+    :param int x_down: Horizontal down-conversion factor.
+
+    :param int y_up: Vertical up-conversion factor.
+
+    :param int y_down: Vertical down-conversion factor.
+
+    :return: A :py:class:`numpy.ndarray` object containing the new
+        image.
+
+    """
     cdef:
         int xlen_in, ylen_in
         int xlen_out, ylen_out

@@ -19,18 +19,67 @@
 
 """Interpolator filter generator.
 
-Creates filters for use with Resize component. Connect 'output' to
-Resize 'filter' input. Generates a new filter whenever the config
-changes to allow live viewing of the effect on images.
+Create filters for use with the :py:class:`~.resize.Resize` component.
+This module defines a :py:class:`FilterGenerator` component and a
+:py:func:`FilterGeneratorCore` function. You should use one or the
+other as follows.
+
+Connecting a :py:class:`FilterGenerator` component's ``output`` to a
+:py:class:`~.resize.Resize` component's ``filter`` input allows the
+filter to be updated (while the components are running) by changing
+the :py:class:`FilterGenerator` config::
+
+    filgen = FilterGenerator()
+    cfg = filgen.get_config()
+    cfg['xup'] = 2
+    cfg['xaperture'] = 16
+    filgen.set_config(cfg)
+    resize = Resize()
+    cfg = resize.get_config()
+    cfg['xup'] = 2
+    resize.set_config(cfg)
+    filgen.bind('output', resize, 'filter')
+    ...
+    start(..., filgen, resize, ...)
+    ...
+    cfg = filgen.get_config()
+    cfg['xaperture'] = 8
+    filgen.set_config(cfg)
+    ...
+
+The :py:func:`FilterGeneratorCore` function can be used instead to
+make a non-reconfigurable resizer::
+
+    resize = Resize()
+    cfg = resize.get_config()
+    cfg['xup'] = 2
+    resize.set_config(cfg)
+    resize.filter(FilterGeneratorCore(x_up=2, x_aperture=16))
+    ...
+    start(..., resize, ...)
+    ...
+
+The filter is a Hamming windowed sinc function. If the picture is
+being enlarged the filter has a cut frequency of half the input
+sampling frequency, otherwise the cut frequency is half the output
+sampling frequency.
+
+2-dimensional filters can be produced, but it is usually more
+efficient to use two :py:class:`~.resize.Resize` components to process
+the two dimensions independently.
 
 """
 
 from __future__ import print_function
 
 __all__ = ['FilterGenerator']
+__docformat__ = 'restructuredtext en'
 
 import math
 import time
+import sys
+if 'sphinx' in sys.modules:
+    __all__.append('FilterGeneratorCore')
 
 from guild.actor import *
 import numpy
@@ -38,6 +87,18 @@ import numpy
 from pyctools.core import Component, ConfigInt, Frame
 
 class FilterGenerator(Component):
+    """Config:
+
+    =============  ===  ====
+    ``xup``        int  Horizontal up-conversion factor.
+    ``xdown``      int  Horizontal down-conversion factor.
+    ``xaperture``  int  Horizontal filter aperture.
+    ``yup``        int  Vertical up-conversion factor.
+    ``ydown``      int  Vertical down-conversion factor.
+    ``yaperture``  int  Vertical filter aperture.
+    =============  ===  ====
+
+    """
     inputs = []
 
     def initialise(self):
@@ -75,6 +136,24 @@ class FilterGenerator(Component):
                                 y_up=y_up, y_down=y_down, y_ap=y_ap))
 
 def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, y_up=1, y_down=1, y_ap=1):
+    """
+
+    :keyword int x_up: Horizontal up-conversion factor.
+
+    :keyword int x_down: Horizontal down-conversion factor.
+
+    :keyword int x_ap: Horizontal filter aperture.
+
+    :keyword int y_up: Vertical up-conversion factor.
+
+    :keyword int y_down: Vertical down-conversion factor.
+
+    :keyword int y_ap: Vertical filter aperture.
+
+    :return: A :py:class:`~pyctools.core.frame.Frame` object containing the
+        filter.
+
+    """
     def filter_1D(up, down, ap):
         cut_freq = float(min(up, down)) / float(2 * up * down)
         coefs = []

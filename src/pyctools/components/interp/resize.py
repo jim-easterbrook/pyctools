@@ -19,12 +19,27 @@
 
 """Interpolating image resizer.
 
-Resize an image using a user supplied filter. If no filter is supplied
-then "nearest pixel" interpolation is used.
+This module defines both a :py:class:`Resize` Pyctools component and a
+:py:func:`resize_frame` function. The latter can be used by other
+components (such as :py:mod:`YUVtoRGB
+<pyctools.components.colourspace.yuvtorgb>`) that need high speed
+image filtering or interpolation.
+
+Images can be resized by almost any amount. The resizing is controlled
+by integer "up" and "down" factors and is not constrained to simple
+ratios such as 2:1 or 5:4.
+
+To filter images without resizing leave the "up" and "down" factors at
+their default value of 1.
 
 """
 
 __all__ = ['Resize']
+__docformat__ = 'restructuredtext en'
+
+import sys
+if 'sphinx' in sys.modules:
+    __all__.append('resize_frame')
 
 from guild.actor import *
 import numpy
@@ -33,6 +48,25 @@ from pyctools.core import Transformer, ConfigInt
 from .resizecore import resize_frame
 
 class Resize(Transformer):
+    """Resize (or just filter) an image using user supplied filter(s).
+    The filters are supplied in a
+    :py:class:`~pyctools.core.frame.Frame` object sent to the
+    :py:meth:`filter` input. If the frame data contains one 2D array
+    then the same filter is applied to each component of the input.
+    Alternatively the frame data should have one filter for each
+    component, allowing a different filter to be applied to each
+    colour.
+
+    Config:
+
+    =========  ===  ====
+    ``xup``    int  Horizontal up-conversion factor.
+    ``xdown``  int  Horizontal down-conversion factor.
+    ``yup``    int  Vertical up-conversion factor.
+    ``ydown``  int  Vertical down-conversion factor.
+    =========  ===  ====
+
+    """
     inputs = ['input', 'filter']
 
     def initialise(self):
@@ -44,6 +78,13 @@ class Resize(Transformer):
 
     @actor_method
     def filter(self, new_filter):
+        """filter(new_filter)
+
+        :param Frame new_filter: A
+            :py:class:`~pyctools.core.frame.Frame` object containing
+            the filter(s).
+        
+        """
         for filt in new_filter.data:
             if not isinstance(filt, numpy.ndarray):
                 self.logger.warning('Each filter input must be a numpy array')

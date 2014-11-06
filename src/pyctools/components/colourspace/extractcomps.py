@@ -21,7 +21,7 @@
 
 Extract one or more components from a multi-component (RGB, YCrCb,
 etc.) input. The output components are specified by the config items
-``start`` and ``stop``. Like a Python :py:class:`slice`, ``stop``
+``start`` and ``stop``. As in a Python :py:class:`slice`, ``stop``
 should be one more than the last component required.
 
 """

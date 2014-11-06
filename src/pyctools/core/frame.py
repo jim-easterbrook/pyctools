@@ -73,9 +73,13 @@ class Frame(object):
         Note that if the image data is already in the correct format
         this is a null operation.
 
-        :keyword numpy.dtype dtype: What :py:class:`~numpy:numpy.dtype` the
-            data should be in, e.g. ``numpy.float32``. If ``dtype`` is
-            ``None`` then no conversion will be done.
+        When converting to limited range types (``numpy.uint8``,
+        ``numpy.uint16``) the data is clipped (limited) to the range.
+
+        :keyword numpy.dtype dtype: What
+            :py:class:`~numpy:numpy.dtype` the data should be in, e.g.
+            ``numpy.float32``. If ``dtype`` is ``None`` then no
+            conversion will be done.
 
         :keyword bool dstack: Whether to return a single 3D array
             (``dstack=True``) or a list of 2D arrays

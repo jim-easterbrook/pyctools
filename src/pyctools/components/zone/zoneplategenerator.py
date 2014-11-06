@@ -17,12 +17,14 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Zone plate generator.
+"""Zone plate test pattern generator.
 
 A zone plate (in this context) is a 3 dimensional (horizontal,
 vertical & temporal) frequency sweep which can be a useful test
-pattern in some image processing applications. A static circular zone
-plate (see `recipes`_ below) resembles the `Fresnel zone plates
+pattern in image processing applications. `BBC R&D Report 1978/23
+<http://www.bbc.co.uk/rd/publications/rdreport_1978_23>`_ describes
+some typical uses. A static circular zone plate (see `recipes`_ below)
+resembles the `Fresnel zone plates
 <http://en.wikipedia.org/wiki/Zone_plate>`_ used in optics.
 
 At first sight there are an alarming number of configuration values,

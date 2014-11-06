@@ -23,7 +23,7 @@ Convert "YUV" (actually YCbCr) frames (with any UV subsampling) to
 RGB.
 
 For ``4:2:2`` subsampling a high quality resampling filter is used, as
-specified in a `BBC R&D report
+specified in `BBC R&D Report 1984/04
 <http://www.bbc.co.uk/rd/publications/rdreport_1984_04>`_. For other
 subsampling patterns, where the correct filtering is less well
 specified, simple bicubic interpolation is used.

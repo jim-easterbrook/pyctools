@@ -19,29 +19,76 @@
 
 """Gaussian filter generator.
 
-Creates filters for use with Resize component. Connect 'output' to
-Resize 'filter' input. Generates a new filter whenever the config
-changes to allow live viewing of the effect on images.
+Create `Gaussian filters
+<http://en.wikipedia.org/wiki/Gaussian_filter>`_ for use with the
+:py:class:`~.resize.Resize` component. This module defines a
+:py:class:`GaussianFilter` component and a
+:py:func:`GaussianFilterCore` function. You should use one or the
+other as follows.
+
+Connecting a :py:class:`GaussianFilter` component's ``output`` to a
+:py:class:`~.resize.Resize` component's ``filter`` input allows the
+filter to be updated (while the components are running) by changing
+the :py:class:`GaussianFilter` config::
+
+    filgen = GaussianFilter()
+    cfg = filgen.get_config()
+    cfg['xsigma'] = 1.5
+    filgen.set_config(cfg)
+    resize = Resize()
+    filgen.bind('output', resize, 'filter')
+    ...
+    start(..., filgen, resize, ...)
+    ...
+    cfg = filgen.get_config()
+    cfg['xsigma'] = 1.8
+    filgen.set_config(cfg)
+    ...
+
+The :py:func:`GaussianFilterCore` function can be used instead to
+make a non-reconfigurable resizer::
+
+    resize = Resize()
+    resize.filter(GaussianFilterCore(x_sigma=1.5))
+    ...
+    start(..., resize, ...)
+    ...
+
+2-dimensional filters can be produced, but it is usually more
+efficient to use two :py:class:`~.resize.Resize` components to process
+the two dimensions independently.
 
 """
 
 from __future__ import print_function
 
 __all__ = ['GaussianFilter']
+__docformat__ = 'restructuredtext en'
 
 import math
 import time
+import sys
+if 'sphinx' in sys.modules:
+    __all__.append('GaussianFilterCore')
 
 import numpy
 
 from pyctools.core import Component, ConfigFloat, Frame
 
 class GaussianFilter(Component):
+    """Config:
+
+    ==========  =====  ====
+    ``xsigma``  float  Horizontal standard deviation parameter.
+    ``ysigma``  float  Vertical standard deviation parameter.
+    ==========  =====  ====
+
+    """
     inputs = []
 
     def initialise(self):
-        self.config['xsigma'] = ConfigFloat(min_value=0.01)
-        self.config['ysigma'] = ConfigFloat(min_value=0.01)
+        self.config['xsigma'] = ConfigFloat(min_value=0.0)
+        self.config['ysigma'] = ConfigFloat(min_value=0.0)
 
     def gen_process(self):
         # wait for self.output to be connected
@@ -64,6 +111,16 @@ class GaussianFilter(Component):
         self.output(GaussianFilterCore(x_sigma=x_sigma, y_sigma=y_sigma))
 
 def GaussianFilterCore(x_sigma=0.0, y_sigma=0.0):
+    """
+
+    :keyword float x_sigma: Horizontal standard deviation parameter.
+
+    :keyword float y_sigma: Vertical standard deviation parameter.
+
+    :return: A :py:class:`~pyctools.core.frame.Frame` object containing the
+        filter.
+
+    """
     def filter_1D(sigma):
         alpha = 1.0 / (2.0 * (max(sigma, 0.0001) ** 2.0))
         coefs = []

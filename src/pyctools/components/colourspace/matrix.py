@@ -26,8 +26,8 @@ The :py:meth:`~Matrix.matrix` method is used to update the matrix. No
 processing happens until a matrix is received, and a new matrix can be
 applied while the component is running.
 
-The matrix is supplied as a :py:class:`~pyctools.core.frame.Frame` object,
-allowing an audit trail to be included describing the matrix. The
+The matrix is supplied as a :py:class:`~pyctools.core.frame.Frame`
+object, allowing an audit trail to be included describing it. The
 matrix data can be either one ``m x n``
 :py:class:`numpy:numpy.ndarray` or ``m`` ``1 x n``
 :py:class:`numpy:numpy.ndarray` objects. In the former case the output
