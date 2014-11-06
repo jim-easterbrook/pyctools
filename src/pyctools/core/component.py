@@ -56,7 +56,12 @@ class Component(Actor, ConfigMixin):
     :py:class:`~.transformer.Transformer` class for an example.
 
     Every component also has configuration methods. See
-    :py:class:`~.config.ConfigMixin` for more information.
+    :py:class:`~.config.ConfigMixin` for more information. The
+    configuration can be initialised by passing appropriate key, value
+    pairs to a component's constructor. These values are applied after
+    calling :py:meth:`initialise`.
+
+    :param dict config: Initial configuration values.
 
     """
     with_outframe_pool = False
@@ -66,16 +71,18 @@ class Component(Actor, ConfigMixin):
     outputs = ['output']
     """The component outputs"""
 
-    def __init__(self):
+    def __init__(self, **config):
         super(Component, self).__init__()
         ConfigMixin.__init__(self)
         self.logger = logging.getLogger(self.__class__.__name__)
         if self.with_outframe_pool:
             self.config['outframe_pool_len'] = ConfigInt(min_value=2, value=3)
         self.initialise()
+        for key, value in config.items():
+            self.config[key] = value
 
     def initialise(self):
-        """Over ride this in your derived class if you want to do any
+        """Over ride this in your derived class if you need to do any
         initialisation, such as adding to the config object.
 
         """

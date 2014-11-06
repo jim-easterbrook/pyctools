@@ -39,11 +39,11 @@ from .component import Component
 class Transformer(Component):
     with_outframe_pool = True
 
-    def __init__(self):
+    def __init__(self, **kw):
         self._transformer_in_frames = deque()
         self._transformer_out_frames = deque()
         self._transformer_ready = True
-        super(Transformer, self).__init__()
+        super(Transformer, self).__init__(**kw)
 
     def set_ready(self, value):
         """Defer processing until some condition is met.
