@@ -17,9 +17,11 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Collator.
+"""Merge two inputs to produce a set of co-timed frames.
 
-Merges two inputs to produce a set of co-timed frames.
+This component allows two components' outputs to be merged. The inputs
+must be :py:class:`~pyctools.core.frame.Frame` objects -- the frame
+numbers are used to ensure that only co-timed frames are merged.
 
 """
 
@@ -42,16 +44,25 @@ class Collator(Component):
 
     @actor_method
     def new_out_frame(self, frame):
+        """new_out_frame(frame)
+
+        """
         self.out_frames.append(frame)
         self.collate()
 
     @actor_method
     def input1(self, frame):
+        """input1(frame)
+
+        """
         self.in_frames1.append(frame)
         self.collate()
 
     @actor_method
     def input2(self, frame):
+        """input2(frame)
+
+        """
         self.in_frames2.append(frame)
         self.collate()
 
@@ -84,7 +95,7 @@ class Collator(Component):
                 continue
             out_frame = self.out_frames.popleft()
             out_frame.initialise(in_frame1)
-            out_frame.data = in_frame1.data
-            for comp in in_frame2.data:
+            out_frame.data = in_frame1.as_numpy(dstack=True)
+            for comp in in_frame2.as_numpy(dstack=True):
                 out_frame.data.append(comp)
             self.output(out_frame)

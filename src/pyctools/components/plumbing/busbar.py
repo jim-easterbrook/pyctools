@@ -17,12 +17,26 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
+"""Distribute frames to several components.
+
+This component allows one component's output to be connected to
+several components' inputs. It initially has two outputs (``output0``
+and ``output1``) but new outputs are created as needed to ensure there
+is always at least one free.
+
+Any data sent to ``input`` is sent to every connected output. The data
+is not required to be a Pyctools
+:py:class:`~pyctools.core.frame.Frame`.
+
+"""
+
 from guild.actor import *
 from guild.components import Splitter
 
 from pyctools.core.config import ConfigMixin
 
 __all__ = ['Busbar']
+__docformat__ = 'restructuredtext en'
 
 class Busbar(Splitter, ConfigMixin):
     inputs = ['input']
@@ -35,6 +49,9 @@ class Busbar(Splitter, ConfigMixin):
 
     @actor_method
     def publish(self, data):
+        """publish(self, data)
+
+        """
         super(Busbar, self).publish(data)
         if data is None:
             self.stop()
