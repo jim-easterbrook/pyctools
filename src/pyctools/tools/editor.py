@@ -125,12 +125,25 @@ class ConfigEnumWidget(QtGui.QComboBox):
         self.config = config
         for item in self.config.choices:
             self.addItem(item)
+        if self.config.extendable:
+            self.addItem('<new>')
         self.setCurrentIndex(self.findText(self.config.get()))
         self.currentIndexChanged.connect(self.new_value)
 
     @QtCore.pyqtSlot(int)
     def new_value(self, idx):
-        self.config.set(str(self.itemText(idx)))
+        value = str(self.itemText(idx))
+        if value == '<new>':
+            value, OK = QtGui.QInputDialog.getText(
+                self, 'New option', 'Please enter a new option text')
+            if not OK:
+                return
+            value = str(value)
+            blocked = self.blockSignals(True)
+            self.insertItem(idx, value)
+            self.setCurrentIndex(idx)
+            self.blockSignals(blocked)
+        self.config.set(value)
 
 class ConfigParentWidget(QtGui.QWidget):
     def __init__(self, config):

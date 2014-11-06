@@ -117,11 +117,14 @@ class ConfigEnum(ConfigLeafNode):
     The value can be one of a list of choices.
 
     """
-    def __init__(self, choices, **kw):
+    def __init__(self, choices, extendable=False, **kw):
         super(ConfigEnum, self).__init__(value=choices[0], **kw)
-        self.choices = choices
+        self.choices = list(choices)
+        self.extendable = extendable
 
     def validate(self, value):
+        if self.extendable and value not in self.choices:
+            self.choices.append(value)
         return value in self.choices
 
 class ConfigParent(ConfigLeafNode):
