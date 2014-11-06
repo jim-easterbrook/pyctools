@@ -19,11 +19,19 @@
 
 """Print input frames' metadata.
 
+This is a "pass through" component that can be inserted anywhere in a
+pipeline. It prints (to :py:obj:`sys.stdout`) the metadata "audit trail"
+of its input frames.
+
+Note that the audit trail is only printed out for the first frame and
+if it subsequently changes.
+
 """
 
 from __future__ import print_function
 
 __all__ = ['DumpMetadata']
+__docformat__ = 'restructuredtext en'
 
 from pyctools.core import Transformer
 

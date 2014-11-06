@@ -17,13 +17,42 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Raw file reader.
+"""Read "raw" YUV or RGB files.
+
+Video is usually stored in file formats (such as AVI) with a complex
+structure to allow a mix of audio, video and other data. These can be
+read with the :py:mod:`VideoFileReader
+<pyctools.components.io.videofilereader>` component.
+
+This component reads simple "raw" files that contain nothing but the
+picture data. Even the image dimensions have to be stored in a
+separate "metadata" file. (Use the :py:mod:`pyctools-setmetadata
+<pyctools.tools.setmetadata>` tool to create or modify the metadata
+file.)
+
+There are many possible arrangements of data in raw files. For
+example, the colour components can be packed (multiplexed) together or
+stored in separate planes. The formats are labelled with a four
+character code knows as a `fourcc <http://www.fourcc.org/>`_ code.
+This code needs to be in the metadata file with the image dimensions.
+
+Note that when reading "YUV" formats the U & V outputs are offset by
+128 to restore their range to -128..127 (from the file range of
+0..255). This makes subsequent processing a lot easier.
+
+===========  ===  ====
+Config
+===========  ===  ====
+``path``     str  Path name of file to be read.
+``looping``  str  Whether to play continuously. Can be ``'off'``, ``'repeat'`` or ``'reverse'``.
+===========  ===  ====
 
 """
 
 from __future__ import print_function
 
 __all__ = ['RawFileReader']
+__docformat__ = 'restructuredtext en'
 
 import io
 import logging
@@ -133,6 +162,9 @@ class RawFileReader(Component):
 
     @actor_method
     def new_out_frame(self, frame):
+        """new_out_frame(frame)
+
+        """
         self.update_config()
         if self.file_frame >= self.zlen:
             if self.config['looping'] == 'off':

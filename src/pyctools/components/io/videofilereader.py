@@ -17,15 +17,27 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Video file reader.
+"""Read conventional video files (mp4, flv, AVI, etc.).
 
-Reads conventional video files (mp4, flv, etc. depends on ffmpeg).
+This component uses `FFmpeg <https://www.ffmpeg.org/>`_ to read video
+from a wide variety of formats. Make sure you have installed FFmpeg
+before attempting to use :py:class:`VideoFileReader`.
+
+===========  ===  ====
+Config
+===========  ===  ====
+``path``     str  Path name of file to be read.
+``looping``  str  Whether to play continuously. Can be ``'off'`` or ``'repeat'``.
+``type``     str  Output data type. Can be ``'RGB'`` or ``'Y'``.
+``16bit``    str  Attempt to get greater precision than normal 8-bit range. Can be ``'off'`` or ``'on'``.
+===========  ===  ====
 
 """
 
 from __future__ import print_function
 
 __all__ = ['VideoFileReader']
+__docformat__ = 'restructuredtext en'
 
 import logging
 import os
@@ -113,6 +125,9 @@ class VideoFileReader(Component):
 
     @actor_method
     def new_out_frame(self, frame):
+        """new_out_frame(frame)
+
+        """
         self.update_config()
         while True:
             raw_data = self.ffmpeg.stdout.read(self.bytes_per_line)

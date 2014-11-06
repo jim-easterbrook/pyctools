@@ -17,9 +17,33 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Video file writer.
+"""Write video files.
 
-Writes conventional video files.
+This component uses `FFmpeg <https://www.ffmpeg.org/>`_ to write video
+to a variety of formats. Make sure you have installed FFmpeg before
+attempting to use :py:class:`VideoFileWriter`.
+
+The trickiest part of configuring :py:class:`VideoFileWriter` is
+setting ``encoder``. Combinations I've found to work on my machine
+include the following:
+
+* ``'-c:v ffv1 -pix_fmt bgr0'`` -- FFV1 lossless encoder, 8-bit colour
+* ``'-c:v ffv1 -pix_fmt gray'`` -- FFV1, 8-bit luminance
+* ``'-c:v ffv1 -pix_fmt gray16le'`` FFV1, 16-bit luminance
+* ``'-c:v libx264 -pix_fmt yuv444p -qp 0'`` -- "lossless" H264
+* ``'-c:v libx264 -pix_fmt yuv444p -qp 0 -preset veryslow'`` -- same as above?
+
+I'd be interested to hear of any other good combinations. Email me at
+the address shown below.
+
+===========  ===  ====
+Config
+===========  ===  ====
+``path``     str  Path name of file to be created.
+``encoder``  str  A string of ``ffmpeg`` options.
+``fps``      int  Video frame rate. Only affects how file is replayed.
+``16bit``    str  Attempt to write precision than normal 8-bit range. Can be ``'off'`` or ``'on'``.
+===========  ===  ====
 
 """
 
