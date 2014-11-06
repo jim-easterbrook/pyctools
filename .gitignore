@@ -57,5 +57,5 @@ target/
 *.c
 
 # Documentation output
-src/doc/api/
-doc
+/src/doc/api/
+/doc/
