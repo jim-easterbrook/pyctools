@@ -33,10 +33,10 @@ from .objectpool import ObjectPool
 
 class Component(Actor, ConfigMixin):
     """Base class for all Pyctools components, i.e. objects designed
-    to be used in processing pipelines (or networks).
+    to be used in processing pipelines (or graph networks).
 
     By default every component has one input and one output. To help
-    other software introspect the component their names are stored in
+    other software introspect the component their names are listed in
     :py:attr:`inputs` and :py:attr:`outputs`. Redefine these
     attributes if your component has different inputs and outputs.
 
@@ -55,21 +55,32 @@ class Component(Actor, ConfigMixin):
     called when a new output frame is available. See the
     :py:class:`~.transformer.Transformer` class for an example.
 
+    A :py:class:`logging.Logger` object is created for every
+    component. Use this to report any errors or warnings from your
+    component, rather than using ``print`` statements. The component
+    may get used in situations where there is no console to print
+    messages to.
+
     Every component also has configuration methods. See
     :py:class:`~.config.ConfigMixin` for more information. The
     configuration can be initialised by passing appropriate key, value
     pairs to a component's constructor. These values are applied after
     calling :py:meth:`initialise`.
 
+    :cvar bool with_outframe_pool: Whether to use an outframe pool.
+
+    :cvar list inputs: The component's inputs.
+
+    :cvar list outputs: The component's outputs.
+
+    :ivar logger: :py:class:`logging.Logger` object for the component.
+
     :param dict config: Initial configuration values.
 
     """
     with_outframe_pool = False
-    """Whether to use an outframe pool."""
     inputs = ['input']
-    """The component inputs"""
     outputs = ['output']
-    """The component outputs"""
 
     def __init__(self, **config):
         super(Component, self).__init__()

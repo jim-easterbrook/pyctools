@@ -19,12 +19,6 @@
 
 """Transformer base class.
 
-A Transformer is a Pyctools :py:class:`~.component.Component` that has
-one input and one output. When an input :py:class:`~.frame.Frame`
-object is received, and an output :py:class:`~.frame.Frame` object is
-available from a pool, the ":py:meth:`~Transformer.transform`" method
-is called to do the component's actual work.
-
 """
 
 __all__ = ['Transformer']
@@ -37,13 +31,20 @@ from guild.actor import *
 from .component import Component
 
 class Transformer(Component):
+    """ A Transformer is a Pyctools component that has one input and
+    one output. When an input :py:class:`~.frame.Frame` object is
+    received, and an output :py:class:`~.frame.Frame` object is
+    available from a pool, the ":py:meth:`~Transformer.transform`"
+    method is called to do the component's actual work.
+
+    """
     with_outframe_pool = True
 
-    def __init__(self, **kw):
+    def __init__(self, **config):
         self._transformer_in_frames = deque()
         self._transformer_out_frames = deque()
         self._transformer_ready = True
-        super(Transformer, self).__init__(**kw)
+        super(Transformer, self).__init__(**config)
 
     def set_ready(self, value):
         """Defer processing until some condition is met.

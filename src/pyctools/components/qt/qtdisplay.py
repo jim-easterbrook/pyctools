@@ -17,13 +17,32 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Simple Qt display.
+"""Display images in a Qt window.
 
-Shows incoming images in a Qt window.
+This is a "pass through" component that can be inserted anywhere in a
+pipeline to display the images at that point.
+
+The displayed image can be enlarged or reduced in size by setting the
+``expand`` and ``shrink`` config values. The size changing is done
+within Qt.
+
+The ``framerate`` config item sets a target rate (default value 25
+fps). If the incoming video cannot keep up then frames will be
+repeated. Otherwise the entire processing pipeline is slowed down to
+supply images at the correct rate.
+
+=============  ===  ====
+Config
+=============  ===  ====
+``expand``     int  Image up-conversion factor.
+``shrink``     int  Image down-conversion factor.
+``framerate``  int  Target frame rate.
+=============  ===  ====
 
 """
 
 __all__ = ['QtDisplay']
+__docformat__ = 'restructuredtext en'
 
 from collections import deque
 import sys
