@@ -19,12 +19,23 @@
 Pyctools documentation
 ======================
 
-There are three main parts to the documentation -- a manual containing general information about installing, using & extending Pyctools and more detailed descriptions of the core software and components, automatically extracted from the source code.
+There are two main parts to the documentation -- a manual containing general information about installing, using & extending Pyctools and detailed reference descriptions of the core software and components.
+
+Manual
+------
 
 .. toctree::
    :maxdepth: 2
 
-   manual/index
+   manual/introduction
+   manual/getting_started
+
+Reference
+---------
+
+.. toctree::
+   :maxdepth: 2
+
    api/tools/index
    api/core/index
    api/components/index
