@@ -69,140 +69,137 @@ class RawFileReader(Component):
     with_outframe_pool = True
 
     def initialise(self):
+        self.frame_no = 0
+        self.generator = None
         self.config['path'] = ConfigPath()
         self.config['looping'] = ConfigEnum(
             ('off', 'repeat', 'reverse'), dynamic=True)
 
-    def process_start(self):
-        super(RawFileReader, self).process_start()
+    def file_reader(self):
+        """Generator process to read file"""
         self.update_config()
         path = self.config['path']
-        self.file = io.open(path, 'rb', 0)
         self.metadata = Metadata().from_file(path)
         audit = self.metadata.get('audit')
         audit += 'data = %s\n' % path
         self.metadata.set('audit', audit)
-        self.fourcc = self.metadata.get('fourcc')
+        fourcc = self.metadata.get('fourcc')
         xlen, ylen = self.metadata.image_size()
         # set bits per pixel and component dimensions
-        if self.fourcc in ('IYU2', 'BGR[24]'):
+        if fourcc in ('IYU2', 'BGR[24]'):
             bpp = 24
-            self.shape = ((ylen, xlen), (ylen, xlen), (ylen, xlen))
-        elif self.fourcc in ('RGB[24]',):
+            shape = ((ylen, xlen), (ylen, xlen), (ylen, xlen))
+        elif fourcc in ('RGB[24]',):
             bpp = 24
-            self.shape = ((ylen, xlen, 3),)
-        elif self.fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC', 'YVYU', 'YUYV',
-                             'YV16', 'YUY2', 'YUNV', 'V422'):
+            shape = ((ylen, xlen, 3),)
+        elif fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC', 'YVYU', 'YUYV',
+                        'YV16', 'YUY2', 'YUNV', 'V422'):
             bpp = 16
-            self.shape = ((ylen, xlen), (ylen, xlen // 2), (ylen, xlen // 2))
-        elif self.fourcc in ('IYUV', 'I420', 'YV12'):
+            shape = ((ylen, xlen), (ylen, xlen // 2), (ylen, xlen // 2))
+        elif fourcc in ('IYUV', 'I420', 'YV12'):
             bpp = 12
-            self.shape = ((ylen, xlen),
-                          (ylen // 2, xlen // 2), (ylen // 2, xlen // 2))
-        elif self.fourcc in ('YVU9',):
+            shape = ((ylen, xlen), (ylen // 2, xlen // 2), (ylen // 2, xlen // 2))
+        elif fourcc in ('YVU9',):
             bpp = 9
-            self.shape = ((ylen, xlen),
-                          (ylen // 4, xlen // 4), (ylen // 4, xlen // 4))
+            shape = ((ylen, xlen), (ylen // 4, xlen // 4), (ylen // 4, xlen // 4))
         else:
-            raise RuntimeError("Can't open %s files" % self.fourcc)
-        self.bytes_per_frame = (xlen * ylen * bpp) // 8
-        self.zlen = os.path.getsize(path) // self.bytes_per_frame
-        if self.zlen < 1:
-            raise RuntimeError("Zero length file %s" % path)
+            self.logger.critical("Can't open %s files", fourcc)
+            return
+        bytes_per_frame = (xlen * ylen * bpp) // 8
+        zlen = os.path.getsize(path) // bytes_per_frame
+        if zlen < 1:
+            self.logger.critical("Zero length file %s", path)
+            return
         # set raw array slice parameters
-        if self.fourcc in ('BGR[24]',):
-            self.slice = ((2, None, 3),
-                          (1, None, 3),
-                          (0, None, 3))
-        elif self.fourcc in ('RGB[24]',):
-            self.slice = ((0, None, 1),)
-        elif self.fourcc in ('IYU2',):
-            self.slice = ((1, None, 3),
-                          (0, None, 3),
-                          (2, None, 3))
-        elif self.fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC'):
+        if fourcc in ('BGR[24]',):
+            data_slice = ((2, None, 3), (1, None, 3), (0, None, 3))
+        elif fourcc in ('RGB[24]',):
+            data_slice = ((0, None, 1),)
+        elif fourcc in ('IYU2',):
+            data_slice = ((1, None, 3), (0, None, 3), (2, None, 3))
+        elif fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC'):
             # packed format, UYVY order
-            self.slice = ((1, None, 2),
-                          (0, None, 4),
-                          (2, None, 4))
-        elif self.fourcc in ('YVYU',):
+            data_slice = ((1, None, 2), (0, None, 4), (2, None, 4))
+        elif fourcc in ('YVYU',):
             # packed format, YVYU order
-            self.slice = ((0, None, 2),
-                          (3, None, 4),
-                          (1, None, 4))
-        elif self.fourcc in ('YUYV', 'YUY2', 'YUNV', 'V422'):
+            data_slice = ((0, None, 2), (3, None, 4), (1, None, 4))
+        elif fourcc in ('YUYV', 'YUY2', 'YUNV', 'V422'):
             # packed format, YUYV order
-            self.slice = ((0, None, 2),
-                          (1, None, 4),
-                          (3, None, 4))
-        elif self.fourcc in ('IYUV', 'I420'):
+            data_slice = ((0, None, 2), (1, None, 4), (3, None, 4))
+        elif fourcc in ('IYUV', 'I420'):
             # planar format, YUV order
             Y_size = xlen * ylen
-            UV_size = self.shape[1][0] * self.shape[1][1]
-            self.slice = ((0,                Y_size,                 1),
+            UV_size = shape[1][0] * shape[1][1]
+            data_slice = ((0,                Y_size,                 1),
                           (Y_size,           Y_size + UV_size,       1),
                           (Y_size + UV_size, Y_size + (UV_size * 2), 1))
-        elif self.fourcc in ('YV16', 'YV12', 'YVU9'):
+        elif fourcc in ('YV16', 'YV12', 'YVU9'):
             # planar format, YVU order
             Y_size = xlen * ylen
-            UV_size = self.shape[1][0] * self.shape[1][1]
-            self.slice = ((0,                Y_size,                 1),
+            UV_size = shape[1][0] * shape[1][1]
+            data_slice = ((0,                Y_size,                 1),
                           (Y_size + UV_size, Y_size + (UV_size * 2), 1),
                           (Y_size,           Y_size + UV_size,       1))
         else:
-            raise RuntimeError("Can't open %s files" % self.fourcc)
+            self.logger.critical("Can't open %s files", fourcc)
+            return
         # set frame type
-        if self.fourcc in ('BGR[24]', 'RGB[24]'):
+        if fourcc in ('BGR[24]', 'RGB[24]'):
             self.frame_type = 'RGB'
         else:
             self.frame_type = 'YCbCr'
-        self.frame_no = 0
-        self.file_frame = 0
-        self.inc = 1
+        file_frame = 0
+        direction = 1
+        with io.open(path, 'rb', 0) as raw_file:
+            while True:
+                self.update_config()
+                if file_frame >= zlen:
+                    if self.config['looping'] == 'off':
+                        break
+                    elif self.config['looping'] == 'repeat':
+                        file_frame = 0
+                        raw_file.seek(0)
+                    else:
+                        file_frame = zlen - 2
+                        direction = -1
+                elif file_frame < 0:
+                    file_frame = 1
+                    direction = 1
+                if direction != 1:
+                    raw_file.seek((direction - 1) * bytes_per_frame, io.SEEK_CUR)
+                file_frame += direction
+                raw_data = raw_file.read(bytes_per_frame)
+                # convert to numpy arrays
+                data = []
+                raw_array = numpy.frombuffer(raw_data, numpy.uint8)
+                for slc, shp in zip(data_slice, shape):
+                    start, end, step = slc
+                    raw_data = raw_array[start:end:step]
+                    data.append(raw_data.reshape(shp))
+                if self.frame_type == 'YCbCr':
+                    # remove offset
+                    data[1] = data[1].astype(numpy.float32) - 128.0
+                    data[2] = data[2].astype(numpy.float32) - 128.0
+                yield data
 
     @actor_method
     def new_out_frame(self, frame):
         """new_out_frame(frame)
 
         """
-        self.update_config()
-        if self.file_frame >= self.zlen:
-            if self.config['looping'] == 'off':
-                self.output(None)
-                self.stop()
-                return
-            elif self.config['looping'] == 'repeat':
-                self.file_frame = 0
-                self.file.seek(0)
-            else:
-                self.file_frame = self.zlen - 2
-                self.inc = -1
-        elif self.file_frame < 0:
-            self.file_frame = 1
-            self.inc = 1
-        if self.inc != 1:
-            self.file.seek((self.inc - 1) * self.bytes_per_frame, io.SEEK_CUR)
-        self.file_frame += self.inc
-        raw_data = self.file.read(self.bytes_per_frame)
-        # convert to numpy arrays
-        raw_array = numpy.frombuffer(raw_data, numpy.uint8)
-        for slc, shape in zip(self.slice, self.shape):
-            start, end, step = slc
-            raw_data = raw_array[start:end:step]
-            frame.data.append(raw_data.reshape(shape))
-        if self.frame_type == 'YCbCr':
-            # remove offset
-            frame.data[1] = frame.data[1].astype(numpy.float32) - 128.0
-            frame.data[2] = frame.data[2].astype(numpy.float32) - 128.0
+        if not self.generator:
+            self.generator = self.file_reader()
+        try:
+            frame.data = next(self.generator)
+        except StopIteration:
+            self.output(None)
+            self.stop()
+            return
         frame.type = self.frame_type
         frame.frame_no = self.frame_no
         self.frame_no += 1
         frame.metadata.copy(self.metadata)
         self.output(frame)
-
-    def onStop(self):
-        super(RawFileReader, self).onStop()
-        self.file.close()
 
 def main():
     import time
