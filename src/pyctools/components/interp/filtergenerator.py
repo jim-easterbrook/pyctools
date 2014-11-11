@@ -29,15 +29,8 @@ Connecting a :py:class:`FilterGenerator` component's ``output`` to a
 filter to be updated (while the components are running) by changing
 the :py:class:`FilterGenerator` config::
 
-    filgen = FilterGenerator()
-    cfg = filgen.get_config()
-    cfg['xup'] = 2
-    cfg['xaperture'] = 16
-    filgen.set_config(cfg)
-    resize = Resize()
-    cfg = resize.get_config()
-    cfg['xup'] = 2
-    resize.set_config(cfg)
+    filgen = FilterGenerator(xup=2, xaperture=16)
+    resize = Resize(xup=2)
     filgen.bind('output', resize, 'filter')
     ...
     start(..., filgen, resize, ...)
@@ -50,19 +43,17 @@ the :py:class:`FilterGenerator` config::
 The :py:func:`FilterGeneratorCore` function can be used instead to
 make a non-reconfigurable resizer::
 
-    resize = Resize()
-    cfg = resize.get_config()
-    cfg['xup'] = 2
-    resize.set_config(cfg)
+    resize = Resize(xup=2)
     resize.filter(FilterGeneratorCore(x_up=2, x_aperture=16))
     ...
     start(..., resize, ...)
     ...
 
-The filter is a Hamming windowed sinc function. If the picture is
-being enlarged the filter has a cut frequency of half the input
-sampling frequency, otherwise the cut frequency is half the output
-sampling frequency.
+The filter is a Hamming windowed sinc function. Its cut frequency is
+set to the "Nyquist limit" (half the sampling frequency) for the input
+or output sampling frequency, whichever is the lower. This cut
+frequency can be adjusted with the ``xcut`` and ``ycut``
+configuration.
 
 2-dimensional filters can be produced, but it is usually more
 efficient to use two :py:class:`~.resize.Resize` components to process
@@ -93,9 +84,11 @@ class FilterGenerator(Component):
     ``xup``        int  Horizontal up-conversion factor.
     ``xdown``      int  Horizontal down-conversion factor.
     ``xaperture``  int  Horizontal filter aperture.
+    ``xcut``       int  Adjust horizontal cut frequency. Default is 100%.
     ``yup``        int  Vertical up-conversion factor.
     ``ydown``      int  Vertical down-conversion factor.
     ``yaperture``  int  Vertical filter aperture.
+    ``ycut``       int  Adjust vertical cut frequency. Default is 100%.
     =============  ===  ====
 
     """
@@ -105,9 +98,11 @@ class FilterGenerator(Component):
         self.config['xup'] = ConfigInt(min_value=1)
         self.config['xdown'] = ConfigInt(min_value=1)
         self.config['xaperture'] = ConfigInt(min_value=1)
+        self.config['xcut'] = ConfigInt(min_value=1, value=100)
         self.config['yup'] = ConfigInt(min_value=1)
         self.config['ydown'] = ConfigInt(min_value=1)
         self.config['yaperture'] = ConfigInt(min_value=1)
+        self.config['ycut'] = ConfigInt(min_value=1, value=100)
 
     def gen_process(self):
         # wait for self.output to be connected
@@ -128,14 +123,17 @@ class FilterGenerator(Component):
         x_up = self.config['xup']
         x_down = self.config['xdown']
         x_ap = self.config['xaperture']
+        x_cut = self.config['xcut']
         y_up = self.config['yup']
         y_down = self.config['ydown']
         y_ap = self.config['yaperture']
-        self.output(
-            FilterGeneratorCore(x_up=x_up, x_down=x_down, x_ap=x_ap,
-                                y_up=y_up, y_down=y_down, y_ap=y_ap))
+        y_cut = self.config['ycut']
+        self.output(FilterGeneratorCore(
+            x_up=x_up, x_down=x_down, x_ap=x_ap, x_cut=x_cut,
+            y_up=y_up, y_down=y_down, y_ap=y_ap, y_cut=y_cut))
 
-def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, y_up=1, y_down=1, y_ap=1):
+def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, x_cut=100,
+                        y_up=1, y_down=1, y_ap=1, y_cut=100):
     """
 
     :keyword int x_up: Horizontal up-conversion factor.
@@ -144,25 +142,31 @@ def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, y_up=1, y_down=1, y_ap=1):
 
     :keyword int x_ap: Horizontal filter aperture.
 
+    :keyword int x_cut: Horizontal cut frequency adjustment.
+
     :keyword int y_up: Vertical up-conversion factor.
 
     :keyword int y_down: Vertical down-conversion factor.
 
     :keyword int y_ap: Vertical filter aperture.
 
+    :keyword int y_cut: Vertical cut frequency adjustment.
+
     :return: A :py:class:`~pyctools.core.frame.Frame` object containing the
         filter.
 
     """
-    def filter_1D(up, down, ap):
-        cut_freq = float(min(up, down)) / float(2 * up * down)
+    def filter_1D(up, down, ap, cut_adj):
+        nyquist_freq = float(min(up, down)) / float(2 * up * down)
+        cut_adj = float(cut_adj) / 100.0
         coefs = []
         n = 1
         while True:
-            theta_1 = float(n) * math.pi * 2.0 * cut_freq
+            theta_1 = float(n) * math.pi * 2.0 * nyquist_freq
             theta_2 = theta_1 * 2.0 / float(ap)
             if theta_2 >= math.pi:
                 break
+            theta_1 *= cut_adj
             coef = math.sin(theta_1) / theta_1
             win = 0.5 * (1.0 + math.cos(theta_2))
             coef = coef * win
@@ -187,11 +191,13 @@ def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, y_up=1, y_down=1, y_ap=1):
     x_up = max(x_up, 1)
     x_down = max(x_down, 1)
     x_ap = max(x_ap, 1)
+    x_cut = max(x_cut, 1)
     y_up = max(y_up, 1)
     y_down = max(y_down, 1)
     y_ap = max(y_ap, 1)
-    x_fil = filter_1D(x_up, x_down, x_ap)
-    y_fil = filter_1D(y_up, y_down, y_ap)
+    y_cut = max(y_cut, 1)
+    x_fil = filter_1D(x_up, x_down, x_ap, x_cut)
+    y_fil = filter_1D(y_up, y_down, y_ap, y_cut)
     result = numpy.empty(y_fil.shape + x_fil.shape, dtype=numpy.float32)
     for y in range(y_fil.shape[0]):
         for x in range(x_fil.shape[0]):
@@ -201,10 +207,12 @@ def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, y_up=1, y_down=1, y_ap=1):
     out_frame.type = 'fil'
     audit = out_frame.metadata.get('audit')
     audit += 'data = FilterGenerator()\n'
-    if x_up != 1 or x_down != 1:
-        audit += '    x_up: %d, x_down: %d, x_ap: %d\n' % (x_up, x_down, x_ap)
-    if y_up != 1 or y_down != 1:
-        audit += '    y_up: %d, y_down: %d, y_ap: %d\n' % (y_up, y_down, y_ap)
+    if x_up != 1 or x_down != 1 or x_ap != 1:
+        audit += '    x_up: %d, x_down: %d, x_ap: %d, x_cut: %d\n' % (
+            x_up, x_down, x_ap, x_cut)
+    if y_up != 1 or y_down != 1 or y_ap != 1:
+        audit += '    y_up: %d, y_down: %d, y_ap: %d, y_cut: %d\n' % (
+            y_up, y_down, y_ap, y_cut)
     out_frame.metadata.set('audit', audit)
     return out_frame
 
