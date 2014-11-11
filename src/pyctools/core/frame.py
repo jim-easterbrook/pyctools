@@ -95,7 +95,7 @@ class Frame(object):
         for data in self.data:
             if isinstance(data, numpy.ndarray):
                 new_data = data
-            elif isinstance(data, PIL.Image):
+            elif isinstance(data, PIL.Image.Image):
                 if data.mode == 'F':
                     new_data = numpy.array(data, dtype=numpy.float32)
                 elif data.mode == 'I':
@@ -147,7 +147,7 @@ class Frame(object):
                 else:
                     result.append(PIL.Image.fromarray(
                         data.clip(0, 255).astype(numpy.uint8)))
-            elif isinstance(data, PIL.Image):
+            elif isinstance(data, PIL.Image.Image):
                 result.append(data)
             else:
                 raise RuntimeError(
