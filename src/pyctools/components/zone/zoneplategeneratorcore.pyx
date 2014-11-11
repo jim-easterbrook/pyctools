@@ -39,29 +39,30 @@ def zone_frame(numpy.ndarray[DTYPE_t, ndim=2] out_frame,
         DTYPE_t Ikxtdt_kx, Ikytdt_ky, Ikt2dt_kt, Iktdt_k0
         DTYPE_t Ikydy_Iktdt_k0, Iky2dy_Ikytdt_ky, Ikxydy_Ikxtdt_kx
         DTYPE_t Ikxdx_Ikydy_Iktdt_k0, Ikx2dx_Ikxydy_Ikxtdt_kx
-    xlen = out_frame.shape[1]
-    ylen = out_frame.shape[0]
-    phases = waveform.shape[0]
-    # compute temporal integrals
-    Ikxtdt_kx = kx + ((kxt + ktx) * z)
-    Ikytdt_ky = ky + ((kyt + kty) * z)
-    Ikt2dt_kt = kt +  (kt2        * z)
-    Iktdt_k0 = k0 + (Ikt2dt_kt * z)
-    # initialise vertical integrals
-    Ikydy_Iktdt_k0 = Iktdt_k0 % phases
-    Iky2dy_Ikytdt_ky = Ikytdt_ky
-    Ikxydy_Ikxtdt_kx = Ikxtdt_kx
-    for y in range(ylen):
-        # initialise horizontal integrals
-        Ikxdx_Ikydy_Iktdt_k0 = Ikydy_Iktdt_k0
-        Ikx2dx_Ikxydy_Ikxtdt_kx = Ikxydy_Ikxtdt_kx
-        for x in range(xlen):
-            out_frame[y, x] = waveform[int(Ikxdx_Ikydy_Iktdt_k0)]
-            # increment horizontal integrals
-            Ikxdx_Ikydy_Iktdt_k0 = (
-                Ikxdx_Ikydy_Iktdt_k0 + Ikx2dx_Ikxydy_Ikxtdt_kx) % phases
-            Ikx2dx_Ikxydy_Ikxtdt_kx += kx2
-        # increment vertical integrals
-        Ikydy_Iktdt_k0 = (Ikydy_Iktdt_k0 + Iky2dy_Ikytdt_ky) % phases
-        Iky2dy_Ikytdt_ky += ky2
-        Ikxydy_Ikxtdt_kx += kxy + kyx
+    with nogil:
+        xlen = out_frame.shape[1]
+        ylen = out_frame.shape[0]
+        phases = waveform.shape[0]
+        # compute temporal integrals
+        Ikxtdt_kx = kx + ((kxt + ktx) * z)
+        Ikytdt_ky = ky + ((kyt + kty) * z)
+        Ikt2dt_kt = kt +  (kt2        * z)
+        Iktdt_k0 = k0 + (Ikt2dt_kt * z)
+        # initialise vertical integrals
+        Ikydy_Iktdt_k0 = Iktdt_k0 % phases
+        Iky2dy_Ikytdt_ky = Ikytdt_ky
+        Ikxydy_Ikxtdt_kx = Ikxtdt_kx
+        for y in range(ylen):
+            # initialise horizontal integrals
+            Ikxdx_Ikydy_Iktdt_k0 = Ikydy_Iktdt_k0
+            Ikx2dx_Ikxydy_Ikxtdt_kx = Ikxydy_Ikxtdt_kx
+            for x in range(xlen):
+                out_frame[y, x] = waveform[<int>Ikxdx_Ikydy_Iktdt_k0]
+                # increment horizontal integrals
+                Ikxdx_Ikydy_Iktdt_k0 = (
+                    Ikxdx_Ikydy_Iktdt_k0 + Ikx2dx_Ikxydy_Ikxtdt_kx) % phases
+                Ikx2dx_Ikxydy_Ikxtdt_kx += kx2
+            # increment vertical integrals
+            Ikydy_Iktdt_k0 = (Ikydy_Iktdt_k0 + Iky2dy_Ikytdt_ky) % phases
+            Iky2dy_Ikytdt_ky += ky2
+            Ikxydy_Ikxtdt_kx += kxy + kyx

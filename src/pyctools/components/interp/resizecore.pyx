@@ -20,11 +20,12 @@
 
 """
 
-import numpy
+import numpy as np
 
 cimport cython
 cimport numpy
 
+DTYPE = np.float32
 ctypedef numpy.float32_t DTYPE_t
 
 @cython.boundscheck(False)
@@ -71,7 +72,7 @@ cdef void scale_line(DTYPE_t[:] out_line,
 cdef void resize_frame_core(DTYPE_t[:, :] out_comp,
                             DTYPE_t[:, :] in_comp,
                             DTYPE_t[:, :] norm_filter,
-                            int x_up, int x_down, int y_up, int y_down) nogil:
+                            int x_up, int x_down, int y_up, int y_down):
     cdef:
         int xlen_in, ylen_in
         int xlen_out, ylen_out
@@ -80,31 +81,32 @@ cdef void resize_frame_core(DTYPE_t[:, :] out_comp,
         int y_out
         int y_fil
         void (*interp)(DTYPE_t[:], DTYPE_t[:], DTYPE_t[:], int, int) nogil
-    xlen_in = in_comp.shape[1]
-    ylen_in = in_comp.shape[0]
-    xlen_out = out_comp.shape[1]
-    ylen_out = out_comp.shape[0]
-    xlen_fil = norm_filter.shape[1]
-    ylen_fil = norm_filter.shape[0]
-    # choice of filter coefficient is according to
-    #   filter_pos = (out_pos * down) - (in_pos * up)
-    if x_up == 1 and x_down == 1 and xlen_fil == 1:
-        # pure vertical filter
-        interp = &scale_line
-    else:
-        interp = &resize_line
-    # offset as filter is symmetrical
-    y_fil_off = (ylen_fil - 1) // 2
-    for y_out in range(ylen_out):
-        y_fil = -y_fil_off
-        y_in_1 = min(((y_out * y_down) + y_up + y_fil_off) // y_up, ylen_in)
-        y_fil = (ylen_fil - 1) - y_fil_off
-        y_in_0 = max(((y_out * y_down) + (y_up - 1) - y_fil) // y_up, 0)
-        y_fil = ((y_out * y_down) - (y_in_0 * y_up)) + y_fil_off
-        for y_in in range(y_in_0, y_in_1):
-            interp(out_comp[y_out], in_comp[y_in], norm_filter[y_fil],
-                   x_up, x_down)
-            y_fil -= y_up
+    with nogil:
+        xlen_in = in_comp.shape[1]
+        ylen_in = in_comp.shape[0]
+        xlen_out = out_comp.shape[1]
+        ylen_out = out_comp.shape[0]
+        xlen_fil = norm_filter.shape[1]
+        ylen_fil = norm_filter.shape[0]
+        # choice of filter coefficient is according to
+        #   filter_pos = (out_pos * down) - (in_pos * up)
+        if x_up == 1 and x_down == 1 and xlen_fil == 1:
+            # pure vertical filter
+            interp = &scale_line
+        else:
+            interp = &resize_line
+        # offset as filter is symmetrical
+        y_fil_off = (ylen_fil - 1) // 2
+        for y_out in range(ylen_out):
+            y_fil = -y_fil_off
+            y_in_1 = min(((y_out * y_down) + y_up + y_fil_off) // y_up, ylen_in)
+            y_fil = (ylen_fil - 1) - y_fil_off
+            y_in_0 = max(((y_out * y_down) + (y_up - 1) - y_fil) // y_up, 0)
+            y_fil = ((y_out * y_down) - (y_in_0 * y_up)) + y_fil_off
+            for y_in in range(y_in_0, y_in_1):
+                interp(out_comp[y_out], in_comp[y_in], norm_filter[y_fil],
+                       x_up, x_down)
+                y_fil -= y_up
 
 def resize_frame(numpy.ndarray[DTYPE_t, ndim=2] in_comp,
                  numpy.ndarray[DTYPE_t, ndim=2] norm_filter,
@@ -142,7 +144,7 @@ def resize_frame(numpy.ndarray[DTYPE_t, ndim=2] in_comp,
     ylen_out = (ylen_in * y_up) // y_down
     xlen_out = max(xlen_out, 1)
     ylen_out = max(ylen_out, 1)
-    out_comp = numpy.zeros(([ylen_out, xlen_out]), dtype=numpy.float32)
+    out_comp = np.zeros(([ylen_out, xlen_out]), dtype=DTYPE)
     resize_frame_core(
         out_comp, in_comp, norm_filter, x_up, x_down, y_up, y_down)
     return out_comp
