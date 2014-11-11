@@ -49,6 +49,7 @@ Config
 
 __all__ = ['VideoFileWriter']
 
+from contextlib import contextmanager
 import subprocess
 
 import numpy
@@ -57,6 +58,7 @@ from pyctools.core import Transformer, ConfigPath, ConfigInt, ConfigEnum, Metada
 
 class VideoFileWriter(Transformer):
     def initialise(self):
+        self.generator = None
         self.config['path'] = ConfigPath()
         self.config['encoder'] = ConfigEnum(
             ('-c:v ffv1 -pix_fmt bgr0',
@@ -67,62 +69,82 @@ class VideoFileWriter(Transformer):
              ), extendable=True)
         self.config['fps'] = ConfigInt(value=25)
         self.config['16bit'] = ConfigEnum(('off', 'on'))
-        self.ffmpeg = None
-        self.last_frame_type = None
 
-    def transform(self, in_frame, out_frame):
-        if not self.ffmpeg:
-            self.update_config()
-            path = self.config['path']
-            encoder = self.config['encoder']
-            fps = self.config['fps']
-            self.bit16 = self.config['16bit'] != 'off'
-        if self.bit16:
-            numpy_image = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
-            numpy_image = numpy_image * 256.0
-            numpy_image = numpy_image.clip(0, 2**16 - 1).astype(numpy.uint16)
-        else:
-            numpy_image = in_frame.as_numpy(dtype=numpy.uint8, dstack=True)[0]
+    @contextmanager
+    def subprocess(self, *arg, **kw):
+        try:
+            sp = subprocess.Popen(*arg, **kw)
+            yield sp
+        finally:
+            sp.stdin.flush()
+            sp.stdin.close()
+            sp.wait()
+
+    def file_writer(self, in_frame):
+        """Generator process to write file"""
+        self.update_config()
+        path = self.config['path']
+        encoder = self.config['encoder']
+        fps = self.config['fps']
+        bit16 = self.config['16bit'] != 'off'
+        numpy_image = in_frame.as_numpy(dstack=True)[0]
         ylen, xlen, bpc = numpy_image.shape
         if bpc == 3:
-            if in_frame.type != 'RGB' and in_frame.type != self.last_frame_type:
+            if in_frame.type != 'RGB':
                 self.logger.warning('Expected RGB input, got %s', in_frame.type)
-            if self.bit16:
-                pix_fmt = 'rgb48le'
-            else:
-                pix_fmt = 'rgb24'
+            pix_fmt = ('rgb24', 'rgb48le')[bit16]
         elif bpc == 1:
-            if in_frame.type != 'Y' and in_frame.type != self.last_frame_type:
+            if in_frame.type != 'Y':
                 self.logger.warning('Expected Y input, got %s', in_frame.type)
-            if self.bit16:
-                pix_fmt = 'gray16le'
-            else:
-                pix_fmt = 'gray'
+            pix_fmt = ('gray', 'gray16le')[bit16]
         else:
             self.logger.critical(
                 'Cannot write %s frame with %d components', in_frame.type, bpc)
-            return False
-        self.last_frame_type = in_frame.type
-        if not self.ffmpeg:
-            self.ffmpeg = subprocess.Popen(
+            return
+        md = Metadata().copy(in_frame.metadata)
+        audit = md.get('audit')
+        audit += '%s = data\n' % path
+        audit += '    encoder: "%s"\n' % (encoder)
+        audit += '    16bit: %s\n' % (self.config['16bit'])
+        md.set('audit', audit)
+        md.to_file(path)
+        with self.subprocess(
                 ['ffmpeg', '-v', 'warning', '-y', '-an',
                  '-s', '%dx%d' % (xlen, ylen),
                  '-f', 'rawvideo', '-c:v', 'rawvideo',
                  '-r', '%d' % fps, '-pix_fmt', pix_fmt, '-i', '-',
                  '-r', '%d' % fps] + encoder.split() + [path],
-                stdin=subprocess.PIPE)
-            md = Metadata().copy(in_frame.metadata)
-            audit = md.get('audit')
-            audit += '%s = data\n' % path
-            audit += '    encoder: "%s"\n' % (encoder)
-            audit += '    16bit: %s\n' % (self.config['16bit'])
-            md.set('audit', audit)
-            md.to_file(path)
-        self.ffmpeg.stdin.write(numpy_image.tostring())
+                stdin=subprocess.PIPE) as sp:
+            while True:
+                in_frame = yield True
+                if not in_frame:
+                    break
+                if bit16:
+                    numpy_image = in_frame.as_numpy(
+                        dtype=numpy.float32, dstack=True)[0]
+                    numpy_image = numpy_image * 256.0
+                    numpy_image = numpy_image.clip(
+                        0, 2**16 - 1).astype(numpy.uint16)
+                else:
+                    numpy_image = in_frame.as_numpy(
+                        dtype=numpy.uint8, dstack=True)[0]
+                sp.stdin.write(numpy_image.tostring())
+                del in_frame
+
+    def transform(self, in_frame, out_frame):
+        if not self.generator:
+            self.generator = self.file_writer(in_frame)
+            try:
+                self.generator.send(None)
+            except StopIteration:
+                return False
+        self.generator.send(in_frame)
         return True
 
     def onStop(self):
         super(VideoFileWriter, self).onStop()
-        if self.ffmpeg:
-            self.ffmpeg.stdin.close()
-            self.ffmpeg.wait()
+        if self.generator:
+            try:
+                self.generator.send(None)
+            except StopIteration:
+                pass
