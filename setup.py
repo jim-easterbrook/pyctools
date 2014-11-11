@@ -56,6 +56,9 @@ for root, dirs, files in os.walk('src/pyctools'):
             '.'.join(root.split(os.sep)[1:] + [base]),
             [os.path.join(root, name)],
             include_dirs = [numpy.get_include()],
+            extra_compile_args = [
+                '-fopenmp', '-Wno-maybe-uninitialized', '-Wno-unused-function'],
+            extra_link_args = ['-fopenmp'],
             ))
 
 # Use Cython version of 'build_ext' command

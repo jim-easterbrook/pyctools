@@ -20,6 +20,7 @@
 
 """
 
+from cython.parallel import prange
 import numpy as np
 
 cimport cython
@@ -97,7 +98,7 @@ cdef void resize_frame_core(DTYPE_t[:, :] out_comp,
             interp = &resize_line
         # offset as filter is symmetrical
         y_fil_off = (ylen_fil - 1) // 2
-        for y_out in range(ylen_out):
+        for y_out in prange(ylen_out, schedule='static'):
             y_fil = -y_fil_off
             y_in_1 = min(((y_out * y_down) + y_up + y_fil_off) // y_up, ylen_in)
             y_fil = (ylen_fil - 1) - y_fil_off
@@ -106,7 +107,7 @@ cdef void resize_frame_core(DTYPE_t[:, :] out_comp,
             for y_in in range(y_in_0, y_in_1):
                 interp(out_comp[y_out], in_comp[y_in], norm_filter[y_fil],
                        x_up, x_down)
-                y_fil -= y_up
+                y_fil = y_fil - y_up
 
 def resize_frame(numpy.ndarray[DTYPE_t, ndim=2] in_comp,
                  numpy.ndarray[DTYPE_t, ndim=2] norm_filter,

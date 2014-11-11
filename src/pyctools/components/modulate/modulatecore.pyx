@@ -16,6 +16,8 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
+from cython.parallel import prange
+
 cimport cython
 cimport numpy
 
@@ -31,7 +33,7 @@ cdef void modulate_frame_c(DTYPE_t[:, :] out_comp,
     with nogil:
         ylen = cell.shape[0]
         xlen = cell.shape[1]
-        for y in range(in_comp.shape[0]):
+        for y in prange(in_comp.shape[0], schedule='static'):
             j = y % ylen
             for x in range(in_comp.shape[1]):
                 i = x % xlen
