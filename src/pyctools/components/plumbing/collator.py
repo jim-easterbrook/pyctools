@@ -31,7 +31,7 @@ from collections import deque
 
 from guild.actor import *
 
-from pyctools.core.component import Component
+from pyctools.core.base import Component
 
 class Collator(Component):
     inputs = ['input1', 'input2']

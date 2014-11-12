@@ -42,7 +42,7 @@ __docformat__ = 'restructuredtext en'
 import numpy
 
 from pyctools.core.config import ConfigStr
-from pyctools.core.transformer import Transformer
+from pyctools.core.base import Transformer
 
 class Arithmetic(Transformer):
     def initialise(self):

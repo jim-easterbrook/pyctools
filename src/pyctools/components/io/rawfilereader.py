@@ -63,7 +63,7 @@ from guild.actor import *
 import numpy
 
 from pyctools.core.config import ConfigPath, ConfigEnum
-from pyctools.core.component import Component
+from pyctools.core.base import Component
 from pyctools.core.metadata import Metadata
 
 class RawFileReader(Component):

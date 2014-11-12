@@ -52,7 +52,7 @@ __docformat__ = 'restructuredtext en'
 from guild.actor import *
 import numpy
 
-from pyctools.core.transformer import Transformer
+from pyctools.core.base import Transformer
 from .modulatecore import modulate_frame
 
 class Modulate(Transformer):

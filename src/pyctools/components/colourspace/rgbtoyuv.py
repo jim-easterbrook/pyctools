@@ -38,7 +38,7 @@ __docformat__ = 'restructuredtext en'
 import numpy
 
 from pyctools.core.config import ConfigEnum
-from pyctools.core.transformer import Transformer
+from pyctools.core.base import Transformer
 
 class RGBtoYUV(Transformer):
     mat_601 = numpy.array(

@@ -32,7 +32,7 @@ __docformat__ = 'restructuredtext en'
 
 from pyctools.core.config import ConfigPath
 from pyctools.core.metadata import Metadata
-from pyctools.core.transformer import Transformer
+from pyctools.core.base import Transformer
 
 class ImageFileWriter(Transformer):
     def initialise(self):

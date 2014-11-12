@@ -53,7 +53,7 @@ from guild.actor import *
 import numpy
 
 from pyctools.core.config import ConfigEnum
-from pyctools.core.transformer import Transformer
+from pyctools.core.base import Transformer
 from pyctools.components.interp.resize import resize_frame
 
 class YUVtoRGB(Transformer):

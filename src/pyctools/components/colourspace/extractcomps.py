@@ -30,7 +30,7 @@ __all__ = ['ExtractComps']
 __docformat__ = 'restructuredtext en'
 
 from pyctools.core.config import ConfigInt
-from pyctools.core.transformer import Transformer
+from pyctools.core.base import Transformer
 
 class ExtractComps(Transformer):
     def initialise(self):
