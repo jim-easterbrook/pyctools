@@ -40,3 +40,10 @@ Reference
    api/tools/index
    api/core/index
    api/components/index
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

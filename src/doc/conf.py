@@ -5,6 +5,7 @@
 
 import sys, os
 import site
+import types
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -33,6 +34,7 @@ intersphinx_mapping = {
     }
 
 keep_warnings = True
+needs_sphinx = '1.2'
 add_function_parentheses = False
 add_module_names = False
 
@@ -102,7 +104,7 @@ for subpackage in ('components', 'core', 'tools'):
     if not os.path.isdir(dir_name):
         os.makedirs(dir_name)
     idx_str = ('%s\n' % subpackage.capitalize() +
-               ('=' * len(subpackage)) + '=========\n\n' +
+               ('=' * len(subpackage)) + '\n\n' +
                '.. autosummary::\n' +
                '   :toctree:\n\n')
     for mod in modules:
