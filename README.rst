@@ -9,12 +9,14 @@ It works with stills or video, and utilises popular libraries such as `Python Im
 Requirements
 ------------
 
-* `Python <https://www.python.org/>`_ version 2 or 3.
-* `Guild <https://github.com/sparkslabs/guild>`_.
-* `NumPy <http://www.numpy.org/>`_.
-* `Python Imaging Library <http://www.pythonware.com/products/pil/>`_. (The `pillow <http://python-pillow.github.io/>`_ fork of PIL is recommended.)
-* `Cython <http://cython.org/>`_.
-* `OpenCV <http://opencv.org/>`_ python bindings.
+* `Python <https://www.python.org/>`_ version 2.7 or 3.x.
+* `Guild <https://github.com/sparkslabs/guild>`_ for communicating components.
+* `NumPy <http://www.numpy.org/>`_ for its powerful multi-dimensional array object.
+* `Python Imaging Library <http://www.pythonware.com/products/pil/>`_ for image file reading and writing. (The `pillow <http://python-pillow.github.io/>`_ fork of PIL is recommended.)
+* `Cython <http://cython.org/>`_ to build fast extensions for Python.
+* `PyGObject <https://wiki.gnome.org/Projects/PyGObject>`_ to handle metadata.
+* `OpenCV <http://opencv.org/>`_ python bindings (optional) for advanced image processing.
+* `FFmpeg <https://www.ffmpeg.org/>`_ (optional) to read and write video files.
 
 Installation
 ------------
