@@ -28,6 +28,7 @@ Manual
    :maxdepth: 2
 
    manual/introduction
+   manual/installation
    manual/getting_started
 
 Reference
