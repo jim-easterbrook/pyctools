@@ -33,7 +33,7 @@ from __future__ import print_function
 __all__ = ['DumpMetadata']
 __docformat__ = 'restructuredtext en'
 
-from pyctools.core import Transformer
+from pyctools.core.transformer import Transformer
 
 class DumpMetadata(Transformer):
     def initialise(self):

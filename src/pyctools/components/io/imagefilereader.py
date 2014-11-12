@@ -36,7 +36,9 @@ import time
 
 import PIL.Image
 
-from pyctools.core import Component, ConfigPath, Frame
+from pyctools.core.config import ConfigPath
+from pyctools.core.component import Component
+from pyctools.core.frame import Frame
 
 class ImageFileReader(Component):
     inputs = []

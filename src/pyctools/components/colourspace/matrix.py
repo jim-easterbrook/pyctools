@@ -42,7 +42,7 @@ __docformat__ = 'restructuredtext en'
 from guild.actor import *
 import numpy
 
-from pyctools.core import Transformer
+from pyctools.core.transformer import Transformer
 
 class Matrix(Transformer):
     inputs = ['input', 'matrix']

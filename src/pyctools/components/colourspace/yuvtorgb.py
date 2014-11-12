@@ -52,8 +52,9 @@ import cv2
 from guild.actor import *
 import numpy
 
-from pyctools.core import Transformer, ConfigEnum
-from ..interp.resize import resize_frame
+from pyctools.core.config import ConfigEnum
+from pyctools.core.transformer import Transformer
+from pyctools.components.interp.resize import resize_frame
 
 class YUVtoRGB(Transformer):
     mat_601 = numpy.array([[1.0,  0.0,       1.37071],

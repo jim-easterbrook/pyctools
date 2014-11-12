@@ -30,7 +30,7 @@ import PIL.Image
 __all__ = ['ImageDisplay']
 __docformat__ = 'restructuredtext en'
 
-from pyctools.core import Transformer
+from pyctools.core.transformer import Transformer
 
 class ImageDisplay(Transformer):
     def initialise(self):

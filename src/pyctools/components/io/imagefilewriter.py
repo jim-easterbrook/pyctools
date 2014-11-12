@@ -30,7 +30,9 @@ import PIL.Image
 __all__ = ['ImageFileWriter']
 __docformat__ = 'restructuredtext en'
 
-from pyctools.core import Transformer, Metadata, ConfigPath
+from pyctools.core.config import ConfigPath
+from pyctools.core.metadata import Metadata
+from pyctools.core.transformer import Transformer
 
 class ImageFileWriter(Transformer):
     def initialise(self):

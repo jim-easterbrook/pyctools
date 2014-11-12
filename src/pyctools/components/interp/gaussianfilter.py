@@ -73,7 +73,9 @@ if 'sphinx' in sys.modules:
 
 import numpy
 
-from pyctools.core import Component, ConfigFloat, Frame
+from pyctools.core.config import ConfigFloat
+from pyctools.core.component import Component
+from pyctools.core.frame import Frame
 
 class GaussianFilter(Component):
     """Config:

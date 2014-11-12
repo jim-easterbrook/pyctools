@@ -75,7 +75,9 @@ if 'sphinx' in sys.modules:
 from guild.actor import *
 import numpy
 
-from pyctools.core import Component, ConfigInt, Frame
+from pyctools.core.config import ConfigInt
+from pyctools.core.component import Component
+from pyctools.core.frame import Frame
 
 class FilterGenerator(Component):
     """Config:

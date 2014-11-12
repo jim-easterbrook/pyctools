@@ -29,7 +29,8 @@ should be one more than the last component required.
 __all__ = ['ExtractComps']
 __docformat__ = 'restructuredtext en'
 
-from pyctools.core import Transformer, ConfigInt
+from pyctools.core.config import ConfigInt
+from pyctools.core.transformer import Transformer
 
 class ExtractComps(Transformer):
     def initialise(self):

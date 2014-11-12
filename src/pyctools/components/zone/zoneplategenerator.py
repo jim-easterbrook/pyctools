@@ -96,7 +96,7 @@ import sys
 from guild.actor import *
 import numpy
 
-from pyctools.core import Component
+from pyctools.core.component import Component
 from pyctools.core.config import ConfigFloat, ConfigInt, ConfigEnum
 from .zoneplategeneratorcore import zone_frame
 

@@ -54,7 +54,9 @@ import subprocess
 
 import numpy
 
-from pyctools.core import Transformer, ConfigPath, ConfigInt, ConfigEnum, Metadata
+from pyctools.core.config import ConfigPath, ConfigInt, ConfigEnum
+from pyctools.core.metadata import Metadata
+from pyctools.core.transformer import Transformer
 
 class VideoFileWriter(Transformer):
     def initialise(self):

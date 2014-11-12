@@ -51,7 +51,8 @@ import numpy
 from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import Qt
 
-from pyctools.core import ConfigInt, Transformer
+from pyctools.core.config import ConfigInt
+from pyctools.core.transformer import Transformer
 
 class SimpleDisplay(QtGui.QLabel):
     def __init__(self, *arg, **kw):

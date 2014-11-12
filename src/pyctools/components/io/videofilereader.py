@@ -49,7 +49,9 @@ import sys
 from guild.actor import *
 import numpy
 
-from pyctools.core import Metadata, Component, ConfigPath, ConfigEnum
+from pyctools.core.config import ConfigPath, ConfigEnum
+from pyctools.core.component import Component
+from pyctools.core.metadata import Metadata
 
 class VideoFileReader(Component):
     inputs = []

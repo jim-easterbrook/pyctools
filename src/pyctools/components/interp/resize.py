@@ -44,7 +44,8 @@ if 'sphinx' in sys.modules:
 from guild.actor import *
 import numpy
 
-from pyctools.core import Transformer, ConfigInt
+from pyctools.core.config import ConfigInt
+from pyctools.core.transformer import Transformer
 from .resizecore import resize_frame
 
 class Resize(Transformer):
