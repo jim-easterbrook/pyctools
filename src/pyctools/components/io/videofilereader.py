@@ -51,7 +51,7 @@ import numpy
 
 from pyctools.core.config import ConfigPath, ConfigEnum
 from pyctools.core.base import Component
-from pyctools.core.metadata import Metadata
+from pyctools.core.frame import Metadata
 
 class VideoFileReader(Component):
     inputs = []

@@ -23,21 +23,21 @@
 
    Component
    Transformer
+   ObjectPool
 
 """
 
-__all__ = ['Component', 'Transformer']
+__all__ = ['Component', 'Transformer', 'ObjectPool']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque
 import logging
+import weakref
 
 from guild.actor import *
 
 from .config import ConfigMixin, ConfigInt
-from .frame import Frame
-from .metadata import Metadata
-from .objectpool import ObjectPool
+from .frame import Frame, Metadata
 
 class Component(Actor, ConfigMixin):
     """Base class for all Pyctools components, i.e. objects designed
@@ -55,10 +55,9 @@ class Component(Actor, ConfigMixin):
     includes methods for the default input and output.
 
     To help with load balancing components can have a limited size
-    :py:class:`~.objectpool.ObjectPool` of output
-    :py:class:`~.frame.Frame` objects. To use this your class must set
-    ``with_outframe_pool`` to ``True`` and have a
-    :py:meth:`new_out_frame` method with the
+    :py:class:`ObjectPool` of output :py:class:`~.frame.Frame`
+    objects. To use this your class must set ``with_outframe_pool`` to
+    ``True`` and have a :py:meth:`new_out_frame` method with the
     :py:meth:`guild.actor.actor_method` decorator. This method is
     called when a new output frame is available. See the
     :py:class:`~.transformer.Transformer` class for an example.
@@ -185,7 +184,7 @@ class Transformer(Component):
         """new_out_frame(frame)
 
         Receive an output :py:class:`~.frame.Frame` from the
-        :py:class:`Transformer`'s :py:class:`~.objectpool.ObjectPool`.
+        :py:class:`Transformer`'s :py:class:`ObjectPool`.
 
         """
         self._transformer_out_frames.append(frame)
@@ -230,3 +229,50 @@ class Transformer(Component):
 
         """
         raise NotImplemented('transform')
+
+
+class ObjectPool(object):
+    """Object "pool".
+
+    In a pipeline of processes it is useful to have some way of "load
+    balancing", to prevent the first process in the pipeline doing all
+    its work before the next process starts. A simple way to do this
+    is to use a limited size "pool" of objects. When the first process
+    has used up all of the objects in the pool it has to wait for the
+    next process in the pipeline to consume and release an object thus
+    ensuring it doesn't get too far ahead.
+
+    This object pool uses Python's :py:class:`weakref.ref` class to
+    trigger the release of a new object when Python no longer holds a
+    reference to an old object, i.e. when it gets deleted.
+
+    See the :py:class:`Transformer` source code for an example of how
+    to add an outframe pool to a Pyctools :py:class:`Component`.
+
+    :param callable factory: The function to call to create new
+        objects.
+
+    :param int size: The maximum number of objects allowed to exist at
+        any time.
+
+    :param callable callback: A function to call when each new object
+        is created. It is passed one parameter -- the new object.
+
+    """
+    def __init__(self, factory, size, callback):
+        super(ObjectPool, self).__init__()
+        self.factory = factory
+        self.callback = callback
+        self.obj_list = []
+        # create first objects
+        for i in range(size):
+            self._new_object()
+
+    def _release(self, obj):
+        self.obj_list.remove(obj)
+        self._new_object()
+
+    def _new_object(self):
+        obj = self.factory()
+        self.obj_list.append(weakref.ref(obj, self._release))
+        self.callback(obj)

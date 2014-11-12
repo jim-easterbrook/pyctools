@@ -32,7 +32,7 @@ Useful tags include: 'xlen', 'ylen' and 'fourcc'.
 import argparse
 import sys
 
-from pyctools.core.metadata import Metadata
+from pyctools.core.frame import Metadata
 
 def main():
     # get command args
