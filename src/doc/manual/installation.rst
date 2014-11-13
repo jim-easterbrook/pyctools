@@ -107,6 +107,16 @@ The ``ffmpeg -h`` command will show if FFmpeg is already installed.
 
 FFmpeg should be installable with your system's package manager.
 
+`PyQt4 <http://www.riverbankcomputing.com/software/pyqt/intro>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+PyQt4 is an optional dependency.
+If it is not installed then the Pyctools visual editor will not be usable.
+
+If PyQt4 is already installed the ``python -c 'import PyQt4'`` command will run without error.
+
+PyQt4 should be installable with your system's package manager.
+
 `pillow <http://python-pillow.github.io/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

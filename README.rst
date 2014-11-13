@@ -19,6 +19,7 @@ Requirements
 * `gexiv2 <https://wiki.gnome.org/Projects/gexiv2>`_ to handle metadata.
 * `OpenCV <http://opencv.org/>`_ python bindings (optional) for advanced image processing.
 * `FFmpeg <https://www.ffmpeg.org/>`_ (optional) to read and write video files.
+* `PyQt4 <http://www.riverbankcomputing.com/software/pyqt/intro>`_ (optional) graphic toolkit used by the Pyctools visual editor.
 
 Installation
 ------------
