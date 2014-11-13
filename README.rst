@@ -6,6 +6,8 @@ A picture processing algorithm development kit.
 Pyctools is a collection of picture processing primitive components that you can easily interconnect to make complex algorithm simulations.
 It works with stills or video, and utilises popular libraries such as `Python Imaging Library <http://www.pythonware.com/products/pil/>`_, `NumPy <http://www.numpy.org/>`_ and `OpenCV <http://opencv.org/>`_.
 
+.. image:: https://pythonhosted.org/pyctools.core/_images/editor_8.png
+
 Requirements
 ------------
 
@@ -14,68 +16,14 @@ Requirements
 * `NumPy <http://www.numpy.org/>`_ for its powerful multi-dimensional array object.
 * `Python Imaging Library <http://www.pythonware.com/products/pil/>`_ for image file reading and writing. (The `pillow <http://python-pillow.github.io/>`_ fork of PIL is recommended.)
 * `Cython <http://cython.org/>`_ to build fast extensions for Python.
-* `PyGObject <https://wiki.gnome.org/Projects/PyGObject>`_ to handle metadata.
+* `gexiv2 <https://wiki.gnome.org/Projects/gexiv2>`_ to handle metadata.
 * `OpenCV <http://opencv.org/>`_ python bindings (optional) for advanced image processing.
 * `FFmpeg <https://www.ffmpeg.org/>`_ (optional) to read and write video files.
 
 Installation
 ------------
 
-The easiest way to install Pyctools is with `pip <https://pip.pypa.io/en/latest/>`_::
-
-  sudo pip install pyctools.core
-
-Note the use of ``sudo`` to install into system-wide directories.
-If you don't have root access (e.g. on a corporate machine) you can create a local installation with the ``--user`` option::
-
-  pip install --user pyctools.core
-
-An alternative is to use a `virtual environment <http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_.
-(Although you probably need root access to install the ``virtualenv`` tool.)
-
-If you want easy access to the pyctools source files (e.g. to write your own extensions) or want to use the latest development version you should clone the GitHub repository and use ``setup.py`` in the usual way::
-
-  git clone https://github.com/jim-easterbrook/pyctools.git
-  cd pyctools
-  python setup.py build
-  sudo python setup.py install
-
-Documentation
--------------
-
-Pyctools documentation is a work in progress. See https://pythonhosted.org/pyctools.core/.
-
-Core technologies
------------------
-
-Pyctools uses `Guild <https://github.com/sparkslabs/guild>`_ at its core.
-This is ideally suited to writing "reactive" components that do nothing until a video frame arrives on their input, then process the frame and (probably) send it to their output.
-Guild makes it easy to interconnect such processes.
-
-Although Pyctools is written in Python this does not have any adverse impact on processing speeds.
-All the computationally intensive work is done in Python extensions.
-These can be written in a variety of languages, but I've found `Cython <http://cython.org/>`_ easiest to use.
-
-Pyctools is primarily targeted at Python3.
-There are some libraries that are only available in Python2 for a while yet, but I hope that situation won't last much longer.
-My intention is to write Python3 that's compatible with Python2, not *vice versa*.
-
-Metadata
---------
-
-One of the better features of the BBC pictools was the "audit trail".
-Every tool extended this block of text with details of what it did - the program name, its parameters, the time and machine it ran on, etc.
-This often proved useful when seeking to find out what a particular file was supposed to be.
-
-Pyctools uses XMP "sidecar" files to store metadata like this.
-Using sidecar files means we won't need to restrict the video or still image file formats to those that support metadata.
-
-Extensible
-----------
-
-The core parts of Pyctools are open source and available from `GitHub <https://github.com/jim-easterbrook/pyctools>`_ and `PyPI <https://pypi.python.org/pypi/pyctools.core/0.0.0>`_.
-Python `namespace packages <http://legacy.python.org/dev/peps/pep-0420/>`_ are used (via `setuptools <https://pythonhosted.org/setuptools/setuptools.html#namespace-packages>`_) to allow Pyctools to be easily extended by other people.
-There should be nothing to stop commercial developers writing their own extensions, either for release or purely for internal use.
+Please see `the documentation <https://pythonhosted.org/pyctools.core/manual/installation.html>`_ for full details of how to install Pyctools and its requirements.
 
 Licence
 -------
