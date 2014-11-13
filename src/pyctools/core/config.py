@@ -132,7 +132,7 @@ class ConfigPath(ConfigLeafNode):
     """File pathname configuration node.
 
     """
-    parser_kw = {'type' : file, 'metavar' : 'path'}
+    parser_kw = {'metavar' : 'path'}
 
     def validate(self, value):
         return isinstance(value, str)
@@ -182,7 +182,7 @@ class ConfigStr(ConfigLeafNode):
     """String configuration node.
 
     """
-    parser_kw = {}
+    parser_kw = {'metavar' : 'str'}
 
     def validate(self, value):
         return isinstance(value, str)
@@ -201,16 +201,13 @@ class ConfigEnum(ConfigLeafNode):
         setting new values.
 
     """
-    parser_kw = {}
-
     def __init__(self, choices, extendable=False, **kw):
         super(ConfigEnum, self).__init__(value=choices[0], **kw)
         self.choices = list(choices)
         self.extendable = extendable
-        if self.extendable:
-            self.parser_kw = {}
-        else:
-            self.parser_kw = {'choices' : self.choices}
+        self.parser_kw = {'metavar' : 'str'}
+        if not self.extendable:
+            self.parser_kw['choices'] = self.choices
 
     def validate(self, value):
         if self.extendable and value not in self.choices:
