@@ -57,6 +57,33 @@ cdef void resize_line(DTYPE_t[:] out_line,
         out_line[x_out] = acc
 
 @cython.boundscheck(False)
+cdef void filter_line(DTYPE_t[:] out_line,
+                      DTYPE_t[:] in_line,
+                      DTYPE_t[:] norm_filter,
+                      int x_up, int x_down) nogil:
+    cdef:
+        unsigned int xlen_in, xlen_out, xlen_fil, x_in, x_out, x_fil
+        int x_in_0, x_in_1, x_fil_0, x_fil_off
+        DTYPE_t acc
+    xlen_in = in_line.shape[0]
+    xlen_out = out_line.shape[0]
+    xlen_fil = norm_filter.shape[0]
+    # offset as filter is symmetrical
+    x_fil_off = (xlen_fil - 1) // 2
+    for x_out in range(xlen_out):
+        x_fil_0 = -x_fil_off
+        x_in_1 = min(<int>x_out + 1 - x_fil_0, xlen_in)
+        x_fil_0 = (<int>xlen_fil - 1) - x_fil_off
+        x_in_0 = max(<int>x_out - x_fil_0, 0)
+        x_fil_0 = (<int>x_out - x_in_0) + x_fil_off
+        acc = out_line[x_out]
+        x_fil = x_fil_0
+        for x_in in range(x_in_0, x_in_1):
+            acc += in_line[x_in] * norm_filter[x_fil]
+            x_fil -= 1
+        out_line[x_out] = acc
+
+@cython.boundscheck(False)
 cdef void scale_line(DTYPE_t[:] out_line,
                      DTYPE_t[:] in_line,
                      DTYPE_t[:] norm_filter,
@@ -64,8 +91,10 @@ cdef void scale_line(DTYPE_t[:] out_line,
     cdef:
         unsigned int xlen, x
         DTYPE_t coef
-    xlen = out_line.shape[0]
     coef = norm_filter[0]
+    if coef == 0.0:
+        return
+    xlen = out_line.shape[0]
     for x in range(xlen):
         out_line[x] += in_line[x] * coef
 
@@ -91,11 +120,14 @@ cdef void resize_frame_core(DTYPE_t[:, :] out_comp,
         ylen_fil = norm_filter.shape[0]
         # choice of filter coefficient is according to
         #   filter_pos = (out_pos * down) - (in_pos * up)
-        if x_up == 1 and x_down == 1 and xlen_fil == 1:
+        if x_up != 1 or x_down != 1:
+            interp = &resize_line
+        elif xlen_fil == 1:
             # pure vertical filter
             interp = &scale_line
         else:
-            interp = &resize_line
+            # horizontal filtering without resizing
+            interp = &filter_line
         # offset as filter is symmetrical
         y_fil_off = (ylen_fil - 1) // 2
         for y_out in prange(ylen_out, schedule='static'):
