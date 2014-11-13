@@ -684,6 +684,7 @@ class NetworkArea(QtGui.QGraphicsScene):
             of.write("""#!/usr/bin/env python
 # File written by pyctools-editor. Do not edit.
 
+import argparse
 import logging
 from pyctools.core.compound import Compound
 """)
@@ -717,6 +718,12 @@ if __name__ == '__main__':
             of.write("""
     logging.basicConfig(level=logging.DEBUG)
     comp = Network().make()
+    cnf = comp.get_config()
+    parser = argparse.ArgumentParser()
+    cnf.parser_add(parser)
+    args = parser.parse_args()
+    cnf.parser_set(args)
+    comp.set_config(cnf)
     comp.start()
 """)
             if with_qt:
