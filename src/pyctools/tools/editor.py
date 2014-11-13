@@ -17,8 +17,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-from __future__ import print_function
-
 import argparse
 import logging
 import os
@@ -35,6 +33,8 @@ from PyQt4.QtCore import Qt
 
 import pyctools.components
 from pyctools.core.config import *
+
+logger = logging.getLogger('pyctools-editor')
 
 _COMP_MIMETYPE = 'application/x-pyctools-component'
 _INPUT_MIMETYPE = 'application/x-pyctools-component-input'
@@ -603,7 +603,7 @@ class NetworkArea(QtGui.QGraphicsScene):
             exec(code, global_vars, local_vars)
         if 'Network' not in local_vars:
             # not a recognised script
-            print('Script not recognised')
+            logger.error('Script not recognised')
             return
         for child in self.items():
             self.removeItem(child)
