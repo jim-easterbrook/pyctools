@@ -807,7 +807,7 @@ class ComponentList(QtGui.QTreeView):
                     node.setData(item)
 
 class MainWindow(QtGui.QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, script=None):
         super(MainWindow, self).__init__(parent)
         self.setWindowTitle("Pyctools graph editor")
         self.script_file = os.getcwd()
@@ -853,6 +853,10 @@ class MainWindow(QtGui.QMainWindow):
         stop_button = QtGui.QPushButton('stop graph')
         stop_button.clicked.connect(self.network_area.stop_graph)
         grid.addWidget(stop_button, 1, 4)
+        # load initial script
+        if script:
+            self.set_window_title(script)
+            self.network_area.load_script(script)
 
     def load_script(self):
         file_name = str(QtGui.QFileDialog.getOpenFileName(
@@ -883,9 +887,11 @@ def main():
     del sys.argv[-1]
     # get command args
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('-s', '--script', metavar='file_name',
+                        help='a script to load at startup')
     args = parser.parse_args(sys.argv[1:])
     # create GUI and run application event loop
-    main = MainWindow()
+    main = MainWindow(script=args.script)
     main.show()
     return app.exec_()
 
