@@ -98,6 +98,9 @@ class ConfigLeafNode(object):
         self.max_value = max_value
         self.default = value
 
+    def parser_add(self, parser, key):
+        parser.add_argument('--' + key, default=self.value, **self.parser_kw)
+
     def get(self):
         """Return the config item's current value."""
         return self.value
@@ -129,6 +132,8 @@ class ConfigPath(ConfigLeafNode):
     """File pathname configuration node.
 
     """
+    parser_kw = {'type' : file, 'metavar' : 'path'}
+
     def validate(self, value):
         return isinstance(value, str)
 
@@ -137,6 +142,8 @@ class ConfigInt(ConfigLeafNode):
     """Integer configuration node.
 
     """
+    parser_kw = {'type' : int, 'metavar' : 'n'}
+
     def __init__(self, **kw):
         super(ConfigInt, self).__init__(**kw)
         if self.value is None:
@@ -157,6 +164,8 @@ class ConfigFloat(ConfigLeafNode):
         incremented beyond max_value or *vice versa*.
 
     """
+    parser_kw = {'type' : float, 'metavar' : 'x'}
+
     def __init__(self, decimals=8, wrapping=False, **kw):
         super(ConfigFloat, self).__init__(**kw)
         self.decimals = decimals
@@ -173,6 +182,8 @@ class ConfigStr(ConfigLeafNode):
     """String configuration node.
 
     """
+    parser_kw = {}
+
     def validate(self, value):
         return isinstance(value, str)
 
@@ -190,10 +201,16 @@ class ConfigEnum(ConfigLeafNode):
         setting new values.
 
     """
+    parser_kw = {}
+
     def __init__(self, choices, extendable=False, **kw):
         super(ConfigEnum, self).__init__(value=choices[0], **kw)
         self.choices = list(choices)
         self.extendable = extendable
+        if self.extendable:
+            self.parser_kw = {}
+        else:
+            self.parser_kw = {'choices' : self.choices}
 
     def validate(self, value):
         if self.extendable and value not in self.choices:
@@ -213,6 +230,28 @@ class ConfigParent(ConfigLeafNode):
     def validate(self, value):
         return isinstance(value, dict)
 
+    def parser_add(self, parser, prefix=''):
+        if prefix:
+            prefix += '.'
+        for key, value in self.value.items():
+            value.parser_add(parser, prefix + key)
+
+    def parser_set(self, args):
+        for key, value in vars(args).items():
+            parts = key.split('.')
+            while len(parts) > 1:
+                value = {parts[-1] : value}
+                del parts[-1]
+            key = parts[0]
+            self.value[key].set(value)
+
+    def set(self, value):
+        """Set the config item's value."""
+        if not self.validate(value):
+            raise ValueError(str(value))
+        for k, v in value.items():
+            self.value[k].set(v)
+
     def __repr__(self):
         result = {}
         for key, value in self.value.items():
@@ -224,10 +263,10 @@ class ConfigParent(ConfigLeafNode):
         return self.value[key].get()
 
     def __setitem__(self, key, value):
-        if key in self.value:
-            self.value[key].set(value)
-        else:
+        if isinstance(value, ConfigLeafNode):
             self.value[key] = value
+        else:
+            self.value[key].set(value)
 
 
 class ConfigGrandParent(ConfigParent):
@@ -237,11 +276,7 @@ class ConfigGrandParent(ConfigParent):
     :py:class:`dict`.
 
     """
-    def __getitem__(self, key):
-        return self.value[key]
-
-    def __setitem__(self, key, value):
-        self.value[key] = value
+    pass
 
 
 class ConfigMixin(object):
