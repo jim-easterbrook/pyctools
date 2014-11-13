@@ -17,6 +17,36 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
+"""Pyctools visual graph editor.
+
+.. image:: ../../images/editor_8.png
+
+The :py:mod:`pyctools-editor <pyctools.tools.editor>` is a tool that
+allows you to connect Pyctools components to make complex networks or
+"graphs". You may find it easier to use than writing Python scripts
+the old fashioned way.
+
+If Pyctools has been :doc:`installed <../../manual/installation>`
+correctly you should be able to start the editor with one of the
+following commands::
+
+    pyctools-editor
+
+or ::
+
+    python -m pyctools.tools.editor
+
+The latter version may give you a more useful error message if the
+program fails for some reason.
+
+See the :doc:`getting started <../../manual/getting_started>` guide
+for a short tutorial on using the editor.
+
+"""
+
+__all__ = []
+__docformat__ = 'restructuredtext en'
+
 import argparse
 import logging
 import os
