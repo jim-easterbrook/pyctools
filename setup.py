@@ -24,19 +24,9 @@ import os
 from setuptools import setup, find_packages, Extension
 import sys
 
-version = '0.1.1'
+version = '0.1.2'
 
 packages = find_packages('src')
-
-namespace_packages = []
-for package in packages:
-    init = os.path.join('src', package.replace('.', '/'), '__init__.py')
-    with open(init) as f:
-        for line in f.readlines():
-            if 'declare_namespace' in line:
-                # very likely a namespace package
-                namespace_packages.append(package)
-                break
 
 console_scripts = []
 for name in os.listdir('src/pyctools/tools'):
@@ -128,7 +118,6 @@ setup(name = 'pyctools.core',
           'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
           'Operating System :: OS Independent',
           'Programming Language :: Python :: 2',
-          'Programming Language :: Python :: 2.6',
           'Programming Language :: Python :: 2.7',
           'Programming Language :: Python :: 3',
           'Topic :: Multimedia :: Graphics',
@@ -139,7 +128,7 @@ setup(name = 'pyctools.core',
       license = 'GNU GPL',
       platforms = ['POSIX', 'MacOS', 'Windows'],
       packages = packages,
-      namespace_packages = namespace_packages,
+      namespace_packages = packages,
       ext_modules = ext_modules,
       package_dir = {'' : 'src'},
       entry_points = {
