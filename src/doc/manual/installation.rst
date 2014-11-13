@@ -41,10 +41,9 @@ Any version from 2.7 onwards is suitable, but note that OpenCV has not yet relea
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This currently needs to be downloaded from GitHub and installed with ``setup.py``.
-I've forked Michael's repos to make a few improvements, so I suggest using my fork until the improvements are merged into Michael's repos.
 You can download a ZIP archive from GitHub, but I prefer to use ``git`` to clone the repos::
 
-  git clone https://github.com/jim-easterbrook/guild.git
+  git clone https://github.com/sparkslabs/guild.git
   cd guild
   python setup.py build
   sudo python setup.py install
@@ -138,6 +137,22 @@ Clone the repos and install Pyctools as follows::
 As before, a "local" installation can be done instead of a system-wide installation::
 
   python setup.py install --user
+
+Documentation
+^^^^^^^^^^^^^
+
+Pyctools documentation is available `online <https://pythonhosted.org/pyctools.core/>`_ but it's sometimes useful to have a local copy.
+The documentation is built using a package called Sphinx, available from PyPI::
+
+  sudo pip install Sphinx
+
+Having installed Sphinx you can use ``setup.py`` to build the documentation::
+
+  cd pyctools
+  python setup.py build_sphinx
+
+The documentation can be read with any web browser.
+The start page is ``doc/html/index.html``.
 
 Pyctools extras
 ---------------
