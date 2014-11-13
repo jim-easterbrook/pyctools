@@ -16,6 +16,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see
 <http://www.gnu.org/licenses/>.
 
+Changes in v0.1.1:
+  1/ Added a lot of documentation
+  2/ Added components to read/write still images
+  3/ Bug fixes and speed improvements
+
 Changes in v0.1.0:
   1/ First release
 
