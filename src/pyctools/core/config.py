@@ -17,10 +17,57 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Configuration classes.
+"""Component configuration classes.
 
-Provides configuration via a tree of different node types for
-different value types.
+The :py:class:`ConfigMixin` mixin class can be used with any component
+to provide a hierarchical tree of named configuration values. Each
+configuration value node has a fixed type and can be configured to
+have constraints such as maximum and minimum values.
+
+Configuration values are accessed in a dictionary-like manner. During
+a component's initialisation you should create the required
+configuration nodes like this::
+
+    self.config['zlen'] = ConfigInt(value=100, min_value=1)
+    self.config['looping'] = ConfigEnum(('off', 'repeat'))
+
+Subsequently the config object behaves more like a dictionary::
+
+    self.config['zlen'] = 250
+    ...
+    zlen = self.config['zlen']
+
+Users of a component can initialise its configuration by passing
+key-value pairs to the component's constructor::
+
+    resize = Resize(xup=xup, xdown=xdown)
+
+The configuration can be changed, even when the component is running,
+with the :py:meth:`~ConfigMixin.get_config` and
+:py:meth:`~ConfigMixin.set_config` methods::
+
+    cfg = resize.get_config()
+    cfg['xup'] = 3
+    cfg['xdown'] = 4
+    resize.set_config(cfg)
+
+Note that these methods are thread-safe and make a copy of the
+configuration tree. This ensures that all your configuration changes
+are applied together, some time after calling
+:py:meth:`~ConfigMixin.set_config`.
+
+.. autosummary::
+   :nosignatures:
+
+   ConfigMixin
+   ConfigParent
+   ConfigGrandParent
+   ConfigInt
+   ConfigFloat
+   ConfigStr
+   ConfigPath
+   ConfigEnum
+   ConfigLeafNode
 
 """
 
@@ -52,14 +99,22 @@ class ConfigLeafNode(object):
         self.default = value
 
     def get(self):
+        """Return the config item's current value."""
         return self.value
 
     def set(self, value):
+        """Set the config item's value."""
         if not self.validate(value):
             raise ValueError(str(value))
         self.value = value
 
     def clip(self, value):
+        """Return a limited value, for types that have maximum or
+        minimum values.
+
+        This method does not affect the config item's current value.
+
+        """
         if self.max_value is not None:
             value = min(value, self.max_value)
         if self.min_value is not None:
@@ -69,12 +124,14 @@ class ConfigLeafNode(object):
     def __repr__(self):
         return repr(self.value)
 
+
 class ConfigPath(ConfigLeafNode):
     """File pathname configuration node.
 
     """
     def validate(self, value):
         return isinstance(value, str)
+
 
 class ConfigInt(ConfigLeafNode):
     """Integer configuration node.
@@ -89,8 +146,15 @@ class ConfigInt(ConfigLeafNode):
     def validate(self, value):
         return isinstance(value, int) and self.clip(value) == value
 
+
 class ConfigFloat(ConfigLeafNode):
     """Float configuration node.
+
+    :keyword int decimals: How many decimal places to use when
+        displaying the value.
+
+    :keyword bool wrapping: Should the value change to min_value when
+        incremented beyond max_value or *vice versa*.
 
     """
     def __init__(self, decimals=8, wrapping=False, **kw):
@@ -104,6 +168,7 @@ class ConfigFloat(ConfigLeafNode):
     def validate(self, value):
         return isinstance(value, float) and self.clip(value) == value
 
+
 class ConfigStr(ConfigLeafNode):
     """String configuration node.
 
@@ -111,10 +176,18 @@ class ConfigStr(ConfigLeafNode):
     def validate(self, value):
         return isinstance(value, str)
 
+
 class ConfigEnum(ConfigLeafNode):
     """'Enum' configuration node.
 
     The value can be one of a list of choices.
+
+    :keyword list choices: a list of strings that are the possible
+        values of the config item. Initial value is the first in the
+        list.
+
+    :keyword bool extendable: can the choices list be extended by
+        setting new values.
 
     """
     def __init__(self, choices, extendable=False, **kw):
@@ -126,6 +199,7 @@ class ConfigEnum(ConfigLeafNode):
         if self.extendable and value not in self.choices:
             self.choices.append(value)
         return value in self.choices
+
 
 class ConfigParent(ConfigLeafNode):
     """Parent configuration node.
@@ -155,6 +229,7 @@ class ConfigParent(ConfigLeafNode):
         else:
             self.value[key] = value
 
+
 class ConfigGrandParent(ConfigParent):
     """Grandparent configuration node.
 
@@ -168,6 +243,7 @@ class ConfigGrandParent(ConfigParent):
     def __setitem__(self, key, value):
         self.value[key] = value
 
+
 class ConfigMixin(object):
     """Add a config tree to a pyctools component.
 
@@ -180,7 +256,7 @@ class ConfigMixin(object):
         """Get a copy of the component's current configuration.
 
         Using a copy allows the config to be updated in a threadsafe
-        manner while the component is running. Use
+        manner while the component is running. Use the
         :py:meth:`set_config` method to update the component's
         configuration after making changes to the copy.
 
