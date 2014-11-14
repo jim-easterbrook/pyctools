@@ -62,6 +62,7 @@ from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import Qt
 
 import pyctools.components
+from pyctools.core.compound import Compound
 from pyctools.core.config import *
 
 logger = logging.getLogger('pyctools-editor')
@@ -371,6 +372,15 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
         self.klass = klass
         self.obj = obj
         self.config_dialog = None
+        # context menu actions
+        self.context_menu_actions = [
+            ('Rename',    self.rename_self),
+            ('Delete',    self.delete_self),
+            ('Configure', self.do_config),
+            ]
+        self.draw_icon()
+
+    def draw_icon(self):
         # name label
         self.name_label = QtGui.QGraphicsSimpleTextItem(self.name, self)
         font = self.name_label.font()
@@ -390,12 +400,11 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
         for idx, name in enumerate(self.obj.inputs):
             self.inputs[name] = InputIcon(name, self)
             self.inputs[name].setPos(0, 100 + (idx * 20))
-        # output
+        # outputs
         self.outputs = {}
         for idx, name in enumerate(self.obj.outputs):
             self.outputs[name] = OutputIcon(name, self)
             self.outputs[name].setPos(self.width, 100 + (idx * 20))
-        self.draw_icon()
 
     def rename(self, name):
         self.name = name
@@ -411,25 +420,31 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
         return self.outputs[name].connect_pos()
 
     def connect(self, outbox, dest, inbox):
+        if not self.isEnabled():
+            return
         self.obj.bind(outbox, dest.obj, inbox)
 
     def renew(self):
+        if not self.isEnabled():
+            return
         config = self.obj.get_config()
         self.obj = self.klass()
         self.obj.set_config(config)
 
     def contextMenuEvent(self, event):
         menu = QtGui.QMenu()
-        rename_action = menu.addAction('Rename')
-        delete_action = menu.addAction('Delete')
-        config_action = menu.addAction('Configure')
+        actions = {}
+        for label, method in self.context_menu_actions:
+            actions[menu.addAction(label)] = method
         action = menu.exec_(event.screenPos())
-        if action == rename_action:
-            self.scene().rename_component(self)
-        elif action == delete_action:
-            self.scene().delete_child(self)
-        elif action == config_action:
-            self.do_config()
+        if action:
+            actions[action]()
+
+    def rename_self(self):
+        self.scene().rename_component(self)
+
+    def delete_self(self):
+        self.scene().delete_child(self)
 
     def mouseDoubleClickEvent(self, event):
         self.do_config()
@@ -457,9 +472,133 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
 
 class ComponentIcon(BasicComponentIcon):
     def draw_icon(self):
+        super(ComponentIcon, self).draw_icon()
         height = 100 + (max(2, len(self.inputs), len(self.outputs)) * 20)
         self.setPolygon(QtGui.QPolygonF(QtGui.QPolygon(
             [0, 0, self.width, 0, self.width, height, 0, height, 0, 0])))
+
+class CompoundIcon(BasicComponentIcon):
+    def __init__(self, *arg, **kw):
+        self.expanded = False
+        self.child_comps = {}
+        super(CompoundIcon, self).__init__(*arg, **kw)
+        self.context_menu_actions.append(
+            ('Expand/contract', self.expand_contract))
+
+    def expand_contract(self):
+        old_w, old_h = self.width, self.height
+        self.expanded = not self.expanded
+        self.draw_icon()
+        delta_x = self.width - old_w
+        delta_y = self.height - old_h
+        # move other components
+        pos = self.scenePos()
+        x = pos.x()
+        y = pos.y()
+        for child in self.scene().matching_items(BasicComponentIcon):
+            if child == self or child in self.child_comps.values():
+                continue
+            pos = child.scenePos()
+            if pos.x() >= x:
+                child.moveBy(delta_x, 0)
+            if pos.y() >= y + self.height:
+                child.moveBy(0, delta_y)
+
+    def draw_icon(self):
+        # delete previous version
+        for child in self.childItems():
+            self.scene().removeItem(child)
+        self.child_comps = {}
+        if self.expanded:
+            # position components according to linkages
+            pos = {}
+            for root in self.obj._compound_children:
+                if root in pos:
+                    continue
+                # assign a starting position to root
+                pos[root] = [50, 50]
+                # follow root's outputs
+                pending = [root]
+                while pending:
+                    name = pending.pop(0)
+                    x = pos[name][0] + 150
+                    y = pos[name][1]
+                    for outbox in self.obj._compound_children[name].outputs:
+                        source = name, outbox
+                        if source in self.obj._compound_linkages:
+                            dest, inbox = self.obj._compound_linkages[source]
+                            if dest == 'self':
+                                continue
+                            pos[dest] = [x, y]
+                            y += 150
+                            pending.append(dest)
+                # follow root's inputs
+                pending = [root]
+                while pending:
+                    name = pending.pop(0)
+                    x = pos[name][0] - 150
+                    y = pos[name][1]
+                    for inbox in self.obj._compound_children[name].inputs:
+                        target = name, inbox
+                        for source in self.obj._compound_linkages:
+                            if self.obj._compound_linkages[source] != target:
+                                continue
+                            src, outbox = source
+                            if src == 'self':
+                                continue
+                            pos[src] = [x, y]
+                            y += 150
+                            pending.append(src)
+            x_min, y_min = pos[pos.keys()[0]]
+            x_max, y_max = x_min, y_min
+            for i in pos:
+                x_min = min(x_min, pos[i][0])
+                y_min = min(y_min, pos[i][1])
+                x_max = max(x_max, pos[i][0])
+                y_max = max(y_max, pos[i][1])
+            for i in pos:
+                pos[i][0] = 50 + pos[i][0] - x_min
+                pos[i][1] = 50 + pos[i][1] - y_min
+            # draw components
+            for name, obj in self.obj._compound_children.items():
+                child = self.scene().new_component(
+                    name, obj.__class__, QtCore.QPointF(*pos[name]),
+                    parent=self, obj=obj)
+                child.setEnabled(False)
+                self.child_comps[name] = child
+            self.width = (x_max - x_min) + 200
+            self.height = (y_max - y_min) + 230
+            super(CompoundIcon, self).draw_icon()
+            # draw linkages
+            for source, target in self.obj._compound_linkages.items():
+                src, outbox = source
+                dest, inbox = target
+                if src == 'self':
+                    source_pos = self.in_pos(outbox, None)
+                    dest_pos = self.child_comps[dest].in_pos(inbox, source_pos)
+                elif dest == 'self':
+                    dest_pos = self.out_pos(outbox, None)
+                    source_pos = self.child_comps[src].out_pos(outbox, dest_pos)
+                else:
+                    source_pos = self.child_comps[src].out_pos(outbox, None)
+                    dest_pos = self.child_comps[dest].in_pos(inbox, source_pos)
+                    source_pos = self.child_comps[src].out_pos(outbox, dest_pos)
+                line = QtGui.QGraphicsLineItem(QtCore.QLineF(
+                    self.mapFromScene(source_pos), self.mapFromScene(dest_pos)
+                    ), self)
+        else:
+            self.width = 100
+            super(CompoundIcon, self).draw_icon()
+            self.height = 100 + (max(2, len(self.inputs), len(self.outputs)) * 20)
+        # draw boundary
+        self.setPolygon(QtGui.QPolygonF(QtGui.QPolygon(
+            [0, 0, self.width, 0, self.width, self.height, 0, self.height, 0, 0])))
+        surround = QtGui.QGraphicsRectItem(
+            -3, -3, self.width + 6, self.height + 6, self)
+        pen = surround.pen()
+        pen.setStyle(Qt.DashDotLine)
+        surround.setPen(pen)
+
 
 class BusbarIcon(BasicComponentIcon):
     width = 50
@@ -473,13 +612,13 @@ class BusbarIcon(BasicComponentIcon):
             while not self.out_pos_free(name, y):
                 y += 20
             self.outputs[name].setPos(self.width, y)
-        self.draw_icon()
+        self.adjust_size()
 
     def in_pos(self, name, link_pos):
         if link_pos:
             y = self.mapFromScene(link_pos).y()
             self.inputs[name].setPos(0, y)
-            self.draw_icon()
+            self.adjust_size()
         return self.inputs[name].connect_pos()
 
     def out_pos(self, name, link_pos):
@@ -488,7 +627,7 @@ class BusbarIcon(BasicComponentIcon):
             while not self.out_pos_free(name, y):
                 y += 20
             self.outputs[name].setPos(self.width, y)
-            self.draw_icon()
+            self.adjust_size()
         return self.outputs[name].connect_pos()
 
     def out_pos_free(self, ignore, y):
@@ -498,6 +637,10 @@ class BusbarIcon(BasicComponentIcon):
         return True
 
     def draw_icon(self):
+        super(BusbarIcon, self).draw_icon()
+        self.adjust_size()
+
+    def adjust_size(self):
         y0 = 0
         y1 = 100
         for conn in self.inputs.values():
@@ -568,14 +711,18 @@ class NetworkArea(QtGui.QGraphicsScene):
         if name:
             self.new_component(name, klass, position)
 
-    def new_component(self, name, klass, position):
-        obj = klass()
+    def new_component(self, name, klass, position, parent=None, obj=None):
+        if not obj:
+            obj = klass()
         if isinstance(obj, pyctools.components.plumbing.busbar.Busbar):
-            component = BusbarIcon(name, klass, obj)
+            component = BusbarIcon(name, klass, obj, parent)
+        elif isinstance(obj, Compound):
+            component = CompoundIcon(name, klass, obj, parent)
         else:
-            component = ComponentIcon(name, klass, obj)
+            component = ComponentIcon(name, klass, obj, parent)
         component.setPos(position)
-        self.addItem(component)
+        if not parent:
+            self.addItem(component)
         self.update_scene_rect()
         return component
 
@@ -612,18 +759,22 @@ class NetworkArea(QtGui.QGraphicsScene):
     def run_graph(self):
         # replace components with fresh instances
         for child in self.matching_items(BasicComponentIcon):
-            child.obj.stop()
-            child.renew()
+            if child.isEnabled():
+                child.obj.stop()
+                child.renew()
         # rebuild connections
         for child in self.matching_items(ComponentLink):
-            child.renew()
+            if child.isEnabled():
+                child.renew()
         # run it!
         for child in self.matching_items(BasicComponentIcon):
-            child.obj.start()
+            if child.isEnabled():
+                child.obj.start()
 
     def stop_graph(self):
         for child in self.matching_items(BasicComponentIcon):
-            child.obj.stop()
+            if child.isEnabled():
+                child.obj.stop()
 
     def load_script(self, file_name):
         global_vars = {}
@@ -862,6 +1013,7 @@ class MainWindow(QtGui.QMainWindow):
         grid.addWidget(stop_button, 1, 4)
         # load initial script
         if script:
+            script = os.path.abspath(script)
             self.set_window_title(script)
             self.network_area.load_script(script)
 
