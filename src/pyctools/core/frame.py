@@ -47,7 +47,7 @@ class Frame(object):
     * a frame number
     * a list of data items
     * a type description string, such as "RGB"
-    * a :py:class:`~.metadata.Metadata` item
+    * a :py:class:`Metadata` item
 
     The data items can be :py:class:`numpy:numpy.ndarray` or
     :py:class:`PIL.Image.Image` objects. The list should contain a
@@ -165,7 +165,7 @@ class Frame(object):
 
 
 class Metadata(object):
-    """Store "data about the data" in a :py:class:`~.frame.Frame`.
+    """Store "data about the data" in a :py:class:`Frame`.
 
     This container stores information about an image or video sequence
     that is not the actual image data. The main use of this is the
