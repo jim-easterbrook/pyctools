@@ -467,7 +467,7 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
             for link in self.scene().matching_items(ComponentLink):
                 if link.source == self or link.dest == self:
                     link.redraw()
-            self.scene().update_scene_rect()
+            self.scene().update_scene_rect(no_shrink=True)
         return super(BasicComponentIcon, self).itemChange(change, value)
 
 class ComponentIcon(BasicComponentIcon):
@@ -659,9 +659,11 @@ class BusbarIcon(BasicComponentIcon):
              self.width // 2, y1 + 10, -5, y1, 0, y1, 0, y0])))
 
 class NetworkArea(QtGui.QGraphicsScene):
+    min_size = QtCore.QRectF(0, 0, 800, 600)
+
     def __init__(self, parent=None):
         super(NetworkArea, self).__init__(parent)
-        self.setSceneRect(0, 0, 800, 600)
+        self.setSceneRect(self.min_size)
 
     def dragEnterEvent(self, event):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
@@ -695,10 +697,13 @@ class NetworkArea(QtGui.QGraphicsScene):
                     self.removeItem(link)
         self.removeItem(child)
 
-    def update_scene_rect(self):
+    def update_scene_rect(self, no_shrink=False):
         rect = self.itemsBoundingRect()
         rect.adjust(-150, -150, 150, 150)
-        self.setSceneRect(rect.unite(self.sceneRect()))
+        rect = rect.unite(self.min_size)
+        if no_shrink:
+            rect = rect.unite(self.sceneRect())
+        self.setSceneRect(rect)
 
     def add_component(self, klass, position):
         base_name = re.sub('[^A-Z]', '', klass.__name__).lower()
@@ -802,6 +807,7 @@ class NetworkArea(QtGui.QGraphicsScene):
             dest, inbox = dest
             link = ComponentLink(comps[source], outbox, comps[dest], inbox)
             self.addItem(link)
+        self.views()[0].centerOn(self.itemsBoundingRect().center())
 
     def set_config(self, cnf, key, value):
         if isinstance(value, dict):
