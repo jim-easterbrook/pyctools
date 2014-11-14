@@ -96,15 +96,15 @@ class Compound(object):
         self.outputs = []
         # get child components
         self._compound_children = {}
-        for key in kw:
+        self._compound_linkages = {}
+        for key, value in kw.items():
             if key == 'linkages':
-                continue
-            self._compound_children[key] = kw[key]
+                self._compound_linkages = value
+            else:
+                self._compound_children[key] = value
         # set up linkages
         self._compound_outputs = {}
-        for source in kw['linkages']:
-            src, outbox = source
-            dest, inbox = kw['linkages'][source]
+        for (src, outbox), (dest, inbox) in self._compound_linkages.items():
             if src == 'self':
                 setattr(self, inbox,
                         getattr(self._compound_children[dest], inbox))
