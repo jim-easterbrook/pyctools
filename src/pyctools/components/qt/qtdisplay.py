@@ -37,6 +37,7 @@ Config
 ``expand``     int  Image up-conversion factor.
 ``shrink``     int  Image down-conversion factor.
 ``framerate``  int  Target frame rate.
+``stats``      str  Show actual frame rate statistics. Can be ``'off'`` or ``'on'``.
 =============  ===  ====
 
 """
@@ -45,34 +46,39 @@ __all__ = ['QtDisplay']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque
+import logging
 import sys
 
 import numpy
 from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import Qt
 
-from pyctools.core.config import ConfigInt
+from pyctools.core.config import ConfigInt, ConfigEnum
 from pyctools.core.base import Transformer
 
 class SimpleDisplay(QtGui.QLabel):
     def __init__(self, *arg, **kw):
         super(SimpleDisplay, self).__init__(*arg, **kw)
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.in_queue = deque()
         self.framerate = 25
+        self.frame_count = 0
+        self.missed_count = 0
         # start timer to show frames at regular intervals
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.timer_show_frame)
         self.timer.start(1000 // self.framerate)
 
-    def show_frame(self, frame, image, framerate):
+    def show_frame(self, frame, image, framerate, stats):
         # this method will be called from another thread, so do
         # nothing except put stuff on queue
-        self.in_queue.append((frame, image, framerate))
+        self.in_queue.append((frame, image, framerate, stats))
 
     def timer_show_frame(self):
         if not self.in_queue:
+            self.missed_count += 1
             return
-        frame, image, framerate = self.in_queue.popleft()
+        frame, image, framerate, stats = self.in_queue.popleft()
         if framerate != self.framerate:
             self.framerate = framerate
             self.timer.setInterval(1000 // self.framerate)
@@ -81,6 +87,15 @@ class SimpleDisplay(QtGui.QLabel):
         pixmap = QtGui.QPixmap.fromImage(image)
         self.resize(pixmap.size())
         self.setPixmap(pixmap)
+        self.frame_count += 1
+        if self.frame_count >= 200:
+            if stats:
+                miss_rate = 100.0 * float(self.missed_count) / float(
+                    self.missed_count + self.frame_count)
+                self.logger.warning(
+                    'Showing %.1f%% of target frame rate', 100.0 - miss_rate)
+            self.frame_count = 0
+            self.missed_count = 0
 
     def shut_down(self):
         self.timer.stop()
@@ -91,6 +106,7 @@ class QtDisplay(Transformer):
         self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
         self.config['expand'] = ConfigInt(min_value=1, dynamic=True)
         self.config['framerate'] = ConfigInt(min_value=1, value=25)
+        self.config['stats'] = ConfigEnum(('off', 'on'))
         self.last_frame_type = None
         self.display = SimpleDisplay(None, Qt.Window | Qt.WindowStaysOnTopHint)
 
@@ -99,6 +115,7 @@ class QtDisplay(Transformer):
         shrink = self.config['shrink']
         expand = self.config['expand']
         framerate = self.config['framerate']
+        stats = self.config['stats'] == 'on'
         numpy_image = in_frame.as_numpy(dtype=numpy.uint8, dstack=True)[0]
         ylen, xlen, bpc = numpy_image.shape
         if bpc == 3:
@@ -123,7 +140,7 @@ class QtDisplay(Transformer):
             image = image.scaled(
                 xlen * expand // shrink, ylen * expand // shrink,
                 transformMode=Qt.SmoothTransformation)
-        self.display.show_frame(in_frame, image, framerate)
+        self.display.show_frame(in_frame, image, framerate, stats)
         return True
 
     def onStop(self):
