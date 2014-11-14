@@ -977,20 +977,29 @@ class MainWindow(QtGui.QMainWindow):
         self.script_file = os.getcwd()
         ## file menu
         file_menu = self.menuBar().addMenu('File')
-        load_action = QtGui.QAction('Load script', self)
-        load_action.setShortcuts(['Ctrl+L', 'Ctrl+O'])
-        load_action.triggered.connect(self.load_script)
-        file_menu.addAction(load_action)
-        save_action = QtGui.QAction('Save script', self)
-        save_action.setShortcuts(['Ctrl+S'])
-        save_action.triggered.connect(self.save_script)
-        file_menu.addAction(save_action)
+        file_menu.addAction('Load script', self.load_script, 'Ctrl+O')
+        file_menu.addAction('Save script', self.save_script, 'Ctrl+S')
         file_menu.addSeparator()
         quit_action = QtGui.QAction('Quit', self)
         quit_action.setShortcuts(['Ctrl+Q', 'Ctrl+W'])
         quit_action.triggered.connect(
             QtGui.QApplication.instance().closeAllWindows)
         file_menu.addAction(quit_action)
+        ## zoom menu
+        zoom_menu = self.menuBar().addMenu('Zoom')
+        zoom_menu.addAction('Zoom in', self.zoom_in, 'Ctrl++')
+        zoom_menu.addAction('Zoom out', self.zoom_out, 'Ctrl+-')
+        zoom_menu.addSeparator()
+        self.zoom_group = QtGui.QActionGroup(self)
+        for zoom in (25, 35, 50, 70, 100, 141, 200):
+            action = QtGui.QAction('%d%%' % zoom, self)
+            action.setCheckable(True)
+            if zoom == 100:
+                action.setChecked(True)
+            action.setData(zoom)
+            zoom_menu.addAction(action)
+            self.zoom_group.addAction(action)
+        self.zoom_group.triggered.connect(self.set_zoom)
         ## main application area
         self.setCentralWidget(QtGui.QWidget())
         grid = QtGui.QGridLayout()
@@ -1002,12 +1011,12 @@ class MainWindow(QtGui.QMainWindow):
         self.component_list = ComponentList(self)
         splitter.addWidget(self.component_list)
         self.network_area = NetworkArea(self)
-        view = QtGui.QGraphicsView(self.network_area)
-        view.setAcceptDrops(True)
-        view.setDragMode(QtGui.QGraphicsView.RubberBandDrag)
-        view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        splitter.addWidget(view)
+        self.view = QtGui.QGraphicsView(self.network_area)
+        self.view.setAcceptDrops(True)
+        self.view.setDragMode(QtGui.QGraphicsView.RubberBandDrag)
+        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        splitter.addWidget(self.view)
         splitter.setStretchFactor(1, 1)
         grid.addWidget(splitter, 0, 0, 1, 5)
         # buttons
@@ -1042,6 +1051,32 @@ class MainWindow(QtGui.QMainWindow):
         self.script_file = file_name
         self.setWindowTitle(
             "Pyctools graph editor - %s" % os.path.basename(file_name))
+
+    def zoom_in(self):
+        self.inc_zoom(1)
+
+    def zoom_out(self):
+        self.inc_zoom(-1)
+
+    def inc_zoom(self, inc):
+        action_list = self.zoom_group.actions()
+        current_action = self.zoom_group.checkedAction()
+        if current_action:
+            idx = action_list.index(current_action) + inc
+            idx = max(min(idx, len(action_list) - 1), 0)
+        else:
+            idx = (1 + len(action_list)) // 2
+        action_list[idx].setChecked(True)
+        self.set_zoom()
+
+    def set_zoom(self):
+        current_action = self.zoom_group.checkedAction()
+        zoom, OK = current_action.data().toInt()
+        if not OK:
+            return
+        zoom = float(zoom) / 100.0
+        self.view.resetMatrix()
+        self.view.scale(zoom, zoom)
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
