@@ -42,8 +42,14 @@ class ImageDisplay(Transformer):
         image = in_frame.as_PIL()
         if len(image) == 1:
             image = image[0]
+        elif len(image) == 3:
+            image = PIL.Image.merge('RGB', image)
+        elif len(image) == 4:
+            image = PIL.Image.merge('RGBA', image)
         else:
-            image = PIL.Image.merge(in_frame.type, image)
+            self.logger.critical('Cannot write %s frame with %d components',
+                                 in_frame.type, len(image))
+            return False
         image.show()
         self.done = True
         return True
