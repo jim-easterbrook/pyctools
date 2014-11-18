@@ -17,7 +17,7 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Turn a picture upside down.
+"""Turn a picture upside down or reflect it left to right.
 
 """
 
@@ -27,10 +27,24 @@ __docformat__ = 'restructuredtext en'
 import PIL.Image
 
 from pyctools.core.base import Transformer
+from pyctools.core.config import ConfigEnum
 
 class Flip(Transformer):
+    def initialise(self):
+        self.config['direction'] = ConfigEnum(('vertical', 'horizontal'))
+
     def transform(self, in_frame, out_frame):
+        self.update_config()
+        direction = self.config['direction']
+        if direction == 'vertical':
+            flip = PIL.Image.FLIP_TOP_BOTTOM
+        else:
+            flip = PIL.Image.FLIP_LEFT_RIGHT
         out_frame.data = []
         for in_data in in_frame.as_PIL():
-            out_frame.data.append(in_data.transpose(PIL.Image.FLIP_TOP_BOTTOM))
+            out_frame.data.append(in_data.transpose(flip))
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = Flip(data)\n'
+        audit += '    direction: %s\n' % direction
+        out_frame.metadata.set('audit', audit)
         return True

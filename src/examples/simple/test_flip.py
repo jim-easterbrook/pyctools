@@ -4,24 +4,29 @@
 import argparse
 import logging
 from pyctools.core.compound import Compound
+import pyctools.components.io.dumpmetadata
+import pyctools.components.example.flip
 import pyctools.components.io.imagedisplay
 import pyctools.components.io.imagefilereader
-import pyctools.components.example.flip
 
 class Network(object):
     def __init__(self):
         self.components = \
 {   'display': {   'class': 'pyctools.components.io.imagedisplay.ImageDisplay',
                    'config': '{}',
-                   'pos': (500.0, 250.0)},
+                   'pos': (400.0, 100.0)},
     'flip': {   'class': 'pyctools.components.example.flip.Flip',
                 'config': '{}',
-                'pos': (350.0, 250.0)},
+                'pos': (250.0, 100.0)},
+    'metadata': {   'class': 'pyctools.components.io.dumpmetadata.DumpMetadata',
+                    'config': '{}',
+                    'pos': (550.0, 100.0)},
     'reader': {   'class': 'pyctools.components.io.imagefilereader.ImageFileReader',
                   'config': "{'path': '/home/jim/Documents/projects/pyctools/master/src/doc/images/editor_8.png'}",
-                  'pos': (200.0, 250.0)}}
+                  'pos': (100.0, 100.0)}}
         self.linkages = \
-{   ('flip', 'output'): ('display', 'input'),
+{   ('display', 'output'): ('metadata', 'input'),
+    ('flip', 'output'): ('display', 'input'),
     ('reader', 'output'): ('flip', 'input')}
 
     def make(self):
