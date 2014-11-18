@@ -28,6 +28,19 @@ version = '0.1.2'
 
 packages = find_packages('src')
 
+# make sure each package is a "namespace package"
+init_text = "__import__('pkg_resources').declare_namespace(__name__)\n"
+for package in packages:
+    path = os.path.join('src', package.replace('.', os.sep), '__init__.py')
+    if os.path.exists(path):
+        with open(path) as f:
+            old_text = f.read()
+    else:
+        old_text = ''
+    if old_text != init_text:
+        with open(path, 'w') as f:
+            f.write(init_text)
+
 console_scripts = []
 for name in os.listdir('src/pyctools/tools'):
     base, ext = os.path.splitext(name)
