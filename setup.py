@@ -21,12 +21,17 @@ from Cython.Distutils import build_ext
 from distutils.command.upload import upload
 import numpy
 import os
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, Extension
 import sys
 
 version = '0.1.2'
 
-packages = find_packages('src')
+# find packages
+packages = ['pyctools']
+for root, dirs, files in os.walk('src/pyctools'):
+    package = '.'.join(root.split(os.sep)[1:])
+    for name in dirs:
+        packages.append(package + '.' + name)
 
 # make sure each package is a "namespace package"
 init_text = "__import__('pkg_resources').declare_namespace(__name__)\n"
