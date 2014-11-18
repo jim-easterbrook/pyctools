@@ -105,6 +105,8 @@ class Frame(object):
             if isinstance(data, numpy.ndarray):
                 new_data = data
             elif isinstance(data, PIL.Image.Image):
+                if data.mode == 'P':
+                    data = data.convert()
                 if data.mode == 'F':
                     new_data = numpy.array(data, dtype=numpy.float32)
                 elif data.mode == 'I':
