@@ -30,6 +30,7 @@ Manual
    manual/introduction
    manual/installation
    manual/getting_started
+   manual/writing_components
 
 Reference
 ---------
