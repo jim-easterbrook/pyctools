@@ -205,6 +205,7 @@ class Transformer(Component):
             else:
                 self.output(None)
                 self.stop()
+                return
 
     def transform(self, in_frame, out_frame):
         """Process an input :py:class:`~.frame.Frame`.
