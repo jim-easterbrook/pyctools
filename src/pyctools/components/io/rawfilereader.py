@@ -49,61 +49,127 @@ Config
 
 """
 
-from __future__ import print_function
-
 __all__ = ['RawFileReader']
 __docformat__ = 'restructuredtext en'
 
+from collections import deque
 import io
-import logging
 import os
-import sys
 
-from guild.actor import *
+from guild.actor import actor_method, late_bind_safe
 import numpy
 
 from pyctools.core.config import ConfigPath, ConfigEnum
-from pyctools.core.base import Component
-from pyctools.core.frame import Metadata
+from pyctools.core.base import Component, ObjectPool
+from pyctools.core.frame import Frame, Metadata
 
 class RawFileReader(Component):
     inputs = []
+    outputs = ['output_Y_RGB', 'output_UV']
     with_outframe_pool = True
 
+    @late_bind_safe
+    def output_Y_RGB(self, *argv, **argd):
+        pass
+
+    @late_bind_safe
+    def output_UV(self, *argv, **argd):
+        pass
+
     def initialise(self):
-        self.frame_no = 0
-        self.generator = None
         self.config['path'] = ConfigPath()
         self.config['looping'] = ConfigEnum(
             ('off', 'repeat', 'reverse'), dynamic=True)
 
-    def file_reader(self):
-        """Generator process to read file"""
+    def process_start(self):
+        super(RawFileReader, self).process_start()
+        # set metadata
         self.update_config()
         path = self.config['path']
         self.metadata = Metadata().from_file(path)
         audit = self.metadata.get('audit')
         audit += 'data = %s\n' % path
         self.metadata.set('audit', audit)
+        # frame storage buffers
+        self.Y_frames = deque()
+        self.UV_frames = deque()
+        # create second frame pool
+        self.UV_out_frame_pool = ObjectPool(
+            Frame, self.config['outframe_pool_len'], self.new_UV_frame)
+        # create file reader
+        self.frame_no = 0
+        self.generator = self.file_reader()
+
+    @actor_method
+    def new_out_frame(self, frame):
+        """new_out_frame(frame)
+
+        """
+        self.Y_frames.append(frame)
+        if self.UV_frames:
+            self.next_frame()
+
+    @actor_method
+    def new_UV_frame(self, frame):
+        """new_UV_frame(frame)
+
+        """
+        self.UV_frames.append(frame)
+        if self.Y_frames:
+            self.next_frame()
+
+    def next_frame(self):
+        try:
+            Y_data, UV_data = next(self.generator)
+        except StopIteration:
+            self.output_Y_RGB(None)
+            self.output_UV(None)
+            self.stop()
+            return
+        Y_frame = self.Y_frames.popleft()
+        Y_frame.metadata.copy(self.metadata)
+        Y_frame.frame_no = self.frame_no
+        self.frame_no += 1
+        Y_frame.data = [Y_data]
+        Y_frame.type = self.Y_type
+        self.output_Y_RGB(Y_frame)
+        if UV_data is not None:
+            UV_frame = self.UV_frames.popleft()
+            UV_frame.initialise(Y_frame)
+            UV_frame.data = [UV_data]
+            UV_frame.type = self.UV_type
+            self.output_UV(UV_frame)
+
+    def file_reader(self):
+        """Generator process to read file"""
+        self.update_config()
+        path = self.config['path']
         fourcc = self.metadata.get('fourcc')
         xlen, ylen = self.metadata.image_size()
         # set bits per pixel and component dimensions
-        if fourcc in ('IYU2', 'BGR[24]'):
+        if fourcc in ('BGR[24]',):
             bpp = 24
-            shape = ((ylen, xlen), (ylen, xlen), (ylen, xlen))
+            Y_shape = (ylen, xlen)
         elif fourcc in ('RGB[24]',):
             bpp = 24
-            shape = ((ylen, xlen, 3),)
+            Y_shape = (ylen, xlen, 3)
+        elif fourcc in ('IYU2',):
+            bpp = 24
+            Y_shape = (ylen, xlen)
+            UV_shape = (ylen, xlen)
         elif fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC', 'YVYU', 'YUYV',
                         'YV16', 'YUY2', 'YUNV', 'V422'):
             bpp = 16
-            shape = ((ylen, xlen), (ylen, xlen // 2), (ylen, xlen // 2))
+            Y_shape = (ylen, xlen)
+            UV_shape = (ylen, xlen // 2)
         elif fourcc in ('IYUV', 'I420', 'YV12'):
             bpp = 12
-            shape = ((ylen, xlen), (ylen // 2, xlen // 2), (ylen // 2, xlen // 2))
+            Y_shape = (ylen, xlen)
+            UV_shape = (ylen // 2, xlen // 2)
         elif fourcc in ('YVU9',):
             bpp = 9
-            shape = ((ylen, xlen), (ylen // 4, xlen // 4), (ylen // 4, xlen // 4))
+            Y_shape = (ylen, xlen)
+            UV_shape = (ylen // 4, xlen // 4)
         else:
             self.logger.critical("Can't open %s files", fourcc)
             return
@@ -114,42 +180,49 @@ class RawFileReader(Component):
             return
         # set raw array slice parameters
         if fourcc in ('BGR[24]',):
-            data_slice = ((2, None, 3), (1, None, 3), (0, None, 3))
+            Y_slice = ((2, None, 3), (1, None, 3), (0, None, 3))
+            UV_slice = None
         elif fourcc in ('RGB[24]',):
-            data_slice = ((0, None, 1),)
+            Y_slice = ((0, None, 1),)
+            UV_slice = None
         elif fourcc in ('IYU2',):
-            data_slice = ((1, None, 3), (0, None, 3), (2, None, 3))
+            Y_slice = ((1, None, 3),)
+            UV_slice = ((0, None, 3), (2, None, 3))
         elif fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC'):
             # packed format, UYVY order
-            data_slice = ((1, None, 2), (0, None, 4), (2, None, 4))
+            Y_slice = ((1, None, 2),)
+            UV_slice = ((0, None, 4), (2, None, 4))
         elif fourcc in ('YVYU',):
             # packed format, YVYU order
-            data_slice = ((0, None, 2), (3, None, 4), (1, None, 4))
+            Y_slice = ((0, None, 2),)
+            UV_slice = ((3, None, 4), (1, None, 4))
         elif fourcc in ('YUYV', 'YUY2', 'YUNV', 'V422'):
             # packed format, YUYV order
-            data_slice = ((0, None, 2), (1, None, 4), (3, None, 4))
+            Y_slice = ((0, None, 2),)
+            UV_slice = ((1, None, 4), (3, None, 4))
         elif fourcc in ('IYUV', 'I420'):
             # planar format, YUV order
             Y_size = xlen * ylen
-            UV_size = shape[1][0] * shape[1][1]
-            data_slice = ((0,                Y_size,                 1),
-                          (Y_size,           Y_size + UV_size,       1),
-                          (Y_size + UV_size, Y_size + (UV_size * 2), 1))
+            UV_size = UV_shape[0] * UV_shape[1]
+            Y_slice = ((0,                Y_size,                 1),)
+            UV_slice = ((Y_size,           Y_size + UV_size,       1),
+                        (Y_size + UV_size, Y_size + (UV_size * 2), 1))
         elif fourcc in ('YV16', 'YV12', 'YVU9'):
             # planar format, YVU order
             Y_size = xlen * ylen
-            UV_size = shape[1][0] * shape[1][1]
-            data_slice = ((0,                Y_size,                 1),
-                          (Y_size + UV_size, Y_size + (UV_size * 2), 1),
-                          (Y_size,           Y_size + UV_size,       1))
+            UV_size = UV_shape[0] * UV_shape[1]
+            Y_slice = ((0,                Y_size,                 1),)
+            UV_slice = ((Y_size + UV_size, Y_size + (UV_size * 2), 1),
+                        (Y_size,           Y_size + UV_size,       1))
         else:
             self.logger.critical("Can't open %s files", fourcc)
             return
         # set frame type
         if fourcc in ('BGR[24]', 'RGB[24]'):
-            self.frame_type = 'RGB'
+            self.Y_type = 'RGB'
         else:
-            self.frame_type = 'YCbCr'
+            self.Y_type = 'Y'
+            self.UV_type = 'CbCr'
         file_frame = 0
         direction = 1
         with io.open(path, 'rb', 0) as raw_file:
@@ -172,81 +245,23 @@ class RawFileReader(Component):
                 file_frame += direction
                 raw_data = raw_file.read(bytes_per_frame)
                 # convert to numpy arrays
-                data = []
                 raw_array = numpy.frombuffer(raw_data, numpy.uint8)
-                for slc, shp in zip(data_slice, shape):
-                    start, end, step = slc
+                Y_data = []
+                for start, end, step in Y_slice:
                     raw_data = raw_array[start:end:step]
-                    data.append(raw_data.reshape(shp))
-                if self.frame_type == 'YCbCr':
+                    Y_data.append(raw_data.reshape(Y_shape))
+                if len(Y_data) > 1:
+                    Y_data = numpy.dstack(Y_data)
+                else:
+                    Y_data = Y_data[0]
+                if UV_slice:
+                    UV_data = []
+                    for start, end, step in UV_slice:
+                        raw_data = raw_array[start:end:step]
+                        UV_data.append(raw_data.reshape(UV_shape))
+                    UV_data = numpy.dstack(UV_data)
                     # remove offset
-                    data[1] = data[1].astype(numpy.float32) - 128.0
-                    data[2] = data[2].astype(numpy.float32) - 128.0
-                yield data
-
-    @actor_method
-    def new_out_frame(self, frame):
-        """new_out_frame(frame)
-
-        """
-        if not self.generator:
-            self.generator = self.file_reader()
-        try:
-            frame.data = next(self.generator)
-        except StopIteration:
-            self.output(None)
-            self.stop()
-            return
-        frame.type = self.frame_type
-        frame.frame_no = self.frame_no
-        self.frame_no += 1
-        frame.metadata.copy(self.metadata)
-        self.output(frame)
-
-def main():
-    import time
-    class Sink(Actor):
-        @actor_method
-        def input(self, frame):
-            print('sink', frame.frame_no, end='\r')
-            sys.stdout.flush()
-            if frame.frame_no == 0:
-                self.start_time = time.time()
-                self.byte_count = 0
-                self.frame_count = 0
-            else:
-                self.byte_count += frame.data[0].shape[0] * frame.data[0].shape[1]
-                self.byte_count += frame.data[1].shape[0] * frame.data[1].shape[1]
-                self.byte_count += frame.data[2].shape[0] * frame.data[2].shape[1]
-                self.frame_count += 1
-
-        def onStop(self):
-            duration = time.time() - self.start_time
-            print()
-            print('received %d bytes in %g seconds' % (
-                self.byte_count, duration))
-            print('%d frames of %d bytes each' % (
-                self.frame_count, self.byte_count // self.frame_count))
-            print('%g frames/second, %g bytes/second' % (
-                self.frame_count / duration, self.byte_count / duration))
-
-    if len(sys.argv) != 2:
-        print('usage: %s yuv_video_file' % sys.argv[0])
-        return 1
-    logging.basicConfig(level=logging.DEBUG)
-    print('RawFileReader demonstration')
-    source = RawFileReader()
-    config = source.get_config()
-    config['path'] = sys.argv[1]
-    source.set_config(config)
-    sink = Sink()
-    pipeline(source, sink)
-    start(source, sink)
-    wait_for(source)
-    time.sleep(1)
-    stop(source, sink)
-    wait_for(source, sink)
-    return 0
-
-if __name__ == '__main__':
-    sys.exit(main())
+                    UV_data = UV_data.astype(numpy.float32) - 128.0
+                else:
+                    UV_data = None
+                yield Y_data, UV_data

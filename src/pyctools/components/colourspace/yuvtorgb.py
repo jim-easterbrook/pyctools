@@ -44,19 +44,20 @@ from __future__ import print_function
 __all__ = ['YUVtoRGB']
 __docformat__ = 'restructuredtext en'
 
+from collections import deque
 import logging
 import sys
 import time
 
 import cv2
-from guild.actor import *
+from guild.actor import actor_method
 import numpy
 
 from pyctools.core.config import ConfigEnum
-from pyctools.core.base import Transformer
+from pyctools.core.base import Component
 from pyctools.components.interp.resize import resize_frame
 
-class YUVtoRGB(Transformer):
+class YUVtoRGB(Component):
     mat_601 = numpy.array([[1.0,  0.0,       1.37071],
                            [1.0, -0.336455, -0.698196],
                            [1.0,  1.73245,   0.0]], dtype=numpy.float32)
@@ -69,44 +70,92 @@ class YUVtoRGB(Transformer):
          0.314049691, 0.0, -0.093861297, 0.0,  0.044929001, 0.0,
         -0.022357799, 0.0,  0.010153700, 0.0, -0.002913300
         ]], dtype=numpy.float32)
+    inputs = ['input_Y', 'input_UV']
+    with_outframe_pool = True
 
     def initialise(self):
         self.config['matrix'] = ConfigEnum(('auto', '601', '709'), dynamic=True)
         self.config['range'] = ConfigEnum(('studio', 'computer'), dynamic=True)
         self.last_frame_type = None
+        # frame storage buffers
+        self.Y_frames = deque()
+        self.UV_frames = deque()
+        self.out_frames = deque()
 
-    def transform(self, in_frame, out_frame):
+    @actor_method
+    def new_out_frame(self, frame):
+        """new_out_frame(frame)
+
+        """
+        self.out_frames.append(frame)
+        self.next_frame()
+
+    @actor_method
+    def input_Y(self, frame):
+        """input_Y(frame)
+
+        """
+        self.Y_frames.append(frame)
+        self.next_frame()
+
+    @actor_method
+    def input_UV(self, frame):
+        """input_UV(frame)
+
+        """
+        self.UV_frames.append(frame)
+        self.next_frame()
+
+    def next_frame(self):
+        while self.out_frames and self.Y_frames and self.UV_frames:
+            Y_frame_no = self.Y_frames[0].frame_no
+            UV_frame_no = self.UV_frames[0].frame_no
+            if Y_frame_no < UV_frame_no:
+                self.Y_frames.popleft()
+                continue
+            if Y_frame_no > UV_frame_no:
+                self.UV_frames.popleft()
+                continue
+            Y_frame = self.Y_frames.popleft()
+            UV_frame = self.UV_frames.popleft()
+            out_frame = self.out_frames.popleft()
+            out_frame.initialise(Y_frame)
+            if self.transform(Y_frame, UV_frame, out_frame):
+                self.output(out_frame)
+            else:
+                self.output(None)
+                self.stop()
+                return
+
+    def transform(self, Y_frame, UV_frame, out_frame):
         self.update_config()
         # check input and get data
-        data = in_frame.as_numpy(dtype=numpy.float32, dstack=False)
-        if len(data) != 3:
-            self.logger.critical('Cannot convert %s images with %d components',
-                                 in_frame.type, len(data))
+        Y_data = Y_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        if Y_data.shape[2] != 1:
+            self.logger.critical('Y input has %d components', Y_data.shape[2])
             return False
-        if in_frame.type != 'YCbCr' and in_frame.type != self.last_frame_type:
-            self.logger.warning('Expected YCbCr input, got %s', in_frame.type)
-        self.last_frame_type = in_frame.type
-        Y_data, U_data, V_data = data
-        audit = out_frame.metadata.get('audit')
-        audit += 'data = YUVtoRGB(data)\n'
+        UV_data = UV_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        if UV_data.shape[2] != 2:
+            self.logger.critical('UV input has %d components', UV_data.shape[2])
+            return False
+        audit = 'Y = {\n%s}\n' % Y_frame.metadata.get('audit')
+        audit += 'UV = {\n%s}\n' % UV_frame.metadata.get('audit')
+        audit += 'data = YUVtoRGB(Y, UV)\n'
         # apply offset
         Y_data = Y_data - 16.0
         # resample U & V
-        v_ss = Y_data.shape[0] // U_data.shape[0]
-        h_ss = Y_data.shape[1] // U_data.shape[1]
+        v_ss = Y_data.shape[0] // UV_data.shape[0]
+        h_ss = Y_data.shape[1] // UV_data.shape[1]
         if h_ss == 2:
-            U_data = resize_frame(U_data, self.filter_21, 2, 1, 1, 1)
-            V_data = resize_frame(V_data, self.filter_21, 2, 1, 1, 1)
+            U_data = resize_frame(UV_data[:,:,0], self.filter_21, 2, 1, 1, 1)
+            V_data = resize_frame(UV_data[:,:,1], self.filter_21, 2, 1, 1, 1)
+            UV_data = numpy.dstack((U_data, V_data))
         elif h_ss != 1:
-            U_data = cv2.resize(
-                U_data, None, fx=h_ss, fy=1, interpolation=cv2.INTER_CUBIC)
-            V_data = cv2.resize(
-                V_data, None, fx=h_ss, fy=1, interpolation=cv2.INTER_CUBIC)
+            UV_data = cv2.resize(
+                UV_data, None, fx=h_ss, fy=1, interpolation=cv2.INTER_CUBIC)
         if v_ss != 1:
-            U_data = cv2.resize(
-                U_data, None, fx=1, fy=v_ss, interpolation=cv2.INTER_CUBIC)
-            V_data = cv2.resize(
-                V_data, None, fx=1, fy=v_ss, interpolation=cv2.INTER_CUBIC)
+            UV_data = cv2.resize(
+                UV_data, None, fx=1, fy=v_ss, interpolation=cv2.INTER_CUBIC)
         # matrix to RGB
         audit += '    range: %s' % (self.config['range'])
         if (self.config['matrix'] == '601' or
@@ -116,7 +165,7 @@ class YUVtoRGB(Transformer):
         else:
             matrix = self.mat_709
             audit += ', matrix: 709\n'
-        YUV = numpy.dstack((Y_data, U_data, V_data))
+        YUV = numpy.dstack((Y_data, UV_data))
         RGB = numpy.dot(YUV, matrix.T)
         # offset or scale
         if self.config['range'] == 'studio':
@@ -127,34 +176,3 @@ class YUVtoRGB(Transformer):
         out_frame.type = 'RGB'
         out_frame.metadata.set('audit', audit)
         return True
-
-def main():
-    from ..io.rawfilereader import RawFileReader
-    class Sink(Actor):
-        @actor_method
-        def input(self, frame):
-            print('sink', frame.frame_no)
-            if frame.frame_no == 0:
-                frame.as_PIL()[0].show()
-##            time.sleep(1.0)
-
-    if len(sys.argv) != 2:
-        print('usage: %s yuv_video_file' % sys.argv[0])
-        return 1
-    logging.basicConfig(level=logging.DEBUG)
-    print('YUVtoRGB demonstration')
-    source = RawFileReader()
-    config = source.get_config()
-    config['path'] = sys.argv[1]
-    source.set_config(config)
-    conv = YUVtoRGB()
-    sink = Sink()
-    pipeline(source, conv, sink)
-    start(source, conv, sink)
-    time.sleep(10)
-    stop(source, conv, sink)
-    wait_for(source, conv, sink)
-    return 0
-
-if __name__ == '__main__':
-    sys.exit(main())
