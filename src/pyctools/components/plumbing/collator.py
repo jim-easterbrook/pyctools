@@ -67,11 +67,7 @@ class Collator(Component):
         self.collate()
 
     def collate(self):
-        while True:
-            if not self.out_frames:
-                return
-            if not (self.in_frames1 and self.in_frames2):
-                return
+        while self.out_frames and self.in_frames1 and self.in_frames2:
             # get frame from first input
             in_frame1 = self.in_frames1.popleft()
             if not in_frame1:
@@ -95,7 +91,11 @@ class Collator(Component):
                 continue
             out_frame = self.out_frames.popleft()
             out_frame.initialise(in_frame1)
-            out_frame.data = in_frame1.as_numpy(dstack=True)
-            for comp in in_frame2.as_numpy(dstack=True):
+            audit = 'input1 = {\n%s}\n' % in_frame1.metadata.get('audit')
+            audit += 'input2 = {\n%s}\n' % in_frame2.metadata.get('audit')
+            audit += 'data = [input1, input2]\n'
+            out_frame.metadata.set('audit', audit)
+            out_frame.data = in_frame1.as_numpy(dstack=False)
+            for comp in in_frame2.as_numpy(dstack=False):
                 out_frame.data.append(comp)
             self.output(out_frame)
