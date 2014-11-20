@@ -108,16 +108,23 @@ class YUVtoRGB(Component):
 
     def next_frame(self):
         while self.out_frames and self.Y_frames and self.UV_frames:
-            Y_frame_no = self.Y_frames[0].frame_no
-            UV_frame_no = self.UV_frames[0].frame_no
-            if Y_frame_no < UV_frame_no:
-                self.Y_frames.popleft()
-                continue
-            if Y_frame_no > UV_frame_no:
-                self.UV_frames.popleft()
-                continue
             Y_frame = self.Y_frames.popleft()
+            if not Y_frame:
+                self.output(None)
+                self.stop()
+                return
             UV_frame = self.UV_frames.popleft()
+            if not UV_frame:
+                self.output(None)
+                self.stop()
+                return
+            # check frame numbers
+            if Y_frame.frame_no < UV_frame.frame_no:
+                self.UV_frames.appendleft(UV_frame)
+                continue
+            elif Y_frame.frame_no > UV_frame.frame_no:
+                self.Y_frames.appendleft(Y_frame)
+                continue
             out_frame = self.out_frames.popleft()
             out_frame.initialise(Y_frame)
             if self.transform(Y_frame, UV_frame, out_frame):
