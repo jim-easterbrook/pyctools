@@ -317,7 +317,7 @@ class IOIcon(QtGui.QGraphicsRectItem):
             return super(IOIcon, self).dropEvent(event)
         start_pos = cPickle.loads(event.mimeData().data(self.link_mime_type).data())
         link_from = self.scene().itemAt(start_pos)
-        if isinstance(link_from, QtGui.QGraphicsPolygonItem):
+        while link_from and not isinstance(link_from, IOIcon):
             link_from = link_from.parentItem()
         if isinstance(link_from, OutputIcon):
             source = link_from.parentItem()
@@ -568,8 +568,22 @@ class CompoundIcon(BasicComponentIcon):
                 self.child_comps[name] = child
             self.width = (x_max - x_min) + 200
             self.height = (y_max - y_min) + 230
-            super(CompoundIcon, self).draw_icon()
-            # draw linkages
+        else:
+            self.width = 100
+            self.height = 100 + (
+                20 * max(2, len(self.obj.inputs), len(self.obj.outputs)))
+        # draw boundary
+        self.setPolygon(QtGui.QPolygonF(QtGui.QPolygon(
+            [0, 0, self.width, 0, self.width, self.height, 0, self.height, 0, 0])))
+        surround = QtGui.QGraphicsRectItem(
+            -3, -3, self.width + 6, self.height + 6, self)
+        pen = surround.pen()
+        pen.setStyle(Qt.DashDotLine)
+        surround.setPen(pen)
+        # draw rest of icon, including inputs and outputs
+        super(CompoundIcon, self).draw_icon()
+        # draw linkages
+        if self.expanded:
             for source, target in self.obj._compound_linkages.items():
                 src, outbox = source
                 dest, inbox = target
@@ -586,18 +600,6 @@ class CompoundIcon(BasicComponentIcon):
                 line = QtGui.QGraphicsLineItem(QtCore.QLineF(
                     self.mapFromScene(source_pos), self.mapFromScene(dest_pos)
                     ), self)
-        else:
-            self.width = 100
-            super(CompoundIcon, self).draw_icon()
-            self.height = 100 + (max(2, len(self.inputs), len(self.outputs)) * 20)
-        # draw boundary
-        self.setPolygon(QtGui.QPolygonF(QtGui.QPolygon(
-            [0, 0, self.width, 0, self.width, self.height, 0, self.height, 0, 0])))
-        surround = QtGui.QGraphicsRectItem(
-            -3, -3, self.width + 6, self.height + 6, self)
-        pen = surround.pen()
-        pen.setStyle(Qt.DashDotLine)
-        surround.setPen(pen)
 
 
 class BusbarIcon(BasicComponentIcon):
@@ -752,7 +754,7 @@ class NetworkArea(QtGui.QGraphicsScene):
 
     def name_in_use(self, name):
         for child in self.matching_items(BasicComponentIcon):
-            if child.name == name:
+            if child.name == name and child.isEnabled():
                 return True
         return False
 
@@ -769,8 +771,7 @@ class NetworkArea(QtGui.QGraphicsScene):
                 child.renew()
         # rebuild connections
         for child in self.matching_items(ComponentLink):
-            if child.isEnabled():
-                child.renew()
+            child.renew()
         # run it!
         for child in self.matching_items(BasicComponentIcon):
             if child.isEnabled():
@@ -822,7 +823,7 @@ class NetworkArea(QtGui.QGraphicsScene):
         linkages = {}
         with_qt = False
         for child in self.items():
-            if isinstance(child, BasicComponentIcon):
+            if isinstance(child, BasicComponentIcon) and child.isEnabled():
                 mod = child.klass.__module__
                 components[child.name] = {
                     'class' : '%s.%s' % (mod, child.klass.__name__),
