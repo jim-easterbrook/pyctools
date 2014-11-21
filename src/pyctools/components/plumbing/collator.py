@@ -40,14 +40,12 @@ class Collator(Component):
     def initialise(self):
         self.in_frames1 = deque()
         self.in_frames2 = deque()
-        self.out_frames = deque()
 
     @actor_method
-    def new_out_frame(self, frame):
-        """new_out_frame(frame)
+    def notify(self):
+        """notify()
 
         """
-        self.out_frames.append(frame)
         self.collate()
 
     @actor_method
@@ -67,7 +65,8 @@ class Collator(Component):
         self.collate()
 
     def collate(self):
-        while self.out_frames and self.in_frames1 and self.in_frames2:
+        while (self.outframe_pool['output'].available() and
+               self.in_frames1 and self.in_frames2):
             # get frame from first input
             in_frame1 = self.in_frames1.popleft()
             if not in_frame1:
@@ -89,7 +88,7 @@ class Collator(Component):
                 # keep first input for another time
                 self.in_frames1.appendleft(in_frame1)
                 continue
-            out_frame = self.out_frames.popleft()
+            out_frame = self.outframe_pool['output'].get()
             out_frame.initialise(in_frame1)
             audit = 'input1 = {\n%s}\n' % in_frame1.metadata.get('audit')
             audit += 'input2 = {\n%s}\n' % in_frame2.metadata.get('audit')

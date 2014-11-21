@@ -133,10 +133,13 @@ class VideoFileReader(Component):
                 return
 
     @actor_method
-    def new_out_frame(self, frame):
-        """new_out_frame(frame)
+    def notify(self):
+        """notify()
 
         """
+        if not self.outframe_pool['output'].available():
+            return
+        frame = self.outframe_pool['output'].get()
         if not self.generator:
             self.generator = self.file_reader()
         try:

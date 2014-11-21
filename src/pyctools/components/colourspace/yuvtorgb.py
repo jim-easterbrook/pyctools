@@ -80,14 +80,12 @@ class YUVtoRGB(Component):
         # frame storage buffers
         self.Y_frames = deque()
         self.UV_frames = deque()
-        self.out_frames = deque()
 
     @actor_method
-    def new_out_frame(self, frame):
-        """new_out_frame(frame)
+    def notify(self):
+        """notify()
 
         """
-        self.out_frames.append(frame)
         self.next_frame()
 
     @actor_method
@@ -107,7 +105,8 @@ class YUVtoRGB(Component):
         self.next_frame()
 
     def next_frame(self):
-        while self.out_frames and self.Y_frames and self.UV_frames:
+        while (self.outframe_pool['output'].available() and
+               self.Y_frames and self.UV_frames):
             Y_frame = self.Y_frames.popleft()
             if not Y_frame:
                 self.output(None)
@@ -125,7 +124,7 @@ class YUVtoRGB(Component):
             elif Y_frame.frame_no > UV_frame.frame_no:
                 self.Y_frames.appendleft(Y_frame)
                 continue
-            out_frame = self.out_frames.popleft()
+            out_frame = self.outframe_pool['output'].get()
             out_frame.initialise(Y_frame)
             if self.transform(Y_frame, UV_frame, out_frame):
                 self.output(out_frame)

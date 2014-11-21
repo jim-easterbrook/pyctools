@@ -158,10 +158,12 @@ class ZonePlateGenerator(Component):
         self.frame_no = 0
 
     @actor_method
-    def new_out_frame(self, frame):
-        """new_out_frame(frame)
+    def notify(self):
+        """notify()
 
         """
+        if not self.outframe_pool['output'].available():
+            return
         self.update_config()
         xlen = self.config['xlen']
         ylen = self.config['ylen']
@@ -183,6 +185,7 @@ class ZonePlateGenerator(Component):
         ktx = self.config['ktx']
         kty = self.config['kty']
         kt2 = self.config['kt2']
+        frame = self.outframe_pool['output'].get()
         audit = frame.metadata.get('audit')
         audit += 'data = ZonePlateGenerator()\n'
         audit += '    '

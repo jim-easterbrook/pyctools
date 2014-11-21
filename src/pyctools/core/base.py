@@ -119,22 +119,13 @@ class Component(Actor, ConfigMixin):
         """
         if self.with_outframe_pool:
             self.update_config()
-            self._component_outframe_pool = ObjectPool(
-                Frame, self.config['outframe_pool_len'], self.new_out_frame)
+            self.outframe_pool = {}
+            for output in self.outputs:
+                self.outframe_pool[output] = ObjectPool(
+                    Frame, self.config['outframe_pool_len'], self.notify)
 
     @actor_method
-    def new_out_frame(self, frame):
-        """new_out_frame(frame)
-
-        Receive a new output frame from the pool.
-
-        If your component has an outframe pool this method is called
-        when a previously used frame is deleted, allowing a new frame
-        to be created.
-
-        :param Frame frame: The newly available output frame.
-
-        """
+    def notify(self):
         raise NotImplemented()
 
 
@@ -150,7 +141,6 @@ class Transformer(Component):
 
     def __init__(self, **config):
         self._transformer_in_frames = deque()
-        self._transformer_out_frames = deque()
         self._transformer_ready = True
         super(Transformer, self).__init__(**config)
 
@@ -184,25 +174,19 @@ class Transformer(Component):
         self._transformer_transform()
 
     @actor_method
-    def new_out_frame(self, frame):
-        """new_out_frame(frame)
-
-        Receive an output :py:class:`~.frame.Frame` from the
-        :py:class:`Transformer`'s :py:class:`ObjectPool`.
-
-        """
-        self._transformer_out_frames.append(frame)
+    def notify(self):
         self._transformer_transform()
 
     def _transformer_transform(self):
         while (self._transformer_ready and
-               self._transformer_out_frames and self._transformer_in_frames):
+               self.outframe_pool['output'].available() and
+               self._transformer_in_frames):
             in_frame = self._transformer_in_frames.popleft()
             if not in_frame:
                 self.output(None)
                 self.stop()
                 return
-            out_frame = self._transformer_out_frames.popleft()
+            out_frame = self.outframe_pool['output'].get()
             out_frame.initialise(in_frame)
             if self.transform(in_frame, out_frame):
                 self.output(out_frame)
@@ -260,24 +244,34 @@ class ObjectPool(object):
     :param int size: The maximum number of objects allowed to exist at
         any time.
 
-    :param callable callback: A function to call when each new object
-        is created. It is passed one parameter -- the new object.
+    :param callable notify: A function to call when a new object
+        is available.
 
     """
-    def __init__(self, factory, size, callback):
+    def __init__(self, factory, size, notify):
         super(ObjectPool, self).__init__()
         self.factory = factory
-        self.callback = callback
-        self.obj_list = []
+        self.notify = notify
+        self.ref_list = []
+        self.obj_list = deque()
         # create first objects
         for i in range(size):
             self._new_object()
 
     def _release(self, obj):
-        self.obj_list.remove(obj)
+        self.ref_list.remove(obj)
         self._new_object()
 
     def _new_object(self):
         obj = self.factory()
-        self.obj_list.append(weakref.ref(obj, self._release))
-        self.callback(obj)
+        self.obj_list.append(obj)
+        self.ref_list.append(weakref.ref(obj, self._release))
+        self.notify()
+
+    def available(self):
+        return len(self.obj_list) > 0
+
+    def get(self):
+        if self.obj_list:
+            return self.obj_list.popleft()
+        return None

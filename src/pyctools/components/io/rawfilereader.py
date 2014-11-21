@@ -60,8 +60,8 @@ from guild.actor import actor_method
 import numpy
 
 from pyctools.core.config import ConfigPath, ConfigEnum
-from pyctools.core.base import Component, ObjectPool
-from pyctools.core.frame import Frame, Metadata
+from pyctools.core.base import Component
+from pyctools.core.frame import Metadata
 
 class RawFileReader(Component):
     inputs = []
@@ -82,35 +82,18 @@ class RawFileReader(Component):
         audit = self.metadata.get('audit')
         audit += 'data = %s\n' % path
         self.metadata.set('audit', audit)
-        # frame storage buffers
-        self.Y_frames = deque()
-        self.UV_frames = deque()
-        # create second frame pool
-        self.UV_out_frame_pool = ObjectPool(
-            Frame, self.config['outframe_pool_len'], self.new_UV_frame)
         # create file reader
         self.frame_no = 0
         self.generator = self.file_reader()
 
     @actor_method
-    def new_out_frame(self, frame):
-        """new_out_frame(frame)
+    def notify(self):
+        """notify()
 
         """
-        self.Y_frames.append(frame)
-        if self.UV_frames:
-            self.next_frame()
-
-    @actor_method
-    def new_UV_frame(self, frame):
-        """new_UV_frame(frame)
-
-        """
-        self.UV_frames.append(frame)
-        if self.Y_frames:
-            self.next_frame()
-
-    def next_frame(self):
+        if not (self.outframe_pool['output_Y_RGB'].available() and
+                self.outframe_pool['output_UV'].available()):
+            return
         try:
             Y_data, UV_data = next(self.generator)
         except StopIteration:
@@ -118,7 +101,7 @@ class RawFileReader(Component):
             self.output_UV(None)
             self.stop()
             return
-        Y_frame = self.Y_frames.popleft()
+        Y_frame = self.outframe_pool['output_Y_RGB'].get()
         Y_frame.metadata.copy(self.metadata)
         Y_frame.frame_no = self.frame_no
         self.frame_no += 1
@@ -126,7 +109,7 @@ class RawFileReader(Component):
         Y_frame.type = self.Y_type
         self.output_Y_RGB(Y_frame)
         if UV_data is not None:
-            UV_frame = self.UV_frames.popleft()
+            UV_frame = self.outframe_pool['output_UV'].get()
             UV_frame.initialise(Y_frame)
             UV_frame.data = [UV_data]
             UV_frame.type = self.UV_type

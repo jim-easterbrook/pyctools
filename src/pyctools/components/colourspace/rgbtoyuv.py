@@ -42,7 +42,6 @@ import numpy
 
 from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Component, ObjectPool
-from pyctools.core.frame import Frame
 
 class RGBtoYUV(Component):
     mat_601 = numpy.array(
@@ -63,28 +62,14 @@ class RGBtoYUV(Component):
 
     def process_start(self):
         super(RGBtoYUV, self).process_start()
-        # frame storage buffers
-        self.Y_frames = deque()
-        self.UV_frames = deque()
+        # frame storage buffer
         self.in_frames = deque()
-        # create second frame pool
-        self.UV_out_frame_pool = ObjectPool(
-            Frame, self.config['outframe_pool_len'], self.new_UV_frame)
 
     @actor_method
-    def new_out_frame(self, frame):
-        """new_out_frame(frame)
+    def notify(self):
+        """notify()
 
         """
-        self.Y_frames.append(frame)
-        self.next_frame()
-
-    @actor_method
-    def new_UV_frame(self, frame):
-        """new_UV_frame(frame)
-
-        """
-        self.UV_frames.append(frame)
         self.next_frame()
 
     @actor_method
@@ -96,16 +81,18 @@ class RGBtoYUV(Component):
         self.next_frame()
 
     def next_frame(self):
-        while self.in_frames and self.Y_frames and self.UV_frames:
+        while (self.in_frames and
+               self.outframe_pool['output_Y'].available() and
+               self.outframe_pool['output_UV'].available()):
             in_frame = self.in_frames.popleft()
             if not in_frame:
                 self.output_Y(None)
                 self.output_UV(None)
                 self.stop()
                 return
-            Y_frame = self.Y_frames.popleft()
+            Y_frame = self.outframe_pool['output_Y'].get()
             Y_frame.initialise(in_frame)
-            UV_frame = self.UV_frames.popleft()
+            UV_frame = self.outframe_pool['output_UV'].get()
             UV_frame.initialise(in_frame)
             if self.transform(in_frame, Y_frame, UV_frame):
                 self.output_Y(Y_frame)
