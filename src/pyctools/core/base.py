@@ -39,6 +39,27 @@ from guild.actor import *
 from .config import ConfigMixin, ConfigInt
 from .frame import Frame, Metadata
 
+class InputBuffer(object):
+    def __init__(self, notify):
+        self.notify = notify
+        self.queue = deque()
+
+    def input(self, frame):
+        self.queue.append(frame)
+        self.notify()
+
+    def available(self):
+        return len(self.queue)
+
+    def peek(self):
+        return self.queue[0]
+
+    def get(self):
+        if not self.queue:
+            return None
+        return self.queue.popleft()
+
+
 class Component(Actor, ConfigMixin):
     """Base class for all Pyctools components, i.e. objects designed
     to be used in processing pipelines (or graph networks).
@@ -60,7 +81,7 @@ class Component(Actor, ConfigMixin):
     ``True`` and have a :py:meth:`new_out_frame` method with the
     :py:meth:`guild.actor.actor_method` decorator. This method is
     called when a new output frame is available. See the
-    :py:class:`~.transformer.Transformer` class for an example.
+    :py:class:`Transformer` class for an example.
 
     A :py:class:`logging.Logger` object is created for every
     component. Use this to report any errors or warnings from your
@@ -93,11 +114,17 @@ class Component(Actor, ConfigMixin):
         super(Component, self).__init__()
         ConfigMixin.__init__(self)
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.input_buffer = {}
+        self.outframe_pool = {}
         if self.with_outframe_pool:
             self.config['outframe_pool_len'] = ConfigInt(min_value=2, value=3)
         self.initialise()
         for key, value in config.items():
             self.config[key] = value
+        # create a threadsafe buffer for each input and adopt its input method
+        for input in self.inputs:
+            self.input_buffer[input] = InputBuffer(self.notify)
+            setattr(self, input, self.input_buffer[input].input)
         # initialise outputs to default "do nothing" output
         for output in self.outputs:
             if output != 'output':
@@ -119,14 +146,46 @@ class Component(Actor, ConfigMixin):
         """
         if self.with_outframe_pool:
             self.update_config()
-            self.outframe_pool = {}
             for output in self.outputs:
                 self.outframe_pool[output] = ObjectPool(
                     Frame, self.config['outframe_pool_len'], self.notify)
 
     @actor_method
     def notify(self):
-        raise NotImplemented()
+        while True:
+            # check output frames are available
+            for output in self.outframe_pool.values():
+                if not output.available():
+                    return
+            # check input frames are available
+            for input in self.input_buffer.values():
+                if not input.available():
+                    return
+            # test for 'None' input, and get current frame number
+            frame_no = -1
+            for input in self.input_buffer.values():
+                in_frame = input.peek()
+                if not in_frame:
+                    for output in self.outputs:
+                        getattr(self, output)(None)
+                    self.stop()
+                    return
+                frame_no = max(frame_no, in_frame.frame_no)
+            # discard old frames that can never be used
+            OK = True
+            for input in self.input_buffer.values():
+                in_frame = input.peek()
+                if in_frame.frame_no < 0:
+                    # special case "static" inputs, only one required
+                    while input.available() > 1:
+                        input.get()
+                elif in_frame.frame_no < frame_no:
+                    input.get()
+                    OK = False
+            if not OK:
+                continue
+            # now have a full set of correlated inputs to process
+            self.process_frame()
 
 
 class Transformer(Component):
@@ -139,61 +198,16 @@ class Transformer(Component):
     """
     with_outframe_pool = True
 
-    def __init__(self, **config):
-        self._transformer_in_frames = deque()
-        self._transformer_ready = True
-        super(Transformer, self).__init__(**config)
-
-    def set_ready(self, value):
-        """Defer processing until some condition is met.
-
-        Call this from your component's constructor or
-        :py:meth:`~.component.Component.initialise` method (with
-        ``value`` set to ``False``) if you want to delay calls to
-        :py:meth:`transform` until something else happens, such as the
-        delivery of a filter in the
-        :py:class:`~pyctools.components.interp.resize.Resize`
-        component.
-
-        :param bool value: Set to ``True`` if your component is ready
-            to process.
-
-        """
-        self._transformer_ready = value
-        self._transformer_transform()
-
-    @actor_method
-    def input(self, frame):
-        """input(frame)
-
-        Receive an input :py:class:`~.frame.Frame` from another
-        :py:class:`~.component.Component`.
-
-        """
-        self._transformer_in_frames.append(frame)
-        self._transformer_transform()
-
-    @actor_method
-    def notify(self):
-        self._transformer_transform()
-
-    def _transformer_transform(self):
-        while (self._transformer_ready and
-               self.outframe_pool['output'].available() and
-               self._transformer_in_frames):
-            in_frame = self._transformer_in_frames.popleft()
-            if not in_frame:
-                self.output(None)
-                self.stop()
-                return
-            out_frame = self.outframe_pool['output'].get()
-            out_frame.initialise(in_frame)
-            if self.transform(in_frame, out_frame):
-                self.output(out_frame)
-            else:
-                self.output(None)
-                self.stop()
-                return
+    def process_frame(self):
+        in_frame = self.input_buffer['input'].get()
+        out_frame = self.outframe_pool['output'].get()
+        out_frame.initialise(in_frame)
+        if self.transform(in_frame, out_frame):
+            self.output(out_frame)
+        else:
+            self.output(None)
+            self.stop()
+            return
 
     def transform(self, in_frame, out_frame):
         """Process an input :py:class:`~.frame.Frame`.
@@ -269,7 +283,7 @@ class ObjectPool(object):
         self.notify()
 
     def available(self):
-        return len(self.obj_list) > 0
+        return len(self.obj_list)
 
     def get(self):
         if self.obj_list:

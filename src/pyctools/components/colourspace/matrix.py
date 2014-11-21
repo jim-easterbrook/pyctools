@@ -48,18 +48,12 @@ class Matrix(Transformer):
     inputs = ['input', 'matrix']
 
     def initialise(self):
-        self.set_ready(False)
+        self.matrix_coefs = None
 
-    @actor_method
-    def matrix(self, new_matrix):
-        """matrix(new_matrix)
-
-        Matrix data input.
-
-        :param Frame new_matrix: A :py:class:`~pyctools.core.frame.Frame`
-            containing the matrix data.
-
-        """
+    def get_matrix(self):
+        new_matrix = self.input_buffer['matrix'].peek()
+        if new_matrix == self.matrix_coefs:
+            return
         for matrix in new_matrix.data:
             if not isinstance(matrix, numpy.ndarray):
                 self.logger.warning('Each matrix input must be a numpy array')
@@ -68,9 +62,9 @@ class Matrix(Transformer):
                 self.logger.warning('Each matrix input must be 2 dimensional')
                 return
         self.matrix_coefs = new_matrix
-        self.set_ready(True)
 
     def transform(self, in_frame, out_frame):
+        self.get_matrix()
         data_in = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
         out_frame.data = []
         for matrix in self.matrix_coefs.data:

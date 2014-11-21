@@ -27,74 +27,22 @@ numbers are used to ensure that only co-timed frames are merged.
 
 __all__ = ['Collator']
 
-from collections import deque
-
-from guild.actor import *
-
 from pyctools.core.base import Component
 
 class Collator(Component):
     inputs = ['input1', 'input2']
     with_outframe_pool = True
 
-    def initialise(self):
-        self.in_frames1 = deque()
-        self.in_frames2 = deque()
-
-    @actor_method
-    def notify(self):
-        """notify()
-
-        """
-        self.collate()
-
-    @actor_method
-    def input1(self, frame):
-        """input1(frame)
-
-        """
-        self.in_frames1.append(frame)
-        self.collate()
-
-    @actor_method
-    def input2(self, frame):
-        """input2(frame)
-
-        """
-        self.in_frames2.append(frame)
-        self.collate()
-
-    def collate(self):
-        while (self.outframe_pool['output'].available() and
-               self.in_frames1 and self.in_frames2):
-            # get frame from first input
-            in_frame1 = self.in_frames1.popleft()
-            if not in_frame1:
-                self.output(None)
-                self.stop()
-                return
-            # get frame from second input
-            in_frame2 = self.in_frames2.popleft()
-            if not in_frame2:
-                self.output(None)
-                self.stop()
-                return
-            # check frame numbers
-            if in_frame1.frame_no < in_frame2.frame_no:
-                # keep second input for another time
-                self.in_frames2.appendleft(in_frame2)
-                continue
-            elif in_frame1.frame_no > in_frame2.frame_no:
-                # keep first input for another time
-                self.in_frames1.appendleft(in_frame1)
-                continue
-            out_frame = self.outframe_pool['output'].get()
-            out_frame.initialise(in_frame1)
-            audit = 'input1 = {\n%s}\n' % in_frame1.metadata.get('audit')
-            audit += 'input2 = {\n%s}\n' % in_frame2.metadata.get('audit')
-            audit += 'data = [input1, input2]\n'
-            out_frame.metadata.set('audit', audit)
-            out_frame.data = in_frame1.as_numpy(dstack=False)
-            for comp in in_frame2.as_numpy(dstack=False):
-                out_frame.data.append(comp)
-            self.output(out_frame)
+    def process_frame(self):
+        in_frame1 = self.input_buffer['input1'].get()
+        in_frame2 = self.input_buffer['input2'].get()
+        out_frame = self.outframe_pool['output'].get()
+        out_frame.initialise(in_frame1)
+        audit = 'input1 = {\n%s}\n' % in_frame1.metadata.get('audit')
+        audit += 'input2 = {\n%s}\n' % in_frame2.metadata.get('audit')
+        audit += 'data = [input1, input2]\n'
+        out_frame.metadata.set('audit', audit)
+        out_frame.data = in_frame1.as_numpy(dstack=False)
+        for comp in in_frame2.as_numpy(dstack=False):
+            out_frame.data.append(comp)
+        self.output(out_frame)

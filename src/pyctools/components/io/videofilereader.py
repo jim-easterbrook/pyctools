@@ -132,13 +132,7 @@ class VideoFileReader(Component):
             if self.frame_no == 0 or self.config['looping'] == 'off':
                 return
 
-    @actor_method
-    def notify(self):
-        """notify()
-
-        """
-        if not self.outframe_pool['output'].available():
-            return
+    def process_frame(self):
         frame = self.outframe_pool['output'].get()
         if not self.generator:
             self.generator = self.file_reader()

@@ -44,13 +44,7 @@ from __future__ import print_function
 __all__ = ['YUVtoRGB']
 __docformat__ = 'restructuredtext en'
 
-from collections import deque
-import logging
-import sys
-import time
-
 import cv2
-from guild.actor import actor_method
 import numpy
 
 from pyctools.core.config import ConfigEnum
@@ -77,61 +71,18 @@ class YUVtoRGB(Component):
         self.config['matrix'] = ConfigEnum(('auto', '601', '709'), dynamic=True)
         self.config['range'] = ConfigEnum(('studio', 'computer'), dynamic=True)
         self.last_frame_type = None
-        # frame storage buffers
-        self.Y_frames = deque()
-        self.UV_frames = deque()
 
-    @actor_method
-    def notify(self):
-        """notify()
-
-        """
-        self.next_frame()
-
-    @actor_method
-    def input_Y(self, frame):
-        """input_Y(frame)
-
-        """
-        self.Y_frames.append(frame)
-        self.next_frame()
-
-    @actor_method
-    def input_UV(self, frame):
-        """input_UV(frame)
-
-        """
-        self.UV_frames.append(frame)
-        self.next_frame()
-
-    def next_frame(self):
-        while (self.outframe_pool['output'].available() and
-               self.Y_frames and self.UV_frames):
-            Y_frame = self.Y_frames.popleft()
-            if not Y_frame:
-                self.output(None)
-                self.stop()
-                return
-            UV_frame = self.UV_frames.popleft()
-            if not UV_frame:
-                self.output(None)
-                self.stop()
-                return
-            # check frame numbers
-            if Y_frame.frame_no < UV_frame.frame_no:
-                self.UV_frames.appendleft(UV_frame)
-                continue
-            elif Y_frame.frame_no > UV_frame.frame_no:
-                self.Y_frames.appendleft(Y_frame)
-                continue
-            out_frame = self.outframe_pool['output'].get()
-            out_frame.initialise(Y_frame)
-            if self.transform(Y_frame, UV_frame, out_frame):
-                self.output(out_frame)
-            else:
-                self.output(None)
-                self.stop()
-                return
+    def process_frame(self):
+        Y_frame = self.input_buffer['input_Y'].get()
+        UV_frame = self.input_buffer['input_UV'].get()
+        out_frame = self.outframe_pool['output'].get()
+        out_frame.initialise(Y_frame)
+        if self.transform(Y_frame, UV_frame, out_frame):
+            self.output(out_frame)
+        else:
+            self.output(None)
+            self.stop()
+            return
 
     def transform(self, Y_frame, UV_frame, out_frame):
         self.update_config()

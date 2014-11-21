@@ -52,11 +52,9 @@ Config
 __all__ = ['RawFileReader']
 __docformat__ = 'restructuredtext en'
 
-from collections import deque
 import io
 import os
 
-from guild.actor import actor_method
 import numpy
 
 from pyctools.core.config import ConfigPath, ConfigEnum
@@ -86,14 +84,7 @@ class RawFileReader(Component):
         self.frame_no = 0
         self.generator = self.file_reader()
 
-    @actor_method
-    def notify(self):
-        """notify()
-
-        """
-        if not (self.outframe_pool['output_Y_RGB'].available() and
-                self.outframe_pool['output_UV'].available()):
-            return
+    def process_frame(self):
         try:
             Y_data, UV_data = next(self.generator)
         except StopIteration:

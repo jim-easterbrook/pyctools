@@ -75,17 +75,12 @@ class Resize(Transformer):
         self.config['xdown'] = ConfigInt(min_value=1)
         self.config['yup'] = ConfigInt(min_value=1)
         self.config['ydown'] = ConfigInt(min_value=1)
-        self.set_ready(False)
+        self.filter_coefs = None
 
-    @actor_method
-    def filter(self, new_filter):
-        """filter(new_filter)
-
-        :param Frame new_filter: A
-            :py:class:`~pyctools.core.frame.Frame` object containing
-            the filter(s).
-        
-        """
+    def get_filter(self):
+        new_filter = self.input_buffer['filter'].peek()
+        if new_filter == self.filter_coefs:
+            return
         for filt in new_filter.data:
             if not isinstance(filt, numpy.ndarray):
                 self.logger.warning('Each filter input must be a numpy array')
@@ -99,9 +94,9 @@ class Resize(Transformer):
                 return
         self.filter_coefs = new_filter
         self.fil_count = None
-        self.set_ready(True)
 
     def transform(self, in_frame, out_frame):
+        self.get_filter()
         self.update_config()
         x_up = self.config['xup']
         x_down = self.config['xdown']

@@ -49,7 +49,6 @@ For example, a cell to simulate a `Bayer filter
 __all__ = ['Modulate']
 __docformat__ = 'restructuredtext en'
 
-from guild.actor import *
 import numpy
 
 from pyctools.core.base import Transformer
@@ -59,18 +58,12 @@ class Modulate(Transformer):
     inputs = ['input', 'cell']
 
     def initialise(self):
-        self.set_ready(False)
+        self.cell_data = None
 
-    @actor_method
-    def cell(self, cell_data):
-        """cell(cell_data)
-
-        Cell data input.
-
-        :param list cell_data: A list of
-            :py:class:`numpy:numpy.ndarray` objects.
-
-        """
+    def get_cell(self):
+        cell_data = self.input_buffer['cell'].peek()
+        if cell_data == self.cell_data:
+            return
         for cell in cell_data.data:
             if not isinstance(cell, numpy.ndarray):
                 self.logger.warning('Each cell input must be a numpy array')
@@ -80,9 +73,9 @@ class Modulate(Transformer):
                 return
         self.cell_data = cell_data
         self.cell_count = None
-        self.set_ready(True)
 
     def transform(self, in_frame, out_frame):
+        self.get_cell()
         in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=False)
         if self.cell_count != len(self.cell_data.data):
             self.cell_count = len(self.cell_data.data)

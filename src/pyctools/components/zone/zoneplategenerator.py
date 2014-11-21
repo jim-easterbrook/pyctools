@@ -93,7 +93,6 @@ __docformat__ = 'restructuredtext en'
 import math
 import sys
 
-from guild.actor import *
 import numpy
 
 from pyctools.core.base import Component
@@ -157,13 +156,7 @@ class ZonePlateGenerator(Component):
                 219.0 * (1.0 + math.cos(phase * math.pi * 2.0)) / 2.0)
         self.frame_no = 0
 
-    @actor_method
-    def notify(self):
-        """notify()
-
-        """
-        if not self.outframe_pool['output'].available():
-            return
+    def process_frame(self):
         self.update_config()
         xlen = self.config['xlen']
         ylen = self.config['ylen']

@@ -60,48 +60,20 @@ class RGBtoYUV(Component):
         self.config['range'] = ConfigEnum(('studio', 'computer'), dynamic=True)
         self.last_frame_type = None
 
-    def process_start(self):
-        super(RGBtoYUV, self).process_start()
-        # frame storage buffer
-        self.in_frames = deque()
-
-    @actor_method
-    def notify(self):
-        """notify()
-
-        """
-        self.next_frame()
-
-    @actor_method
-    def input(self, frame):
-        """input(frame)
-
-        """
-        self.in_frames.append(frame)
-        self.next_frame()
-
-    def next_frame(self):
-        while (self.in_frames and
-               self.outframe_pool['output_Y'].available() and
-               self.outframe_pool['output_UV'].available()):
-            in_frame = self.in_frames.popleft()
-            if not in_frame:
-                self.output_Y(None)
-                self.output_UV(None)
-                self.stop()
-                return
-            Y_frame = self.outframe_pool['output_Y'].get()
-            Y_frame.initialise(in_frame)
-            UV_frame = self.outframe_pool['output_UV'].get()
-            UV_frame.initialise(in_frame)
-            if self.transform(in_frame, Y_frame, UV_frame):
-                self.output_Y(Y_frame)
-                self.output_UV(UV_frame)
-            else:
-                self.output_Y(None)
-                self.output_UV(None)
-                self.stop()
-                return
+    def process_frame(self):
+        in_frame = self.input_buffer['input'].get()
+        Y_frame = self.outframe_pool['output_Y'].get()
+        Y_frame.initialise(in_frame)
+        UV_frame = self.outframe_pool['output_UV'].get()
+        UV_frame.initialise(in_frame)
+        if self.transform(in_frame, Y_frame, UV_frame):
+            self.output_Y(Y_frame)
+            self.output_UV(UV_frame)
+        else:
+            self.output_Y(None)
+            self.output_UV(None)
+            self.stop()
+            return
 
     def transform(self, in_frame, Y_frame, UV_frame):
         self.update_config()
