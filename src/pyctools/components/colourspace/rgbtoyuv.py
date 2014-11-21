@@ -37,7 +37,7 @@ __docformat__ = 'restructuredtext en'
 
 from collections import deque
 
-from guild.actor import actor_method, late_bind_safe
+from guild.actor import actor_method
 import numpy
 
 from pyctools.core.config import ConfigEnum
@@ -55,14 +55,6 @@ class RGBtoYUV(Component):
          [ 0.511415, -0.464522, -0.046894]], dtype=numpy.float32)
     outputs = ['output_Y', 'output_UV']
     with_outframe_pool = True
-
-    @late_bind_safe
-    def output_Y(self, *argv, **argd):
-        pass
-
-    @late_bind_safe
-    def output_UV(self, *argv, **argd):
-        pass
 
     def initialise(self):
         self.config['matrix'] = ConfigEnum(('auto', '601', '709'), dynamic=True)

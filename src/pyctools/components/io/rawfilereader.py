@@ -56,7 +56,7 @@ from collections import deque
 import io
 import os
 
-from guild.actor import actor_method, late_bind_safe
+from guild.actor import actor_method
 import numpy
 
 from pyctools.core.config import ConfigPath, ConfigEnum
@@ -67,14 +67,6 @@ class RawFileReader(Component):
     inputs = []
     outputs = ['output_Y_RGB', 'output_UV']
     with_outframe_pool = True
-
-    @late_bind_safe
-    def output_Y_RGB(self, *argv, **argd):
-        pass
-
-    @late_bind_safe
-    def output_UV(self, *argv, **argd):
-        pass
 
     def initialise(self):
         self.config['path'] = ConfigPath()

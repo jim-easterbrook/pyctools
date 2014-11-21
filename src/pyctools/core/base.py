@@ -98,6 +98,10 @@ class Component(Actor, ConfigMixin):
         self.initialise()
         for key, value in config.items():
             self.config[key] = value
+        # initialise outputs to default "do nothing" output
+        for output in self.outputs:
+            if output != 'output':
+                setattr(self, output, self.output)
 
     def initialise(self):
         """Over ride this in your derived class if you need to do any
