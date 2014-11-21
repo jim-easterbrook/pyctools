@@ -512,43 +512,32 @@ class CompoundIcon(BasicComponentIcon):
         if self.expanded:
             # position components according to linkages
             pos = {}
-            for root in self.obj._compound_children:
-                if root in pos:
-                    continue
-                # assign a starting position to root
-                pos[root] = [50, 50]
-                # follow root's outputs
-                pending = [root]
-                while pending:
-                    name = pending.pop(0)
-                    x = pos[name][0] + 150
-                    y = pos[name][1]
-                    for outbox in self.obj._compound_children[name].outputs:
-                        source = name, outbox
-                        if source in self.obj._compound_linkages:
-                            dest, inbox = self.obj._compound_linkages[source]
-                            if dest == 'self':
-                                continue
-                            pos[dest] = [x, y]
-                            y += 150
-                            pending.append(dest)
-                # follow root's inputs
-                pending = [root]
-                while pending:
-                    name = pending.pop(0)
-                    x = pos[name][0] - 150
-                    y = pos[name][1]
-                    for inbox in self.obj._compound_children[name].inputs:
-                        target = name, inbox
-                        for source in self.obj._compound_linkages:
-                            if self.obj._compound_linkages[source] != target:
-                                continue
-                            src, outbox = source
-                            if src == 'self':
-                                continue
-                            pos[src] = [x, y]
-                            y += 150
-                            pending.append(src)
+            # give all components the same start position
+            for name in self.obj._compound_children:
+                pos[name] = [50, 50]
+            # move components down and/or right according to linkages
+            while True:
+                no_move = True
+                for source, target in self.obj._compound_linkages.items():
+                    src, outbox = source
+                    dest, inbox = target
+                    if src == 'self' or dest == 'self':
+                        continue
+                    x = pos[src][0] + 150
+                    if isinstance(self.obj._compound_children[src],
+                                  pyctools.components.plumbing.busbar.Busbar):
+                        x -= 50
+                    y = pos[src][1] - (150 * (
+                        self.obj._compound_children[dest].inputs.index(inbox) -
+                        self.obj._compound_children[src].outputs.index(outbox)))
+                    if pos[dest][0] < x:
+                        pos[dest][0] = x
+                        no_move = False
+                    if pos[dest][1] < y:
+                        pos[dest][1] = y
+                        no_move = False
+                if no_move:
+                    break
             x_min, y_min = pos[pos.keys()[0]]
             x_max, y_max = x_min, y_min
             for i in pos:
