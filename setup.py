@@ -24,7 +24,7 @@ import os
 from setuptools import setup, Extension
 import sys
 
-version = '0.1.2'
+version = '0.2.0'
 
 # find packages
 packages = ['pyctools']
