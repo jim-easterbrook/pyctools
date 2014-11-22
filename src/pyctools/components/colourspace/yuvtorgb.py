@@ -58,12 +58,12 @@ class YUVtoRGB(Component):
     mat_709 = numpy.array([[1.0,  0.0,       1.539648],
                            [1.0, -0.183143, -0.457675],
                            [1.0,  1.81418,   0.0]], dtype=numpy.float32)
-    filter_21 = numpy.array([[
+    filter_21 = numpy.array([
         -0.002913300, 0.0,  0.010153700, 0.0, -0.022357799, 0.0,
          0.044929001, 0.0, -0.093861297, 0.0,  0.314049691, 0.5,
          0.314049691, 0.0, -0.093861297, 0.0,  0.044929001, 0.0,
         -0.022357799, 0.0,  0.010153700, 0.0, -0.002913300
-        ]], dtype=numpy.float32)
+        ], dtype=numpy.float32).reshape(1, -1, 1)
     inputs = ['input_Y', 'input_UV']
     with_outframe_pool = True
 
@@ -104,9 +104,7 @@ class YUVtoRGB(Component):
         v_ss = Y_data.shape[0] // UV_data.shape[0]
         h_ss = Y_data.shape[1] // UV_data.shape[1]
         if h_ss == 2:
-            U_data = resize_frame(UV_data[:,:,0], self.filter_21, 2, 1, 1, 1)
-            V_data = resize_frame(UV_data[:,:,1], self.filter_21, 2, 1, 1, 1)
-            UV_data = numpy.dstack((U_data, V_data))
+            UV_data = resize_frame(UV_data, self.filter_21, 2, 1, 1, 1)
         elif h_ss != 1:
             UV_data = cv2.resize(
                 UV_data, None, fx=h_ss, fy=1, interpolation=cv2.INTER_CUBIC)

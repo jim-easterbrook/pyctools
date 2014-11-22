@@ -75,11 +75,11 @@ class Resize(Transformer):
         self.config['xdown'] = ConfigInt(min_value=1)
         self.config['yup'] = ConfigInt(min_value=1)
         self.config['ydown'] = ConfigInt(min_value=1)
-        self.filter_coefs = None
+        self.filter_frame = None
 
     def get_filter(self):
         new_filter = self.input_buffer['filter'].peek()
-        if new_filter == self.filter_coefs:
+        if new_filter == self.filter_frame:
             return
         for filt in new_filter.data:
             if not isinstance(filt, numpy.ndarray):
@@ -92,7 +92,9 @@ class Resize(Transformer):
             if (xlen % 2) != 1 or (ylen % 2) != 1:
                 self.logger.warning('Each filter input must have odd dimensions')
                 return
-        self.filter_coefs = new_filter
+        self.filter_frame = new_filter
+        self.filter_coefs = self.filter_frame.as_numpy(
+            dtype=numpy.float32, dstack=True)[0]
         self.fil_count = None
 
     def transform(self, in_frame, out_frame):
@@ -102,18 +104,15 @@ class Resize(Transformer):
         x_down = self.config['xdown']
         y_up = self.config['yup']
         y_down = self.config['ydown']
-        in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=False)
-        if self.fil_count != len(self.filter_coefs.data):
-            self.fil_count = len(self.filter_coefs.data)
-            if self.fil_count != 1 and self.fil_count != len(in_data):
+        in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        if self.fil_count != self.filter_coefs.shape[2]:
+            self.fil_count = self.filter_coefs.shape[2]
+            if self.fil_count != 1 and self.fil_count != in_data.shape[2]:
                 self.logger.warning('Mismatch between %d filters and %d images',
-                                    self.fil_count, len(in_data))
-        out_frame.data = []
-        for c, in_comp in enumerate(in_data):
-            norm_filter = (
-                self.filter_coefs.data[c % self.fil_count] * float(x_up * y_up))
-            out_frame.data.append(resize_frame(
-                in_comp, norm_filter, x_up, x_down, y_up, y_down))
+                                    self.fil_count, in_data.shape[2])
+        norm_filter = self.filter_coefs * float(x_up * y_up)
+        out_frame.data = [resize_frame(
+            in_data, norm_filter, x_up, x_down, y_up, y_down)]
         audit = out_frame.metadata.get('audit')
         audit += 'data = Resize(data)\n'
         if x_up != 1 or x_down != 1:
@@ -121,6 +120,6 @@ class Resize(Transformer):
         if y_up != 1 or y_down != 1:
             audit += '    y_up: %d, y_down: %d\n' % (y_up, y_down)
         audit += '    filter: {\n%s}\n' % (
-            self.filter_coefs.metadata.get('audit'))
+            self.filter_frame.metadata.get('audit'))
         out_frame.metadata.set('audit', audit)
         return True
