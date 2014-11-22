@@ -58,42 +58,35 @@ class Modulate(Transformer):
     inputs = ['input', 'cell']
 
     def initialise(self):
-        self.cell_data = None
+        self.cell_frame = None
 
     def get_cell(self):
-        cell_data = self.input_buffer['cell'].peek()
-        if cell_data == self.cell_data:
-            return
-        for cell in cell_data.data:
-            if not isinstance(cell, numpy.ndarray):
-                self.logger.warning('Each cell input must be a numpy array')
-                return
-            if cell.ndim != 3:
-                self.logger.warning('Each cell input must be 3 dimensional')
-                return
-        self.cell_data = cell_data
+        cell_frame = self.input_buffer['cell'].peek()
+        if cell_frame == self.cell_frame:
+            return True
+        self.cell_data = cell_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        if self.cell_data.ndim != 4:
+            self.logger.error('Cell input must be 4 dimensional')
+            self.input_buffer['cell'].get()
+            return False
+        self.cell_frame = cell_frame
         self.cell_count = None
+        return True
 
     def transform(self, in_frame, out_frame):
-        self.get_cell()
-        in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=False)
-        if self.cell_count != len(self.cell_data.data):
-            self.cell_count = len(self.cell_data.data)
-            if self.cell_count != 1 and self.cell_count != len(in_data):
-                self.logger.warning('Mismatch between %d cells and %d images',
-                                    self.cell_count, len(in_data))
-        out_frame.data = []
-        for c, in_comp in enumerate(in_data):
-            cell = self.cell_data.data[c % self.cell_count]
-            if cell.size == 1:
-                out_comp = in_comp * cell[0, 0, 0]
-            else:
-                out_comp = numpy.empty(in_comp.shape, dtype=numpy.float32)
-                modulate_frame(out_comp, in_comp, cell, in_frame.frame_no)
-            out_frame.data.append(out_comp)
+        if not self.get_cell():
+            return False
+        in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        if self.cell_count != self.cell_data.shape[3]:
+            self.cell_count = self.cell_data.shape[3]
+            if self.cell_count != 1 and self.cell_count != in_data.shape[2]:
+                self.logger.warning('Mismatch between %d cells and %d components',
+                                    self.cell_count, in_data.shape[2])
+        out_frame.data = [
+            modulate_frame(in_data, self.cell_data, in_frame.frame_no)]
         audit = out_frame.metadata.get('audit')
         audit += 'data = Modulate(data)\n'
         audit += '    cell: {\n%s}\n' % (
-            self.cell_data.metadata.get('audit'))
+            self.cell_frame.metadata.get('audit'))
         out_frame.metadata.set('audit', audit)
         return True

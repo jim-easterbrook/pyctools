@@ -17,35 +17,42 @@
 #  <http://www.gnu.org/licenses/>.
 
 from cython.parallel import prange
+import numpy as np
 
 cimport cython
 cimport numpy
 
+DTYPE = np.float32
 ctypedef numpy.float32_t DTYPE_t
 
 @cython.boundscheck(False)
-cdef void modulate_frame_c(DTYPE_t[:, :] out_comp,
-                           DTYPE_t[:, :] in_comp,
-                           DTYPE_t[:, :] cell):
+cdef void modulate_frame_c(DTYPE_t[:, :, :] out_frame,
+                           DTYPE_t[:, :, :] in_frame,
+                           DTYPE_t[:, :, :] cell):
     cdef:
-        unsigned int xlen, ylen
-        unsigned int i, j, x, y
+        unsigned int xlen, ylen, cells
+        unsigned int i, j, x, y, c, c_cell
     with nogil:
         ylen = cell.shape[0]
         xlen = cell.shape[1]
-        for y in prange(in_comp.shape[0], schedule='static'):
+        cells = cell.shape[2]
+        for y in prange(in_frame.shape[0], schedule='static'):
             j = y % ylen
-            for x in range(in_comp.shape[1]):
-                i = x % xlen
-                out_comp[y, x] = in_comp[y, x] * cell[j, i]
+            for c in range(in_frame.shape[2]):
+                c_cell = c % cells
+                for x in range(in_frame.shape[1]):
+                    i = x % xlen
+                    out_frame[y, x, c] = in_frame[y, x, c] * cell[j, i, c_cell]
 
 @cython.boundscheck(False)
-def modulate_frame(numpy.ndarray[DTYPE_t, ndim=2] out_comp,
-                   numpy.ndarray[DTYPE_t, ndim=2] in_comp,
-                   numpy.ndarray[DTYPE_t, ndim=3] cell,
+def modulate_frame(numpy.ndarray[DTYPE_t, ndim=3] in_frame,
+                   numpy.ndarray[DTYPE_t, ndim=4] cell,
                    unsigned int frame_no):
     cdef:
         unsigned int zlen, k
     zlen = cell.shape[0]
     k = frame_no % zlen
-    modulate_frame_c(out_comp, in_comp, cell[k])
+    out_frame = np.empty([in_frame.shape[0], in_frame.shape[1],
+                          in_frame.shape[2]], dtype=DTYPE)
+    modulate_frame_c(out_frame, in_frame, cell[k])
+    return out_frame
