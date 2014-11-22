@@ -45,10 +45,6 @@ class ImageFileWriter(Transformer):
         self.update_config()
         path = self.config['path']
         image = in_frame.as_PIL()
-        if len(image) == 1:
-            image = image[0]
-        else:
-            image = PIL.Image.merge(in_frame.type, image)
         image.save(path)
         md = Metadata().copy(in_frame.metadata)
         audit = md.get('audit')

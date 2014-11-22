@@ -40,7 +40,7 @@ class Zigzag(Transformer):
         amplitude = self.config['amplitude']
         period = self.config['period']
         in_data = in_frame.as_numpy(dtype=numpy.float32)
-        out_frame.data = [zigzag_frame(in_data, amplitude, period)]
+        out_frame.data = zigzag_frame(in_data, amplitude, period)
         audit = out_frame.metadata.get('audit')
         audit += 'data = Zigzag(data)\n'
         audit += '    amplitude: %g, period: %g\n' % (amplitude, period)

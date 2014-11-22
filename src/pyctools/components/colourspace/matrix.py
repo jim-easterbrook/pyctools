@@ -48,35 +48,28 @@ class Matrix(Transformer):
     inputs = ['input', 'matrix']
 
     def initialise(self):
-        self.matrix_coefs = None
+        self.matrix_frame = None
 
     def get_matrix(self):
         new_matrix = self.input_buffer['matrix'].peek()
-        if new_matrix == self.matrix_coefs:
-            return
-        for matrix in new_matrix.data:
-            if not isinstance(matrix, numpy.ndarray):
-                self.logger.warning('Each matrix input must be a numpy array')
-                return
-            if matrix.ndim != 2:
-                self.logger.warning('Each matrix input must be 2 dimensional')
-                return
-        self.matrix_coefs = new_matrix
+        if new_matrix == self.matrix_frame:
+            return True
+        matrix = new_matrix.as_numpy(dtype=numpy.float32)
+        if matrix.ndim != 2:
+            self.logger.error('Matrix input must be 2 dimensional')
+            return False
+        self.matrix_frame = new_matrix
+        self.matrix_coefs = matrix
+        return True
 
     def transform(self, in_frame, out_frame):
-        self.get_matrix()
+        if not self.get_matrix():
+            return False
         data_in = in_frame.as_numpy(dtype=numpy.float32)
-        out_frame.data = []
-        for matrix in self.matrix_coefs.data:
-            if data_in.shape[2] != matrix.shape[1]:
-                self.logger.critical(
-                    'Input has %d components, matrix expects %d',
-                    data_in.shape[2], matrix.shape[1])
-                return False
-            out_frame.data.append(numpy.dot(data_in, matrix.T))
+        out_frame.data = numpy.dot(data_in, self.matrix_coefs.T)
         audit = out_frame.metadata.get('audit')
         audit += 'data = Matrix(data)\n'
         audit += '    matrix: {\n%s}\n' % (
-            self.matrix_coefs.metadata.get('audit'))
+            self.matrix_frame.metadata.get('audit'))
         out_frame.metadata.set('audit', audit)
         return True

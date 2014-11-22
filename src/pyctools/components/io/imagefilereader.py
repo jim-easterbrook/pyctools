@@ -57,7 +57,7 @@ class ImageFileReader(Component):
         out_frame = Frame()
         image = PIL.Image.open(path)
         # send output frame
-        out_frame.data = [image]
+        out_frame.data = image
         out_frame.type = image.mode
         out_frame.frame_no = 0
         out_frame.metadata.from_file(path)

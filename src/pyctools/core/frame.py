@@ -57,7 +57,7 @@ class Frame(object):
     """
     def __init__(self):
         self.frame_no = -1
-        self.data = []
+        self.data = None
         self.type = 'empty'
         self.metadata = Metadata()
 
@@ -95,35 +95,30 @@ class Frame(object):
         :rtype: :py:class:`numpy.ndarray`
 
         """
-        result = []
-        for data in self.data:
-            if isinstance(data, numpy.ndarray):
-                new_data = data
-            elif isinstance(data, PIL.Image.Image):
-                if data.mode == 'P':
-                    data = data.convert()
-                if data.mode == 'F':
-                    new_data = numpy.array(data, dtype=numpy.float32)
-                elif data.mode == 'I':
-                    new_data = numpy.array(data, dtype=numpy.int32)
-                elif dtype is not None:
-                    new_data = numpy.array(data, dtype=dtype)
-                else:
-                    new_data = numpy.array(data, dtype=numpy.float32)
+        if isinstance(self.data, numpy.ndarray):
+            result = self.data
+        elif isinstance(self.data, PIL.Image.Image):
+            if self.data.mode == 'P':
+                data = self.data.convert()
             else:
-                raise RuntimeError(
-                    'Cannot convert "%s" to numpy' % data.__class__.__name__)
-            if dtype is not None and new_data.dtype != dtype:
-                if dtype == numpy.uint8:
-                    new_data = new_data.clip(0, 255)
-                elif dtype == numpy.uint16:
-                    new_data = new_data.clip(0, 2**16 - 1)
-                new_data = new_data.astype(dtype)
-            result.append(new_data)
-        if len(result) > 1 or result[0].ndim < 3:
-            result = numpy.dstack(result)
+                data = self.data
+            if data.mode == 'F':
+                result = numpy.array(data, dtype=numpy.float32)
+            elif data.mode == 'I':
+                result = numpy.array(data, dtype=numpy.int32)
+            elif dtype is not None:
+                result = numpy.array(data, dtype=dtype)
+            else:
+                result = numpy.array(data, dtype=numpy.float32)
         else:
-            result = result[0]
+            raise RuntimeError(
+                'Cannot convert "%s" to numpy' % self.data.__class__.__name__)
+        if dtype is not None and result.dtype != dtype:
+            if dtype == numpy.uint8:
+                result = result.clip(0, 255)
+            elif dtype == numpy.uint16:
+                result = result.clip(0, 2**16 - 1)
+            result = result.astype(dtype)
         return result
 
     def as_PIL(self):
@@ -134,22 +129,20 @@ class Frame(object):
 
         :return: The image data as :py:class:`PIL.Image.Image`.
 
-        :rtype: :py:class:`list` of :py:class:`PIL.Image.Image`
+        :rtype: :py:class:`PIL.Image.Image`
 
         """
-        result = []
-        for data in self.data:
-            if isinstance(data, numpy.ndarray):
-                if data.dtype == numpy.uint8:
-                    result.append(PIL.Image.fromarray(data))
-                else:
-                    result.append(PIL.Image.fromarray(
-                        data.clip(0, 255).astype(numpy.uint8)))
-            elif isinstance(data, PIL.Image.Image):
-                result.append(data)
+        if isinstance(self.data, numpy.ndarray):
+            if self.data.dtype == numpy.uint8:
+                result = PIL.Image.fromarray(self.data)
             else:
-                raise RuntimeError(
-                    'Cannot convert "%s" to PIL' % data.__class__.__name__)
+                result = PIL.Image.fromarray(
+                    self.data.clip(0, 255).astype(numpy.uint8))
+        elif isinstance(self.data, PIL.Image.Image):
+            result = self.data
+        else:
+            raise RuntimeError(
+                'Cannot convert "%s" to PIL' % self.data.__class__.__name__)
         return result
 
 

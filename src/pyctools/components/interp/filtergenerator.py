@@ -200,12 +200,13 @@ def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, x_cut=100,
     y_cut = max(y_cut, 1)
     x_fil = filter_1D(x_up, x_down, x_ap, x_cut)
     y_fil = filter_1D(y_up, y_down, y_ap, y_cut)
-    result = numpy.empty(y_fil.shape + x_fil.shape, dtype=numpy.float32)
+    result = numpy.empty(
+        [y_fil.shape[0], x_fil.shape[0], 1], dtype=numpy.float32)
     for y in range(y_fil.shape[0]):
         for x in range(x_fil.shape[0]):
-            result[y, x] = x_fil[x] * y_fil[y]
+            result[y, x, 0] = x_fil[x] * y_fil[y]
     out_frame = Frame()
-    out_frame.data = [result]
+    out_frame.data = result
     out_frame.type = 'fil'
     audit = out_frame.metadata.get('audit')
     audit += 'data = FilterGenerator()\n'

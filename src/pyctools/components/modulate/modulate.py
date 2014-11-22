@@ -82,8 +82,8 @@ class Modulate(Transformer):
             if self.cell_count != 1 and self.cell_count != in_data.shape[2]:
                 self.logger.warning('Mismatch between %d cells and %d components',
                                     self.cell_count, in_data.shape[2])
-        out_frame.data = [
-            modulate_frame(in_data, self.cell_data, in_frame.frame_no)]
+        out_frame.data = modulate_frame(
+            in_data, self.cell_data, in_frame.frame_no)
         audit = out_frame.metadata.get('audit')
         audit += 'data = Modulate(data)\n'
         audit += '    cell: {\n%s}\n' % (

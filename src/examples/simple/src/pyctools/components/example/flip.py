@@ -40,9 +40,8 @@ class Flip(Transformer):
             flip = PIL.Image.FLIP_TOP_BOTTOM
         else:
             flip = PIL.Image.FLIP_LEFT_RIGHT
-        out_frame.data = []
-        for in_data in in_frame.as_PIL():
-            out_frame.data.append(in_data.transpose(flip))
+        in_data = in_frame.as_PIL()
+        out_frame.data = in_data.transpose(flip)
         audit = out_frame.metadata.get('audit')
         audit += 'data = Flip(data)\n'
         audit += '    direction: %s\n' % direction

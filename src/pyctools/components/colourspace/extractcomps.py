@@ -42,7 +42,7 @@ class ExtractComps(Transformer):
         start = self.config['start']
         stop = self.config['stop']
         in_data = in_frame.as_numpy()
-        out_frame.data = [in_data[:,:,start:stop]]
+        out_frame.data = in_data[:,:,start:stop]
         audit = out_frame.metadata.get('audit')
         audit += 'data = data[%d:%d]\n' % (start, stop)
         out_frame.metadata.set('audit', audit)

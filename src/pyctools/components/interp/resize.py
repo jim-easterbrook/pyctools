@@ -80,24 +80,23 @@ class Resize(Transformer):
     def get_filter(self):
         new_filter = self.input_buffer['filter'].peek()
         if new_filter == self.filter_frame:
-            return
-        for filt in new_filter.data:
-            if not isinstance(filt, numpy.ndarray):
-                self.logger.warning('Each filter input must be a numpy array')
-                return
-            if filt.ndim != 2:
-                self.logger.warning('Each filter input must be 2 dimensional')
-                return
-            ylen, xlen = filt.shape
-            if (xlen % 2) != 1 or (ylen % 2) != 1:
-                self.logger.warning('Each filter input must have odd dimensions')
-                return
+            return True
+        filter_coefs = new_filter.as_numpy(dtype=numpy.float32)
+        if filter_coefs.ndim != 3:
+            self.logger.warning('Filter input must be 3 dimensional')
+            return False
+        ylen, xlen = filter_coefs.shape[0:2]
+        if (xlen % 2) != 1 or (ylen % 2) != 1:
+            self.logger.warning('Filter input must have odd width & height')
+            return False
         self.filter_frame = new_filter
-        self.filter_coefs = self.filter_frame.as_numpy(dtype=numpy.float32)
+        self.filter_coefs = filter_coefs
         self.fil_count = None
+        return True
 
     def transform(self, in_frame, out_frame):
-        self.get_filter()
+        if not self.get_filter():
+            return False
         self.update_config()
         x_up = self.config['xup']
         x_down = self.config['xdown']
@@ -110,8 +109,8 @@ class Resize(Transformer):
                 self.logger.warning('Mismatch between %d filters and %d images',
                                     self.fil_count, in_data.shape[2])
         norm_filter = self.filter_coefs * float(x_up * y_up)
-        out_frame.data = [resize_frame(
-            in_data, norm_filter, x_up, x_down, y_up, y_down)]
+        out_frame.data = resize_frame(
+            in_data, norm_filter, x_up, x_down, y_up, y_down)
         audit = out_frame.metadata.get('audit')
         audit += 'data = Resize(data)\n'
         if x_up != 1 or x_down != 1:

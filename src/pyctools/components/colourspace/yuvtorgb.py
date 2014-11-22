@@ -127,7 +127,7 @@ class YUVtoRGB(Component):
             RGB += 16.0
         else:
             RGB *= (255.0 / 219.0)
-        out_frame.data = [RGB]
+        out_frame.data = RGB
         out_frame.type = 'RGB'
         out_frame.metadata.set('audit', audit)
         return True

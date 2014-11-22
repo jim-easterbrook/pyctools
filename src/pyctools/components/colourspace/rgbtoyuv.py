@@ -107,13 +107,8 @@ class RGBtoYUV(Component):
             matrix = self.mat_709
             Y_audit += ', matrix: 709\n'
             UV_audit += ', matrix: 709\n'
-        Y_frame.data = [
-            numpy.dot(RGB, matrix[0].T) + 16.0,
-            ]
-        UV_frame.data = [
-            numpy.dot(RGB, matrix[1].T),
-            numpy.dot(RGB, matrix[2].T),
-            ]
+        Y_frame.data = numpy.dot(RGB, matrix[0:1].T) + 16.0
+        UV_frame.data = numpy.dot(RGB, matrix[1:3].T)
         Y_frame.type = 'Y'
         UV_frame.type = 'CbCr'
         Y_frame.metadata.set('audit', Y_audit)

@@ -52,7 +52,7 @@ class Arithmetic(Transformer):
         self.update_config()
         func = self.config['func']
         data = in_frame.as_numpy(numpy.float32)
-        out_frame.data = [eval(func)]
+        out_frame.data = eval(func)
         audit = out_frame.metadata.get('audit')
         audit += 'data = %s\n' % func
         out_frame.metadata.set('audit', audit)

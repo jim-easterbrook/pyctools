@@ -228,7 +228,7 @@ class ZonePlateGenerator(Component):
         zone_frame(data, self.waveform, self.frame_no % zlen,
                    k0, kx, ky, kt, kx2, kxy, kxt, kyx, ky2, kyt, ktx, kty, kt2)
         # set output frame
-        frame.data = [data]
+        frame.data = data
         frame.type = 'Y'
         frame.frame_no = self.frame_no
         self.frame_no += 1

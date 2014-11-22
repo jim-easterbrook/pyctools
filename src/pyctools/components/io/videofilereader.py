@@ -127,7 +127,7 @@ class VideoFileReader(Component):
                         image = image.astype(numpy.float32) / 256.0
                     else:
                         image = numpy.fromstring(raw_data, dtype=numpy.uint8)
-                    yield [image.reshape((ylen, xlen, bps))]
+                    yield image.reshape((ylen, xlen, bps))
             self.update_config()
             if self.frame_no == 0 or self.config['looping'] == 'off':
                 return

@@ -96,13 +96,13 @@ class RawFileReader(Component):
         Y_frame.metadata.copy(self.metadata)
         Y_frame.frame_no = self.frame_no
         self.frame_no += 1
-        Y_frame.data = [Y_data]
+        Y_frame.data = Y_data
         Y_frame.type = self.Y_type
         self.output_Y_RGB(Y_frame)
         if UV_data is not None:
             UV_frame = self.outframe_pool['output_UV'].get()
             UV_frame.initialise(Y_frame)
-            UV_frame.data = [UV_data]
+            UV_frame.data = UV_data
             UV_frame.type = self.UV_type
             self.output_UV(UV_frame)
 
@@ -121,20 +121,20 @@ class RawFileReader(Component):
             Y_shape = (ylen, xlen, 3)
         elif fourcc in ('IYU2',):
             bpp = 24
-            Y_shape = (ylen, xlen)
+            Y_shape = (ylen, xlen, 1)
             UV_shape = (ylen, xlen)
         elif fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC', 'YVYU', 'YUYV',
                         'YV16', 'YUY2', 'YUNV', 'V422'):
             bpp = 16
-            Y_shape = (ylen, xlen)
+            Y_shape = (ylen, xlen, 1)
             UV_shape = (ylen, xlen // 2)
         elif fourcc in ('IYUV', 'I420', 'YV12'):
             bpp = 12
-            Y_shape = (ylen, xlen)
+            Y_shape = (ylen, xlen, 1)
             UV_shape = (ylen // 2, xlen // 2)
         elif fourcc in ('YVU9',):
             bpp = 9
-            Y_shape = (ylen, xlen)
+            Y_shape = (ylen, xlen, 1)
             UV_shape = (ylen // 4, xlen // 4)
         else:
             self.logger.critical("Can't open %s files", fourcc)

@@ -143,12 +143,13 @@ def GaussianFilterCore(x_sigma=0.0, y_sigma=0.0):
     y_sigma = max(y_sigma, 0.0)
     x_fil = filter_1D(x_sigma)
     y_fil = filter_1D(y_sigma)
-    result = numpy.empty(y_fil.shape + x_fil.shape, dtype=numpy.float32)
+    result = numpy.empty(
+        [y_fil.shape[0], x_fil.shape[0], 1], dtype=numpy.float32)
     for y in range(y_fil.shape[0]):
         for x in range(x_fil.shape[0]):
-            result[y, x] = x_fil[x] * y_fil[y]
+            result[y, x, 0] = x_fil[x] * y_fil[y]
     out_frame = Frame()
-    out_frame.data = [result]
+    out_frame.data = result
     out_frame.type = 'fil'
     audit = out_frame.metadata.get('audit')
     audit += 'data = GaussianFilter()\n'
