@@ -27,6 +27,8 @@ numbers are used to ensure that only co-timed frames are merged.
 
 __all__ = ['Collator']
 
+import numpy
+
 from pyctools.core.base import Component
 
 class Collator(Component):
@@ -42,7 +44,7 @@ class Collator(Component):
         audit += 'input2 = {\n%s}\n' % in_frame2.metadata.get('audit')
         audit += 'data = [input1, input2]\n'
         out_frame.metadata.set('audit', audit)
-        out_frame.data = in_frame1.as_numpy(dstack=False)
-        for comp in in_frame2.as_numpy(dstack=False):
-            out_frame.data.append(comp)
+        out_frame.data = [numpy.concatenate(
+            (in_frame1.as_numpy(dstack=True)[0],
+             in_frame2.as_numpy(dstack=True)[0]), axis=2)]
         self.output(out_frame)
