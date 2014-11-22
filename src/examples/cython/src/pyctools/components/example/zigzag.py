@@ -39,7 +39,7 @@ class Zigzag(Transformer):
         self.update_config()
         amplitude = self.config['amplitude']
         period = self.config['period']
-        in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        in_data = in_frame.as_numpy(dtype=numpy.float32)[0]
         out_frame.data = [zigzag_frame(in_data, amplitude, period)]
         audit = out_frame.metadata.get('audit')
         audit += 'data = Zigzag(data)\n'

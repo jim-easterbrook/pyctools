@@ -89,7 +89,7 @@ class VideoFileWriter(Transformer):
         encoder = self.config['encoder']
         fps = self.config['fps']
         bit16 = self.config['16bit'] != 'off'
-        numpy_image = in_frame.as_numpy(dstack=True)[0]
+        numpy_image = in_frame.as_numpy()[0]
         ylen, xlen, bpc = numpy_image.shape
         if bpc == 3:
             if in_frame.type != 'RGB':
@@ -122,14 +122,12 @@ class VideoFileWriter(Transformer):
                 if not in_frame:
                     break
                 if bit16:
-                    numpy_image = in_frame.as_numpy(
-                        dtype=numpy.float32, dstack=True)[0]
+                    numpy_image = in_frame.as_numpy(dtype=numpy.float32)[0]
                     numpy_image = numpy_image * 256.0
                     numpy_image = numpy_image.clip(
                         0, 2**16 - 1).astype(numpy.uint16)
                 else:
-                    numpy_image = in_frame.as_numpy(
-                        dtype=numpy.uint8, dstack=True)[0]
+                    numpy_image = in_frame.as_numpy(dtype=numpy.uint8)[0]
                 sp.stdin.write(numpy_image.tostring())
                 del in_frame
 

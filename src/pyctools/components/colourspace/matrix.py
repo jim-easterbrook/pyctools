@@ -65,7 +65,7 @@ class Matrix(Transformer):
 
     def transform(self, in_frame, out_frame):
         self.get_matrix()
-        data_in = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        data_in = in_frame.as_numpy(dtype=numpy.float32)[0]
         out_frame.data = []
         for matrix in self.matrix_coefs.data:
             if data_in.shape[2] != matrix.shape[1]:

@@ -34,7 +34,7 @@ from collections import deque
 import logging
 import weakref
 
-from guild.actor import *
+from guild.actor import Actor, actor_method
 
 from .config import ConfigMixin, ConfigInt
 from .frame import Frame, Metadata

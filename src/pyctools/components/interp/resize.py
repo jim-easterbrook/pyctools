@@ -93,8 +93,7 @@ class Resize(Transformer):
                 self.logger.warning('Each filter input must have odd dimensions')
                 return
         self.filter_frame = new_filter
-        self.filter_coefs = self.filter_frame.as_numpy(
-            dtype=numpy.float32, dstack=True)[0]
+        self.filter_coefs = self.filter_frame.as_numpy(dtype=numpy.float32)[0]
         self.fil_count = None
 
     def transform(self, in_frame, out_frame):
@@ -104,7 +103,7 @@ class Resize(Transformer):
         x_down = self.config['xdown']
         y_up = self.config['yup']
         y_down = self.config['ydown']
-        in_data = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        in_data = in_frame.as_numpy(dtype=numpy.float32)[0]
         if self.fil_count != self.filter_coefs.shape[2]:
             self.fil_count = self.filter_coefs.shape[2]
             if self.fil_count != 1 and self.fil_count != in_data.shape[2]:

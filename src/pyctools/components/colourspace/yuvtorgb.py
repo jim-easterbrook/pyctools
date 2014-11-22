@@ -87,11 +87,11 @@ class YUVtoRGB(Component):
     def transform(self, Y_frame, UV_frame, out_frame):
         self.update_config()
         # check input and get data
-        Y_data = Y_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        Y_data = Y_frame.as_numpy(dtype=numpy.float32)[0]
         if Y_data.shape[2] != 1:
             self.logger.critical('Y input has %d components', Y_data.shape[2])
             return False
-        UV_data = UV_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        UV_data = UV_frame.as_numpy(dtype=numpy.float32)[0]
         if UV_data.shape[2] != 2:
             self.logger.critical('UV input has %d components', UV_data.shape[2])
             return False

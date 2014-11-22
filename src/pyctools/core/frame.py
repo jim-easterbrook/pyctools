@@ -76,7 +76,7 @@ class Frame(object):
         self.type = other.type
         self.metadata.copy(other.metadata)
 
-    def as_numpy(self, dtype=None, dstack=None):
+    def as_numpy(self, dtype=None):
         """Get image data in :py:class:`numpy:numpy.ndarray` form.
 
         Note that if the image data is already in the correct format
@@ -88,11 +88,6 @@ class Frame(object):
         :keyword numpy.dtype dtype: What
             :py:class:`~numpy:numpy.dtype` the data should be in, e.g.
             ``numpy.float32``. If ``dtype`` is ``None`` then no
-            conversion will be done.
-
-        :keyword bool dstack: Whether to return a single 3D array
-            (``dstack=True``) or a list of 2D arrays
-            (``dstack=False``). If ``dstack`` is ``None`` then no
             conversion will be done.
 
         :return: The image data as :py:class:`numpy:numpy.ndarray`.
@@ -125,18 +120,8 @@ class Frame(object):
                     new_data = new_data.clip(0, 2**16 - 1)
                 new_data = new_data.astype(dtype)
             result.append(new_data)
-        if dstack is None:
-            pass
-        elif dstack:
-            if len(result) > 1 or result[0].ndim < 3:
-                result = [numpy.dstack(result)]
-        else:
-            if result[0].ndim > 2:
-                new_result = []
-                for data in result:
-                    for c in range(data.shape[2]):
-                        new_result.append(data[:,:,c])
-                result = new_result
+        if len(result) > 1 or result[0].ndim < 3:
+            result = [numpy.dstack(result)]
         return result
 
     def as_PIL(self):

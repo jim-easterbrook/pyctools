@@ -78,7 +78,7 @@ class RGBtoYUV(Component):
     def transform(self, in_frame, Y_frame, UV_frame):
         self.update_config()
         # check input and get data
-        RGB = in_frame.as_numpy(dtype=numpy.float32, dstack=True)[0]
+        RGB = in_frame.as_numpy(dtype=numpy.float32)[0]
         if RGB.shape[2] != 3:
             self.logger.critical('Cannot convert %s images with %d components',
                                  in_frame.type, RGB.shape[2])
