@@ -116,7 +116,7 @@ class QtDisplay(Transformer):
         expand = self.config['expand']
         framerate = self.config['framerate']
         stats = self.config['stats'] == 'on'
-        numpy_image = in_frame.as_numpy(dtype=numpy.uint8)[0]
+        numpy_image = in_frame.as_numpy(dtype=numpy.uint8)
         ylen, xlen, bpc = numpy_image.shape
         if bpc == 3:
             if in_frame.type != 'RGB' and in_frame.type != self.last_frame_type:

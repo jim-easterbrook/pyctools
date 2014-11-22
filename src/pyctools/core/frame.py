@@ -92,7 +92,7 @@ class Frame(object):
 
         :return: The image data as :py:class:`numpy:numpy.ndarray`.
 
-        :rtype: :py:class:`list` of :py:class:`numpy.ndarray`
+        :rtype: :py:class:`numpy.ndarray`
 
         """
         result = []
@@ -121,7 +121,9 @@ class Frame(object):
                 new_data = new_data.astype(dtype)
             result.append(new_data)
         if len(result) > 1 or result[0].ndim < 3:
-            result = [numpy.dstack(result)]
+            result = numpy.dstack(result)
+        else:
+            result = result[0]
         return result
 
     def as_PIL(self):

@@ -45,5 +45,5 @@ class Collator(Component):
         audit += 'data = [input1, input2]\n'
         out_frame.metadata.set('audit', audit)
         out_frame.data = [numpy.concatenate(
-            (in_frame1.as_numpy()[0], in_frame2.as_numpy()[0]), axis=2)]
+            (in_frame1.as_numpy(), in_frame2.as_numpy()), axis=2)]
         self.output(out_frame)

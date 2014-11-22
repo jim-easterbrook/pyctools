@@ -51,10 +51,8 @@ class Arithmetic(Transformer):
     def transform(self, in_frame, out_frame):
         self.update_config()
         func = self.config['func']
-        in_data = in_frame.as_numpy(numpy.float32)
-        out_frame.data = []
-        for data in in_data:
-            out_frame.data.append(eval(func))
+        data = in_frame.as_numpy(numpy.float32)
+        out_frame.data = [eval(func)]
         audit = out_frame.metadata.get('audit')
         audit += 'data = %s\n' % func
         out_frame.metadata.set('audit', audit)

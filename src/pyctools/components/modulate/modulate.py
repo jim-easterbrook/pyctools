@@ -64,7 +64,7 @@ class Modulate(Transformer):
         cell_frame = self.input_buffer['cell'].peek()
         if cell_frame == self.cell_frame:
             return True
-        self.cell_data = cell_frame.as_numpy(dtype=numpy.float32)[0]
+        self.cell_data = cell_frame.as_numpy(dtype=numpy.float32)
         if self.cell_data.ndim != 4:
             self.logger.error('Cell input must be 4 dimensional')
             self.input_buffer['cell'].get()
@@ -76,7 +76,7 @@ class Modulate(Transformer):
     def transform(self, in_frame, out_frame):
         if not self.get_cell():
             return False
-        in_data = in_frame.as_numpy(dtype=numpy.float32)[0]
+        in_data = in_frame.as_numpy(dtype=numpy.float32)
         if self.cell_count != self.cell_data.shape[3]:
             self.cell_count = self.cell_data.shape[3]
             if self.cell_count != 1 and self.cell_count != in_data.shape[2]:
