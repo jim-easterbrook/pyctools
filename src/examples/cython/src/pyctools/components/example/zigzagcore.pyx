@@ -32,20 +32,22 @@ cdef extern from "math.h" nogil:
     float sinf(float x)
 
 @cython.boundscheck(False)
-def zigzag_frame(numpy.ndarray[DTYPE_t, ndim=2] in_frame,
+def zigzag_frame(numpy.ndarray[DTYPE_t, ndim=3] in_frame,
                  float amplitude, float period):
     cdef:
-        unsigned int xlen, ylen
-        unsigned int x, y, x_in
+        unsigned int xlen, ylen, comps
+        unsigned int x, y, x_in, c
         int offset
-        numpy.ndarray[DTYPE_t, ndim=2] out_frame
+        numpy.ndarray[DTYPE_t, ndim=3] out_frame
     xlen = in_frame.shape[1]
     ylen = in_frame.shape[0]
-    out_frame = numpy.ndarray([ylen, xlen], dtype=DTYPE)
+    comps = in_frame.shape[2]
+    out_frame = numpy.ndarray([ylen, xlen, comps], dtype=DTYPE)
     with nogil:
         for y in prange(ylen, schedule='static'):
             offset = <int>(amplitude * sinf(y * 2 * 3.1415926 / period))
             for x in range(xlen):
                 x_in = (<int>x + xlen + offset) % xlen
-                out_frame[y, x] = in_frame[y, x_in]
+                for c in range(comps):
+                    out_frame[y, x, c] = in_frame[y, x_in, c]
     return out_frame
