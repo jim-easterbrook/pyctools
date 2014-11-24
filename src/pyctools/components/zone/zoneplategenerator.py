@@ -224,7 +224,7 @@ class ZonePlateGenerator(Component):
         kty =      -kty * self.phases / float(ylen)
         kt2 =       kt2 * self.phases / float(zlen)
         # generate this frame
-        data = numpy.ndarray([ylen, xlen], dtype=numpy.float32)
+        data = numpy.ndarray([ylen, xlen, 1], dtype=numpy.float32)
         zone_frame(data, self.waveform, self.frame_no % zlen,
                    k0, kx, ky, kt, kx2, kxy, kxt, kyx, ky2, kyt, ktx, kty, kt2)
         # set output frame

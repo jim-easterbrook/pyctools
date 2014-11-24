@@ -26,7 +26,7 @@ cimport numpy
 ctypedef numpy.float32_t DTYPE_t
 
 @cython.boundscheck(False)
-def zone_frame(numpy.ndarray[DTYPE_t, ndim=2] out_frame,
+def zone_frame(numpy.ndarray[DTYPE_t, ndim=3] out_frame,
                numpy.ndarray[DTYPE_t, ndim=1] waveform,
                unsigned int z, DTYPE_t k0,
                DTYPE_t kx, DTYPE_t ky, DTYPE_t kt,
@@ -57,7 +57,7 @@ def zone_frame(numpy.ndarray[DTYPE_t, ndim=2] out_frame,
             Ikxdx_Ikydy_Iktdt_k0 = Ikydy_Iktdt_k0
             Ikx2dx_Ikxydy_Ikxtdt_kx = Ikxydy_Ikxtdt_kx
             for x in range(xlen):
-                out_frame[y, x] = waveform[<int>Ikxdx_Ikydy_Iktdt_k0]
+                out_frame[y, x, 0] = waveform[<int>Ikxdx_Ikydy_Iktdt_k0]
                 # increment horizontal integrals
                 Ikxdx_Ikydy_Iktdt_k0 = (
                     Ikxdx_Ikydy_Iktdt_k0 + Ikx2dx_Ikxydy_Ikxtdt_kx) % phases
