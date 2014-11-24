@@ -52,10 +52,10 @@ class Resize(Transformer):
     """Resize (or just filter) an image using user supplied filter(s).
     The filters are supplied in a
     :py:class:`~pyctools.core.frame.Frame` object sent to the
-    :py:meth:`filter` input. If the frame data contains one 2D array
-    then the same filter is applied to each component of the input.
-    Alternatively the frame data should have one filter for each
-    component, allowing a different filter to be applied to each
+    :py:meth:`filter` input. If the frame data's 3rd dimension is
+    unity then the same filter is applied to each component of the
+    input. Alternatively the frame data's 3rd dimension should match
+    the input's, allowing a different filter to be applied to each
     colour.
 
     Config:

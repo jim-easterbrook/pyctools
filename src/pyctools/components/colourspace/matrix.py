@@ -22,17 +22,14 @@
 Converts ``n``-component input to ``m``-component output with a
 user-supplied ``m x n`` matrix.
 
-The :py:meth:`~Matrix.matrix` method is used to update the matrix. No
+The :py:meth:`~Matrix.matrix` input is used to update the matrix. No
 processing happens until a matrix is received, and a new matrix can be
 applied while the component is running.
 
 The matrix is supplied as a :py:class:`~pyctools.core.frame.Frame`
 object, allowing an audit trail to be included describing it. The
-matrix data can be either one ``m x n``
-:py:class:`numpy:numpy.ndarray` or ``m`` ``1 x n``
-:py:class:`numpy:numpy.ndarray` objects. In the former case the output
-data will be a single "dstacked" image, in the latter it will be a
-list of single component images.
+frame's data must be an ``m x n`` :py:class:`numpy:numpy.ndarray`
+object. The frame's frame number must be less than zero.
 
 """
 

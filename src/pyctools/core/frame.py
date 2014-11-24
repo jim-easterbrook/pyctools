@@ -45,14 +45,14 @@ class Frame(object):
     data), but every :py:class:`Frame` object must have:
 
     * a frame number
-    * a list of data items
+    * a data item
     * a type description string, such as "RGB"
     * a :py:class:`Metadata` item
 
-    The data items can be :py:class:`numpy:numpy.ndarray` or
-    :py:class:`PIL.Image.Image` objects. The list should contain a
-    single 3 dimensional array or one 2 dimensional array for each
-    colour component (or band) in the image.
+    The data item can be a :py:class:`numpy:numpy.ndarray` or
+    :py:class:`PIL.Image.Image` object. In most instances a
+    :py:class:`numpy:numpy.ndarray` should have 3 dimensions: line,
+    pixel, colour component.
 
     """
     def __init__(self):

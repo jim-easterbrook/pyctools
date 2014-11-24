@@ -69,19 +69,17 @@ class Component(Actor, ConfigMixin):
     :py:attr:`inputs` and :py:attr:`outputs`. Redefine these
     attributes if your component has different inputs and outputs.
 
-    Each input must be a method of your component with the
-    :py:meth:`guild.actor.actor_method` decorator. Similarly, each
-    output must be a stub method with the
-    :py:meth:`guild.actor.late_bind_safe` decorator. The base class
-    includes methods for the default input and output.
+    The base class creates a threadsafe input buffer for each of your
+    :py:attr:`inputs`. This allows each component to run in its own
+    thread. It also creates a "do nothing" method for each of your
+    :py:attr:`outputs`. These output methods are bound to other
+    components' input methods when the components are connected.
 
-    To help with load balancing components can have a limited size
+    To help with load balancing, components can have a limited size
     :py:class:`ObjectPool` of output :py:class:`~.frame.Frame`
-    objects. To use this your class must set ``with_outframe_pool`` to
-    ``True`` and have a :py:meth:`new_out_frame` method with the
-    :py:meth:`guild.actor.actor_method` decorator. This method is
-    called when a new output frame is available. See the
-    :py:class:`Transformer` class for an example.
+    objects. To use this your class must set
+    :py:attr:`with_outframe_pool` to ``True``. The base class creates
+    an output frame pool for each of your :py:attr:`outputs`.
 
     A :py:class:`logging.Logger` object is created for every
     component. Use this to report any errors or warnings from your
@@ -138,7 +136,8 @@ class Component(Actor, ConfigMixin):
         pass
 
     def process_start(self):
-        """Set up the outframe pool, if there is one.
+        """Set up the outframe pool(s), if
+        :py:attr:`with_outframe_pool` is ``True``
 
         If you over ride this in your component, don't forget to call
         the base class method.
@@ -152,6 +151,28 @@ class Component(Actor, ConfigMixin):
 
     @actor_method
     def notify(self):
+        """notify()
+
+        Alert component to a change in status.
+
+        This method is called whenever an input frame arrives or an
+        output frame becomes available from the pool. It is unlikely
+        your derived class will want to over-ride it.
+
+        The base class correlates all inputs by comparing their frame
+        numbers. If there is a complete set of inputs, and all output
+        frame pools are ready, it calls the :py:meth:`process_frame`
+        method.
+
+        If an input frame has a negative frame number it is not
+        correlated with other inputs, it is merely required to exist.
+        The derived class should use the input buffer's ``peek``
+        method to get the frame without removing it from the buffer.
+        See the :py:mod:`Matrix
+        <pyctools.components.colourspace.matrix>` component for an
+        example.
+
+        """
         while True:
             # check output frames are available
             for output in self.outframe_pool.values():
@@ -187,6 +208,25 @@ class Component(Actor, ConfigMixin):
             # now have a full set of correlated inputs to process
             self.process_frame()
 
+    def process_frame(self):
+        """Process an input frame (or set of frames).
+
+        Derived classes must implement this method, unless they have no
+        inputs and do not use any output frame pools.
+
+        It is called when all input buffers and all output frame pools
+        have a frame available. The derived class should use the
+        buffers' and frame pools' ``get`` methods to get the input and
+        output frames, do its processing, and then call the output
+        methods to send the results to the next components in the
+        pipeline.
+
+        See the :py:class:`Transformer` base class for a typical
+        implementation.
+
+        """
+        raise NotImplemented()
+
 
 class Transformer(Component):
     """ A Transformer is a Pyctools component that has one input and
@@ -199,6 +239,10 @@ class Transformer(Component):
     with_outframe_pool = True
 
     def process_frame(self):
+        """Get the input and output frame, then call
+        :py:meth:`transform`.
+
+        """
         in_frame = self.input_buffer['input'].get()
         out_frame = self.outframe_pool['output'].get()
         out_frame.initialise(in_frame)
@@ -214,7 +258,7 @@ class Transformer(Component):
 
         You must implement this in your derived class.
 
-        Typically you will set ``out_frame``'s data with new images
+        Typically you will set ``out_frame``'s data to a new image
         created from ``in_frame``'s data. You must not modify the
         input :py:class:`~.frame.Frame` -- it might be being used by
         another component running in parallel!
@@ -249,9 +293,6 @@ class ObjectPool(object):
     trigger the release of a new object when Python no longer holds a
     reference to an old object, i.e. when it gets deleted.
 
-    See the :py:class:`Transformer` source code for an example of how
-    to add an outframe pool to a Pyctools :py:class:`Component`.
-
     :param callable factory: The function to call to create new
         objects.
 
@@ -283,9 +324,19 @@ class ObjectPool(object):
         self.notify()
 
     def available(self):
+        """Is an object available from the pool.
+
+        :rtype: :py:class:`bool`
+
+        """
         return len(self.obj_list)
 
     def get(self):
+        """Get an object from the pool.
+
+        :rtype: the object or ``None``
+
+        """
         if self.obj_list:
             return self.obj_list.popleft()
         return None

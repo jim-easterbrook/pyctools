@@ -28,21 +28,27 @@ The :py:meth:`~Modulate.cell` method is used to update the modulating
 function. No processing happens until a cell is received, and new
 cells can be applied while the component is running.
 
-The cell is supplied as a :py:class:`list` of
-:py:class:`numpy:numpy.ndarray` objects. If the list has one member
-then the same cell is applied to each component of the input.
-Alternatively the list should have one cell for each component,
-allowing a different modulation to be applied to each colour.
+The cell is supplied in a :py:class:`~pyctools.core.frame.Frame`
+object sent to the :py:meth:`cell` input. Unlike other
+:py:class:`~pyctools.core.frame.Frame` objects the data must have 4
+dimensions. If the first dimension is greater than unity then the
+modulation function can have a temporal variation.
+
+If the frame data's 4th dimension is unity then the same modulation is
+applied to each component of the input. Alternatively the frame data's
+4th dimension should match the input's, allowing a different
+modulation to be applied to each colour.
 
 For example, a cell to simulate a `Bayer filter
 <http://en.wikipedia.org/wiki/Bayer_filter>`_ could look like this::
 
-    [array([[[0, 0],
-             [0, 1]]]),
-     array([[[0, 1],
-             [1, 0]]]),
-     array([[[1, 0],
-             [0, 0]]])]
+    cell = Frame()
+    cell.data = numpy.array([[[[0, 0, 1], [0, 1, 0]],
+                              [[0, 1, 0], [1, 0, 0]]]], dtype=numpy.float32)
+    cell.type = 'cell'
+    audit = cell.metadata.get('audit')
+    audit += 'data = Bayer filter modulation cell\\n'
+    cell.metadata.set('audit', audit)
 
 """
 

@@ -108,32 +108,31 @@ This listing shows all the active Python code:
 .. code-block:: python
    :linenos:
 
-   __all__ = ['Flip']
+    __all__ = ['Flip']
 
-   import PIL.Image
+    import PIL.Image
 
-   from pyctools.core.base import Transformer
-   from pyctools.core.config import ConfigEnum
+    from pyctools.core.base import Transformer
+    from pyctools.core.config import ConfigEnum
 
-   class Flip(Transformer):
-       def initialise(self):
-           self.config['direction'] = ConfigEnum(('vertical', 'horizontal'))
+    class Flip(Transformer):
+        def initialise(self):
+            self.config['direction'] = ConfigEnum(('vertical', 'horizontal'))
 
-       def transform(self, in_frame, out_frame):
-           self.update_config()
-           direction = self.config['direction']
-           if direction == 'vertical':
-               flip = PIL.Image.FLIP_TOP_BOTTOM
-           else:
-               flip = PIL.Image.FLIP_LEFT_RIGHT
-           out_frame.data = []
-           for in_data in in_frame.as_PIL():
-               out_frame.data.append(in_data.transpose(flip))
-           audit = out_frame.metadata.get('audit')
-           audit += 'data = Flip(data)\n'
-           audit += '    direction: %s\n' % direction
-           out_frame.metadata.set('audit', audit)
-           return True
+        def transform(self, in_frame, out_frame):
+            self.update_config()
+            direction = self.config['direction']
+            if direction == 'vertical':
+                flip = PIL.Image.FLIP_TOP_BOTTOM
+            else:
+                flip = PIL.Image.FLIP_LEFT_RIGHT
+            in_data = in_frame.as_PIL()
+            out_frame.data = in_data.transpose(flip)
+            audit = out_frame.metadata.get('audit')
+            audit += 'data = Flip(data)\n'
+            audit += '    direction: %s\n' % direction
+            out_frame.metadata.set('audit', audit)
+            return True
 
 Line 1 is important.
 The module's ``__all__`` value is used by :py:mod:`pyctools-editor <pyctools.tools.editor>` to determine what components a module provides.
@@ -141,23 +140,22 @@ The module's ``__all__`` value is used by :py:mod:`pyctools-editor <pyctools.too
 The ``initialise`` method (lines 9-10) is called by the component's constructor.
 It is here that you add any configuration values that your component uses.
 
-The main part of the component is the ``transform`` method (lines 12-26).
+The main part of the component is the ``transform`` method (lines 12-25).
 This is called each time there is some work to do, i.e. an input frame has arrived and an output frame is available from the :py:class:`~pyctools.core.base.ObjectPool`.
 
 A component's configuration can be changed while it is running.
 This is done via a threadsafe queue.
 The ``update_config`` method (line 13) gets any new configuration values from the queue so each time the component does any work it is using the most up-to-date config.
 
-The ``out_frame`` result is already initialised with a copy of the ``in_frame``'s metadata and links to its image data.
-Line 19 clears the image data prior to the generation of new data in lines 20 & 21.
-Because we're using a ``PIL.Image`` library method to transform the image data we use the ``in_frame.as_PIL`` method to access the data.
+The ``out_frame`` result is already initialised with a copy of the ``in_frame``'s metadata and a link to its image data.
+Line 19 gets the input image data.
+Because we're using a ``PIL.Image`` library method to transform the image data we use the ``in_frame.as_PIL`` method to convert the data to PIL format (if necessary).
 
-Frame data is always a list of either PIL images or numpy arrays, although the list will often only have one member.
-Line 20 iterates over the input frame's list and line 21 appends a new PIL image to the output frame's list.
+Line 20 sets the output frame data to a new PIL image.
 Note that you must never modify the input frame.
 Because of the parallel nature of Pyctools that same input frame may also be used by another component.
 
-Finally lines 22-25 add some text to the output frame's "audit trail" metadata and line 26 returns ``True`` to indicate that processing was successful.
+Finally lines 21-24 add some text to the output frame's "audit trail" metadata and line 25 returns ``True`` to indicate that processing was successful.
 
 "Passthrough" components
 ^^^^^^^^^^^^^^^^^^^^^^^^

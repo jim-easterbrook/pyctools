@@ -36,24 +36,16 @@ class Compound(object):
     follows::
 
         def ImageResizer(x_up=1, x_down=1, y_up=1, y_down=1):
-            filgen = FilterGenerator()
-            resize = Resize()
-            fg_cfg = filgen.get_config()
-            rs_cfg = resize.get_config()
+            xaperture = 1
             if x_up != 1 or x_down != 1:
-                fg_cfg['xup'] = x_up
-                fg_cfg['xdown'] = x_down
-                fg_cfg['xaperture'] = 16
-                rs_cfg['xup'] = x_up
-                rs_cfg['xdown'] = x_down
+                xaperture = 16
+            yaperture = 1
             if y_up != 1 or y_down != 1:
-                fg_cfg['yup'] = y_up
-                fg_cfg['ydown'] = y_down
-                fg_cfg['yaperture'] = 16
-                rs_cfg['yup'] = y_up
-                rs_cfg['ydown'] = y_down
-            filgen.set_config(fg_cfg)
-            resize.set_config(rs_cfg)
+                yaperture = 16
+            filgen = FilterGenerator(
+                xup=x_up, xdown=x_down, xaperture=xaperture,
+                yup=y_up, ydown=y_down, yaperture=yaperture)
+            resize = Resize(xup=x_up, xdown=x_down, yup=y_up, ydown=y_down)
             return Compound(
                 filgen = filgen,
                 resize = resize,
@@ -64,10 +56,11 @@ class Compound(object):
                     }
                 )
 
-    Note the use of ``'self'`` in the `linkages` parameter to denote
-    the compound object's own inputs and outputs. These are connected
-    directly to the child components with no runtime overhead. There
-    is no performance disadvantage from using compound objects.
+    Note the use of ``'self'`` in the :py:obj:`linkages` parameter to
+    denote the compound object's own inputs and outputs. These are
+    connected directly to the child components with no runtime
+    overhead. There is no performance disadvantage from using compound
+    objects.
 
     The child components' configuration objects are gathered into one
     :py:class:`~.config.ConfigGrandParent`. The child names are used
