@@ -283,7 +283,7 @@ class Metadata(object):
             return xlen, ylen
         raise RuntimeError('Metadata does not have image dimensions')
 
-    def get(self, tag):
+    def get(self, tag, default=None):
         """Get a metadata value.
 
         Each metadata value is referenced by a ``tag`` -- a short
@@ -299,7 +299,9 @@ class Metadata(object):
 
         """
         full_tag = 'Xmp.pyctools.' + tag
-        return self.data[full_tag]
+        if full_tag in self.data:
+            return self.data[full_tag]
+        return default
 
     def set(self, tag, value):
         """Set a metadata value.
