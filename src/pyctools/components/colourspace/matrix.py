@@ -36,7 +36,6 @@ object. The frame's frame number must be less than zero.
 __all__ = ['Matrix']
 __docformat__ = 'restructuredtext en'
 
-from guild.actor import *
 import numpy
 
 from pyctools.core.base import Transformer
@@ -51,7 +50,7 @@ class Matrix(Transformer):
         new_matrix = self.input_buffer['matrix'].peek()
         if new_matrix == self.matrix_frame:
             return True
-        matrix = new_matrix.as_numpy(dtype=numpy.float32)
+        matrix = new_matrix.as_numpy()
         if matrix.ndim != 2:
             self.logger.error('Matrix input must be 2 dimensional')
             return False
@@ -62,7 +61,7 @@ class Matrix(Transformer):
     def transform(self, in_frame, out_frame):
         if not self.get_matrix():
             return False
-        data_in = in_frame.as_numpy(dtype=numpy.float32)
+        data_in = in_frame.as_numpy()
         out_frame.data = numpy.dot(data_in, self.matrix_coefs.T)
         audit = out_frame.metadata.get('audit')
         audit += 'data = Matrix(data)\n'

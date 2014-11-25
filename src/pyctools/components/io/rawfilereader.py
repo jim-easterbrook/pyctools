@@ -60,6 +60,7 @@ import numpy
 from pyctools.core.config import ConfigPath, ConfigEnum
 from pyctools.core.base import Component
 from pyctools.core.frame import Metadata
+from pyctools.core.types import pt_float
 
 class RawFileReader(Component):
     inputs = []
@@ -227,7 +228,7 @@ class RawFileReader(Component):
                         UV_data.append(raw_data.reshape(UV_shape))
                     UV_data = numpy.dstack(UV_data)
                     # remove offset
-                    UV_data = UV_data.astype(numpy.float32) - 128.0
+                    UV_data = UV_data.astype(pt_float) - pt_float(128.0)
                 else:
                     UV_data = None
                 yield Y_data, UV_data

@@ -52,6 +52,7 @@ import numpy
 from pyctools.core.config import ConfigPath, ConfigEnum
 from pyctools.core.base import Component
 from pyctools.core.frame import Metadata
+from pyctools.core.types import pt_float
 
 class VideoFileReader(Component):
     inputs = []
@@ -124,7 +125,7 @@ class VideoFileReader(Component):
                         break
                     if bit16:
                         image = numpy.fromstring(raw_data, dtype=numpy.uint16)
-                        image = image.astype(numpy.float32) / 256.0
+                        image = image.astype(pt_float) / pt_float(256.0)
                     else:
                         image = numpy.fromstring(raw_data, dtype=numpy.uint8)
                     yield image.reshape((ylen, xlen, bps))

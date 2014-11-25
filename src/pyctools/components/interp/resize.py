@@ -108,7 +108,7 @@ class Resize(Transformer):
             if self.fil_count != 1 and self.fil_count != in_data.shape[2]:
                 self.logger.warning('Mismatch between %d filters and %d images',
                                     self.fil_count, in_data.shape[2])
-        norm_filter = self.filter_coefs * float(x_up * y_up)
+        norm_filter = self.filter_coefs * numpy.float32(x_up * y_up)
         out_frame.data = resize_frame(
             in_data, norm_filter, x_up, x_down, y_up, y_down)
         audit = out_frame.metadata.get('audit')

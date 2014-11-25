@@ -27,8 +27,6 @@ numbers are used to ensure that only co-timed frames are merged.
 
 __all__ = ['Collator']
 
-import numpy
-
 from pyctools.core.base import Component
 
 class Collator(Component):

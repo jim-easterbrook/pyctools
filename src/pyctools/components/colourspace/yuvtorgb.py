@@ -49,21 +49,22 @@ import numpy
 
 from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Component
+from pyctools.core.types import pt_float
 from pyctools.components.interp.resize import resize_frame
 
 class YUVtoRGB(Component):
     mat_601 = numpy.array([[1.0,  0.0,       1.37071],
                            [1.0, -0.336455, -0.698196],
-                           [1.0,  1.73245,   0.0]], dtype=numpy.float32)
+                           [1.0,  1.73245,   0.0]], dtype=pt_float)
     mat_709 = numpy.array([[1.0,  0.0,       1.539648],
                            [1.0, -0.183143, -0.457675],
-                           [1.0,  1.81418,   0.0]], dtype=numpy.float32)
+                           [1.0,  1.81418,   0.0]], dtype=pt_float)
     filter_21 = numpy.array([
         -0.002913300, 0.0,  0.010153700, 0.0, -0.022357799, 0.0,
          0.044929001, 0.0, -0.093861297, 0.0,  0.314049691, 0.5,
          0.314049691, 0.0, -0.093861297, 0.0,  0.044929001, 0.0,
         -0.022357799, 0.0,  0.010153700, 0.0, -0.002913300
-        ], dtype=numpy.float32).reshape(1, -1, 1)
+        ], dtype=pt_float).reshape(1, -1, 1)
     inputs = ['input_Y', 'input_UV']
     with_outframe_pool = True
 
@@ -87,11 +88,11 @@ class YUVtoRGB(Component):
     def transform(self, Y_frame, UV_frame, out_frame):
         self.update_config()
         # check input and get data
-        Y_data = Y_frame.as_numpy(dtype=numpy.float32)
+        Y_data = Y_frame.as_numpy()
         if Y_data.shape[2] != 1:
             self.logger.critical('Y input has %d components', Y_data.shape[2])
             return False
-        UV_data = UV_frame.as_numpy(dtype=numpy.float32)
+        UV_data = UV_frame.as_numpy()
         if UV_data.shape[2] != 2:
             self.logger.critical('UV input has %d components', UV_data.shape[2])
             return False
@@ -99,7 +100,7 @@ class YUVtoRGB(Component):
         audit += 'UV = {\n%s}\n' % UV_frame.metadata.get('audit')
         audit += 'data = YUVtoRGB(Y, UV)\n'
         # apply offset
-        Y_data = Y_data - 16.0
+        Y_data = Y_data - pt_float(16.0)
         # resample U & V
         v_ss = Y_data.shape[0] // UV_data.shape[0]
         h_ss = Y_data.shape[1] // UV_data.shape[1]
@@ -124,9 +125,9 @@ class YUVtoRGB(Component):
         RGB = numpy.dot(YUV, matrix.T)
         # offset or scale
         if self.config['range'] == 'studio':
-            RGB += 16.0
+            RGB += pt_float(16.0)
         else:
-            RGB *= (255.0 / 219.0)
+            RGB *= pt_float(255.0 / 219.0)
         out_frame.data = RGB
         out_frame.type = 'RGB'
         out_frame.metadata.set('audit', audit)

@@ -35,23 +35,21 @@ not clipped in either case.
 __all__ = ['RGBtoYUV']
 __docformat__ = 'restructuredtext en'
 
-from collections import deque
-
-from guild.actor import actor_method
 import numpy
 
 from pyctools.core.config import ConfigEnum
-from pyctools.core.base import Component, ObjectPool
+from pyctools.core.base import Component
+from pyctools.core.types import pt_float
 
 class RGBtoYUV(Component):
     mat_601 = numpy.array(
         [[ 0.299,      0.587,      0.114],
          [-0.1725883, -0.3388272,  0.5114155],
-         [ 0.5114155, -0.4282466, -0.0831689]], dtype=numpy.float32)
+         [ 0.5114155, -0.4282466, -0.0831689]], dtype=pt_float)
     mat_709 = numpy.array(
         [[ 0.2126,    0.7152,    0.0722],
          [-0.117188, -0.394228,  0.511415],
-         [ 0.511415, -0.464522, -0.046894]], dtype=numpy.float32)
+         [ 0.511415, -0.464522, -0.046894]], dtype=pt_float)
     outputs = ['output_Y', 'output_UV']
     with_outframe_pool = True
 
@@ -78,7 +76,7 @@ class RGBtoYUV(Component):
     def transform(self, in_frame, Y_frame, UV_frame):
         self.update_config()
         # check input and get data
-        RGB = in_frame.as_numpy(dtype=numpy.float32)
+        RGB = in_frame.as_numpy()
         if RGB.shape[2] != 3:
             self.logger.critical('Cannot convert %s images with %d components',
                                  in_frame.type, RGB.shape[2])
@@ -92,9 +90,9 @@ class RGBtoYUV(Component):
         UV_audit += 'data = RGBtoUV(data)\n'
         # offset or scale
         if self.config['range'] == 'studio':
-            RGB = RGB - 16.0
+            RGB = RGB - pt_float(16.0)
         else:
-            RGB = RGB * (219.0 / 255.0)
+            RGB = RGB * pt_float(219.0 / 255.0)
         # matrix to YUV
         Y_audit += '    range: %s' % (self.config['range'])
         UV_audit += '    range: %s' % (self.config['range'])
@@ -107,7 +105,7 @@ class RGBtoYUV(Component):
             matrix = self.mat_709
             Y_audit += ', matrix: 709\n'
             UV_audit += ', matrix: 709\n'
-        Y_frame.data = numpy.dot(RGB, matrix[0:1].T) + 16.0
+        Y_frame.data = numpy.dot(RGB, matrix[0:1].T) + pt_float(16.0)
         UV_frame.data = numpy.dot(RGB, matrix[1:3].T)
         Y_frame.type = 'Y'
         UV_frame.type = 'CbCr'

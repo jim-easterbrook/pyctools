@@ -43,6 +43,7 @@ import numpy
 
 from pyctools.core.config import ConfigStr
 from pyctools.core.base import Transformer
+from pyctools.core.types import pt_float, pt_complex
 
 class Arithmetic(Transformer):
     def initialise(self):
@@ -51,7 +52,7 @@ class Arithmetic(Transformer):
     def transform(self, in_frame, out_frame):
         self.update_config()
         func = self.config['func']
-        data = in_frame.as_numpy(numpy.float32)
+        data = in_frame.as_numpy()
         out_frame.data = eval(func)
         audit = out_frame.metadata.get('audit')
         audit += 'data = %s\n' % func

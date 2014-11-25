@@ -57,6 +57,7 @@ import numpy
 from pyctools.core.config import ConfigPath, ConfigInt, ConfigEnum
 from pyctools.core.frame import Metadata
 from pyctools.core.base import Transformer
+from pyctools.core.types import pt_float
 
 class VideoFileWriter(Transformer):
     def initialise(self):
@@ -122,10 +123,10 @@ class VideoFileWriter(Transformer):
                 if not in_frame:
                     break
                 if bit16:
-                    numpy_image = in_frame.as_numpy(dtype=numpy.float32)
-                    numpy_image = numpy_image * 256.0
+                    numpy_image = in_frame.as_numpy(dtype=pt_float)
+                    numpy_image = numpy_image * pt_float(256.0)
                     numpy_image = numpy_image.clip(
-                        0, 2**16 - 1).astype(numpy.uint16)
+                        pt_float(0), pt_float(2**16 - 1)).astype(numpy.uint16)
                 else:
                     numpy_image = in_frame.as_numpy(dtype=numpy.uint8)
                 sp.stdin.write(numpy_image.tostring())

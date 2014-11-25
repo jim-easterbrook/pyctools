@@ -38,6 +38,8 @@ from gi.repository import GObject, GExiv2
 import numpy
 import PIL.Image
 
+from pyctools.core.types import pt_float
+
 class Frame(object):
     """Container for a single image or frame of video.
 
@@ -109,7 +111,7 @@ class Frame(object):
             elif dtype is not None:
                 result = numpy.array(data, dtype=dtype)
             else:
-                result = numpy.array(data, dtype=numpy.float32)
+                result = numpy.array(data, dtype=pt_float)
         else:
             raise RuntimeError(
                 'Cannot convert "%s" to numpy' % self.data.__class__.__name__)

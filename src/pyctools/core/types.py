@@ -17,26 +17,14 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Add two inputs.
+"""Pyctools default data types.
 
 """
 
-__all__ = ['Adder']
+__all__ = ['pt_float', 'pt_complex']
+__docformat__ = 'restructuredtext en'
 
-from pyctools.core.base import Component
+import numpy
 
-class Adder(Component):
-    inputs = ['input0', 'input1']
-    with_outframe_pool = True
-
-    def process_frame(self):
-        in_frame1 = self.input_buffer['input0'].get()
-        in_frame2 = self.input_buffer['input1'].get()
-        out_frame = self.outframe_pool['output'].get()
-        out_frame.initialise(in_frame1)
-        audit = 'input0 = {\n%s}\n' % in_frame1.metadata.get('audit')
-        audit += 'input1 = {\n%s}\n' % in_frame2.metadata.get('audit')
-        audit += 'data = input0 + input1\n'
-        out_frame.metadata.set('audit', audit)
-        out_frame.data = in_frame1.as_numpy() + in_frame2.as_numpy()
-        self.output(out_frame)
+pt_float = numpy.float32
+pt_complex = numpy.complex64
