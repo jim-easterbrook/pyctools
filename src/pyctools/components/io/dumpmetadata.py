@@ -33,23 +33,32 @@ from __future__ import print_function
 __all__ = ['DumpMetadata']
 __docformat__ = 'restructuredtext en'
 
+import pprint
+
 from pyctools.core.base import Transformer
+from pyctools.core.config import ConfigEnum
 
 class DumpMetadata(Transformer):
     def initialise(self):
+        self.config['raw'] = ConfigEnum(choices=('off', 'on'))
         self.last_metadata = None
 
     def transform(self, in_frame, out_frame):
+        if self.update_config():
+            self.last_metadata = None
         if self.last_metadata and in_frame.metadata.data == self.last_metadata.data:
             return True
         self.last_metadata = in_frame.metadata
         print('Frame %04d' % in_frame.frame_no)
         print('==========')
-        indent = 0
-        for line in in_frame.metadata.get('audit').splitlines():
-            print(' ' * indent, line)
-            if '{' in line:
-                indent += 8
-            if '}' in line:
-                indent -= 8
+        if self.config['raw'] == 'on':
+            pprint.pprint(in_frame.metadata.data)
+        else:
+            indent = 0
+            for line in in_frame.metadata.get('audit').splitlines():
+                print(' ' * indent, line)
+                if '{' in line:
+                    indent += 8
+                if '}' in line:
+                    indent -= 8
         return True
