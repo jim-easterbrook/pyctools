@@ -36,33 +36,37 @@ class FFT(Transformer):
         self.config['xtile'] = ConfigInt(min_value=0, dynamic=True)
         self.config['ytile'] = ConfigInt(min_value=0, dynamic=True)
         self.config['inverse'] = ConfigEnum(('off', 'on'), dynamic=True)
+        self.config['output'] = ConfigEnum(('complex', 'real'), dynamic=True)
 
     def transform(self, in_frame, out_frame):
         self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
         inverse = self.config['inverse'] == 'on'
-        data = in_frame.as_numpy()
+        out_type = self.config['output']
+        in_data = in_frame.as_numpy()
         if x_tile == 0:
-            x_tile = data.shape[1]
+            x_tile = in_data.shape[1]
         if y_tile == 0:
-            y_tile = data.shape[0]
-        result = []
-        for c in range(data.shape[2]):
-            rows = []
-            for y in range(0, data.shape[0], y_tile):
-                blocks = []
-                for x in range(0, data.shape[1], x_tile):
-                    blocks.append(
-                        (numpy.fft.fft2, numpy.fft.ifft2)[inverse](
-                            data[y:, x:, c], s=(y_tile, x_tile)
-                            ).astype(pt_complex))
-                rows.append(numpy.hstack(blocks))
-            result.append(numpy.vstack(rows))
-        out_frame.data = numpy.dstack(result)
+            y_tile = in_data.shape[0]
+        x_blk = (in_data.shape[1] + x_tile - 1) // x_tile
+        y_blk = (in_data.shape[0] + y_tile - 1) // y_tile
+        out_data = numpy.empty(
+            (y_blk * y_tile, x_blk * x_tile, in_data.shape[2]), dtype=pt_complex)
+        func = (numpy.fft.fft2, numpy.fft.ifft2)[inverse]
+        for y in range(0, in_data.shape[0], y_tile):
+            for x in range(0, in_data.shape[1], x_tile):
+                out_data[y:y+y_tile, x:x+x_tile, :] = func(
+                    in_data[y:, x:, :],
+                    s=(y_tile, x_tile), axes=(0, 1)).astype(pt_complex)
+        out_frame.data = out_data
+        operation = '%s(data)' % ('FFT', 'IFFT')[inverse]
+        if out_type == 'real':
+            out_frame.data = numpy.real(out_frame.data)
+            operation = 'real(%s)' % operation
         out_frame.type = 'FT'
         audit = out_frame.metadata.get('audit')
-        audit += 'data = %s(data)\n' % (('FFT', 'IFFT')[inverse])
+        audit += 'data = %s\n' % operation
         audit += '    tile size: %d x %d\n' % (y_tile, x_tile)
         out_frame.metadata.set('audit', audit)
         return True
