@@ -27,27 +27,44 @@ __docformat__ = 'restructuredtext en'
 import numpy
 
 from pyctools.components.arithmetic import Arithmetic
-from pyctools.core.config import ConfigEnum
+from pyctools.core.config import ConfigEnum, ConfigInt
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_complex
 
 class FFT(Transformer):
     def initialise(self):
+        self.config['xtile'] = ConfigInt(min_value=0, dynamic=True)
+        self.config['ytile'] = ConfigInt(min_value=0, dynamic=True)
         self.config['inverse'] = ConfigEnum(('off', 'on'), dynamic=True)
 
     def transform(self, in_frame, out_frame):
         self.update_config()
+        x_tile = self.config['xtile']
+        y_tile = self.config['ytile']
         inverse = self.config['inverse'] == 'on'
-        audit = out_frame.metadata.get('audit')
-        audit += 'data = %s(data)\n' % (('FFT', 'IFFT')[inverse])
-        out_frame.metadata.set('audit', audit)
         data = in_frame.as_numpy()
+        if x_tile == 0:
+            x_tile = data.shape[1]
+        if y_tile == 0:
+            y_tile = data.shape[0]
         result = []
         for c in range(data.shape[2]):
-            result.append(
-                (numpy.fft.fft2, numpy.fft.ifft2)[inverse](data[:, :, c]))
-        out_frame.data = numpy.dstack(result).astype(pt_complex)
+            rows = []
+            for y in range(0, data.shape[0], y_tile):
+                blocks = []
+                for x in range(0, data.shape[1], x_tile):
+                    blocks.append(
+                        (numpy.fft.fft2, numpy.fft.ifft2)[inverse](
+                            data[y:, x:, c], s=(y_tile, x_tile)
+                            ).astype(pt_complex))
+                rows.append(numpy.hstack(blocks))
+            result.append(numpy.vstack(rows))
+        out_frame.data = numpy.dstack(result)
         out_frame.type = 'FT'
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = %s(data)\n' % (('FFT', 'IFFT')[inverse])
+        audit += '    tile size: %d x %d\n' % (y_tile, x_tile)
+        out_frame.metadata.set('audit', audit)
         return True
 
 
@@ -59,4 +76,4 @@ def VisualiseFFT():
 
     """
     return Arithmetic(
-        func='(numpy.log(numpy.absolute(data)) * pt_float(15.0)) + pt_float(40.0)')
+        func='(numpy.log(numpy.maximum(numpy.absolute(data), 0.0001)) * pt_float(15.0)) + pt_float(40.0)')
