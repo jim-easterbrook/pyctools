@@ -21,35 +21,30 @@
 
 """
 
-__all__ = ['Tile', 'UnTile', 'CrossFade']
+__all__ = ['Tile', 'UnTile']
 __docformat__ = 'restructuredtext en'
 
 import numpy
-import sys
-import time
-if 'sphinx' in sys.modules:
-    __all__.append('CrossFadeCore')
 
-from pyctools.core.base import Component, Transformer
+from pyctools.core.base import Transformer
 from pyctools.core.config import ConfigInt
-from pyctools.core.frame import Frame
 
 class Tile(Transformer):
     def initialise(self):
-        self.config['xlen'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['ylen'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['xinc'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['yinc'] = ConfigInt(min_value=1, dynamic=True)
+        self.config['xtile'] = ConfigInt(min_value=1, dynamic=True)
+        self.config['ytile'] = ConfigInt(min_value=1, dynamic=True)
+        self.config['xoff'] = ConfigInt(min_value=1, dynamic=True)
+        self.config['yoff'] = ConfigInt(min_value=1, dynamic=True)
 
     def transform(self, in_frame, out_frame):
         self.update_config()
-        x_tile = self.config['xlen']
-        y_tile = self.config['ylen']
-        x_off = self.config['xinc']
-        y_off = self.config['yinc']
+        x_tile = self.config['xtile']
+        y_tile = self.config['ytile']
+        x_off = self.config['xoff']
+        y_off = self.config['yoff']
         audit = out_frame.metadata.get('audit')
         audit += 'data = Tile(data)\n'
-        audit += '    size = %d x %d, offset = %d x %d\n' % (
+        audit += '    size: %d x %d, offset: %d x %d\n' % (
             y_tile, x_tile, y_off, x_off)
         out_frame.metadata.set('audit', audit)
         data = in_frame.as_numpy()
@@ -102,7 +97,7 @@ class UnTile(Transformer):
         out_frame.metadata.set('tile', repr(tile_params))
         audit = out_frame.metadata.get('audit')
         audit += 'data = UnTile(data)\n'
-        audit += '    size = %d x %d, offset = %d x %d\n' % (
+        audit += '    size: %d x %d, offset: %d x %d\n' % (
             y_tile, x_tile, y_off, x_off)
         out_frame.metadata.set('audit', audit)
         x_mgn = (x_tile - 1) // x_off
@@ -136,69 +131,3 @@ class UnTile(Transformer):
                 out_data[yo_0:yo_1, xo_0:xo_1] += data[yi_0:yi_1, xi_0:xi_1]
         out_frame.data = out_data
         return True
-
-
-class CrossFade(Component):
-    inputs = []
-
-    def initialise(self):
-        self.config['xlen'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['ylen'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['xinc'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['yinc'] = ConfigInt(min_value=1, dynamic=True)
-
-    def gen_process(self):
-        # wait for self.output to be connected
-        while self.output.__self__ == self:
-            yield 1
-            time.sleep(0.01)
-        # send first cell
-        self.update_config()
-        self.make_cell()
-        # send more cells if config changes
-        while True:
-            yield 1
-            time.sleep(0.1)
-            if self.update_config():
-                self.make_cell()
-
-    def make_cell(self):
-        x_tile = self.config['xlen']
-        y_tile = self.config['ylen']
-        x_off = self.config['xinc']
-        y_off = self.config['yinc']
-        self.output(CrossFadeCore(
-            x_tile=x_tile, x_off=x_off, y_tile=y_tile, y_off=y_off))
-
-
-def CrossFadeCore(x_tile=1, x_off=1, y_tile=1, y_off=1):
-    """
-
-    :return: A :py:class:`~pyctools.core.frame.Frame` object containing the
-        cell.
-
-    """
-    def cell_1D(tile, offset):
-        result = numpy.ones([tile], dtype=numpy.float32)
-        overlap = tile - offset
-        for i in range(overlap):
-            result[i] = numpy.float32(i + 1) / numpy.float32(overlap + 1)
-            result[(tile - 1) - i] = result[i]
-        return result
-
-    x_cell = cell_1D(x_tile, x_off)
-    y_cell = cell_1D(y_tile, y_off)
-    result = numpy.empty(
-        [1, y_cell.shape[0], x_cell.shape[0], 1], dtype=numpy.float32)
-    for y in range(result.shape[1]):
-        for x in range(result.shape[2]):
-            result[0, y, x, 0] = x_cell[x] * y_cell[y]
-    out_frame = Frame()
-    out_frame.data = result
-    out_frame.type = 'cell'
-    audit = out_frame.metadata.get('audit')
-    audit += 'data = CrossFadeCell()\n'
-    audit += '    size = %d x %d, offset = %d x %d\n' % (
-        y_tile, x_tile, y_off, x_off)
-    out_frame.metadata.set('audit', audit)
-    return out_frame
