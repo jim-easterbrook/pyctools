@@ -131,6 +131,7 @@ def HammingCore(x_tile=1, y_tile=1):
 
 
 class InverseWindow(Component):
+    outputs = ['window', 'inv_window']
     with_outframe_pool = False
 
     def initialise(self):
@@ -149,6 +150,7 @@ class InverseWindow(Component):
         y_off = self.config['yoff']
         fade = self.config['fade']
         in_frame = self.input_buffer['input'].get()
+        self.window(in_frame)
         out_frame = Frame()
         out_frame.initialise(in_frame)
         audit = out_frame.metadata.get('audit')
@@ -194,4 +196,4 @@ class InverseWindow(Component):
                     else:
                         result[0, y, x, 0] = 0.5 / max(centre, 0.000001)
         out_frame.data = result
-        self.output(out_frame)
+        self.inv_window(out_frame)
