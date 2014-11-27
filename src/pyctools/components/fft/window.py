@@ -21,18 +21,19 @@
 
 """
 
-__all__ = ['Hanning', 'Hamming', 'InverseWindow']
+__all__ = ['Hann', 'Hamming', 'Blackman', 'Kaiser', 'InverseWindow']
 __docformat__ = 'restructuredtext en'
 
 import math
 import numpy
+import scipy.special
 import sys
 import time
 if 'sphinx' in sys.modules:
-    __all__.append('HanningCore', 'HammingCore')
+    __all__.append('HannCore', 'HammingCore', 'BlackmanCore', 'KaiserCore')
 
 from pyctools.core.base import Component
-from pyctools.core.config import ConfigEnum, ConfigInt
+from pyctools.core.config import ConfigEnum, ConfigFloat, ConfigInt
 from pyctools.core.frame import Frame
 
 class WindowBase(Component):
@@ -58,11 +59,11 @@ class WindowBase(Component):
                 self.make_window()
 
 
-class Hanning(WindowBase):
+class Hann(WindowBase):
     def make_window(self):
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
-        self.output(HanningCore(x_tile=x_tile, y_tile=y_tile))
+        self.output(HannCore(x_tile=x_tile, y_tile=y_tile))
 
 
 class Hamming(WindowBase):
@@ -70,6 +71,30 @@ class Hamming(WindowBase):
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
         self.output(HammingCore(x_tile=x_tile, y_tile=y_tile))
+
+
+class Blackman(WindowBase):
+    def initialise(self):
+        super(Blackman, self).initialise()
+        self.config['alpha'] = ConfigFloat(value=0.16, dynamic=True)
+
+    def make_window(self):
+        x_tile = self.config['xtile']
+        y_tile = self.config['ytile']
+        alpha = self.config['alpha']
+        self.output(BlackmanCore(x_tile=x_tile, y_tile=y_tile, alpha=alpha))
+
+
+class Kaiser(WindowBase):
+    def initialise(self):
+        super(Kaiser, self).initialise()
+        self.config['alpha'] = ConfigFloat(value=3.0, dynamic=True)
+
+    def make_window(self):
+        x_tile = self.config['xtile']
+        y_tile = self.config['ytile']
+        alpha = self.config['alpha']
+        self.output(KaiserCore(x_tile=x_tile, y_tile=y_tile, alpha=alpha))
 
 
 def Window2D(name, x_tile, y_tile, function_1D, x_params={}, y_params={}):
@@ -92,25 +117,35 @@ def Window2D(name, x_tile, y_tile, function_1D, x_params={}, y_params={}):
     audit = out_frame.metadata.get('audit')
     audit += 'data = %sWindow()\n' % name
     audit += '    size: %d x %d\n' % (y_tile, x_tile)
+    extras = []
+    for key, value in x_params.items():
+        extras.append('%s: %s' % (key, str(value)))
+    if extras:
+        audit += '    horiz params: %s\n' % (', '.join(extras))
+    extras = []
+    for key, value in y_params.items():
+        extras.append('%s: %s' % (key, str(value)))
+    if extras:
+        audit += '    vert params: %s\n' % (', '.join(extras))
     out_frame.metadata.set('audit', audit)
     return out_frame
 
 
-def HanningCore(x_tile=1, y_tile=1):
+def HannCore(x_tile=1, y_tile=1):
     """
 
     :return: A :py:class:`~pyctools.core.frame.Frame` object containing the
         window.
 
     """
-    def Hanning_1D(tile):
+    def Hann_1D(tile):
         result = numpy.ndarray([tile], dtype=numpy.float32)
         for i in range(tile):
             result[i] = 0.5 + (0.5 * math.cos(
                 math.pi * float((i * 2) + tile - 1) / float(tile - 1)))
         return result
 
-    return Window2D('Hanning', x_tile, y_tile, Hanning_1D)
+    return Window2D('Hann', x_tile, y_tile, Hann_1D)
 
 
 def HammingCore(x_tile=1, y_tile=1):
@@ -128,6 +163,48 @@ def HammingCore(x_tile=1, y_tile=1):
         return result
 
     return Window2D('Hamming', x_tile, y_tile, Hamming_1D)
+
+
+def BlackmanCore(x_tile=1, y_tile=1, alpha=0.16):
+    """
+
+    :return: A :py:class:`~pyctools.core.frame.Frame` object containing the
+        window.
+
+    """
+    def Blackman_1D(tile, alpha):
+        result = numpy.ndarray([tile], dtype=numpy.float32)
+        a0 = (1.0 - alpha) / 2.0
+        a1 = -1.0 / 2.0
+        a2 = alpha / 2.0
+        for i in range(tile):
+            f = math.pi * float(i * 2) / float(tile - 1)
+            result[i] = a0 + (a1 * math.cos(f)) + (a2 * math.cos(2.0 * f))
+        return result
+
+    return Window2D('Blackman', x_tile, y_tile, Blackman_1D,
+                    x_params={'alpha' : alpha}, y_params={'alpha' : alpha})
+
+
+def KaiserCore(x_tile=1, y_tile=1, alpha=0.16):
+    """
+
+    :return: A :py:class:`~pyctools.core.frame.Frame` object containing the
+        window.
+
+    """
+    def Kaiser_1D(tile, alpha):
+        result = numpy.ndarray([tile], dtype=numpy.float32)
+        d = scipy.special.i0(math.pi * alpha)
+        for i in range(tile):
+            f = float(i * 2) / float(tile - 1)
+            f = 1.0 - ((f - 1.0) ** 2.0)
+            f = math.sqrt(f)
+            result[i] = scipy.special.i0(math.pi * alpha * f) / d
+        return result
+
+    return Window2D('Kaiser', x_tile, y_tile, Kaiser_1D,
+                    x_params={'alpha' : alpha}, y_params={'alpha' : alpha})
 
 
 class InverseWindow(Component):
