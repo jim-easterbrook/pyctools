@@ -53,18 +53,9 @@ class FFT(Transformer):
         y_blk = (in_data.shape[0] + y_tile - 1) // y_tile
         x_len = x_blk * x_tile
         y_len = y_blk * y_tile
-        pad = x_len - in_data.shape[1]
-        if pad:
-            in_data = numpy.append(
-                in_data,
-                numpy.zeros((in_data.shape[0], pad, in_data.shape[2]), dtype=pt_complex),
-                axis=1)
-        pad = y_len - in_data.shape[0]
-        if pad:
-            in_data = numpy.append(
-                in_data,
-                numpy.zeros((pad, x_len, in_data.shape[2]), dtype=pt_complex),
-                axis=0)
+        in_data = numpy.pad(
+            in_data, ((0, y_len - in_data.shape[0]),
+                      (0, x_len - in_data.shape[1]), (0, 0)), 'constant')
         in_data = in_data.reshape(y_blk, y_tile, x_blk, x_tile, -1)
         out_data = (numpy.fft.fft2, numpy.fft.ifft2)[inverse](
             in_data, s=(y_tile, x_tile), axes=(1, 3))
