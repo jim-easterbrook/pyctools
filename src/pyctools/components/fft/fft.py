@@ -29,7 +29,7 @@ import numpy
 from pyctools.components.arithmetic import Arithmetic
 from pyctools.core.config import ConfigEnum, ConfigInt
 from pyctools.core.base import Transformer
-from pyctools.core.types import pt_complex
+from pyctools.core.types import pt_complex, pt_float
 
 class FFT(Transformer):
     def initialise(self):
@@ -44,7 +44,9 @@ class FFT(Transformer):
         y_tile = self.config['ytile']
         inverse = self.config['inverse'] == 'on'
         out_type = self.config['output']
-        in_data = in_frame.as_numpy(dtype=pt_complex)
+        in_data = in_frame.as_numpy()
+        if not numpy.iscomplexobj(in_data):
+            in_data = in_data.astype(pt_float)
         if x_tile == 0:
             x_tile = in_data.shape[1]
         if y_tile == 0:
@@ -53,9 +55,11 @@ class FFT(Transformer):
         y_blk = (in_data.shape[0] + y_tile - 1) // y_tile
         x_len = x_blk * x_tile
         y_len = y_blk * y_tile
-        in_data = numpy.pad(
-            in_data, ((0, y_len - in_data.shape[0]),
-                      (0, x_len - in_data.shape[1]), (0, 0)), 'constant')
+        x_pad = x_len - in_data.shape[1]
+        y_pad = y_len - in_data.shape[0]
+        if x_pad or y_pad:
+            in_data = numpy.pad(
+                in_data, ((0, y_pad), (0, x_pad), (0, 0)), 'constant')
         in_data = in_data.reshape(y_blk, y_tile, x_blk, x_tile, -1)
         out_data = (numpy.fft.fft2, numpy.fft.ifft2)[inverse](
             in_data, s=(y_tile, x_tile), axes=(1, 3))
