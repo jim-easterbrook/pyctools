@@ -19,6 +19,19 @@
 
 """Half-sizing interlace to sequential converter.
 
+This simply rearranges each interlaced frame into two frames of half
+the height. It is no use for viewing pictures but is useful if you
+want to do some spatial processing, e.g. taking a Fourier transform.
+
+In ``inverse`` mode pairs of half-height frames are reassembled into
+single full height frames.
+
+===========  ===  ====
+Config
+===========  ===  ====
+``inverse``  str  Can be set to ``off`` or ``on``.
+===========  ===  ====
+
 """
 
 __all__ = ['HalfSize']

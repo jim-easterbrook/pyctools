@@ -17,7 +17,30 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Fourier transform.
+"""Compute Fourier transform.
+
+The image can be divided into (non-overlapping) tiles of any size. It
+is padded out to an integer number of tiles in each direction. If you
+need overlapping tiles, preprocess your images with the :py:mod:`Tile
+<.tile>` component. If you want to window the data before computing
+the FFT, use the :py:mod:`Modulate
+<pyctools.components.modulate.modulate>` component with a window
+function from :py:mod:`.window`.
+
+Inputs can be real or complex. The output type is set by the
+``output`` config value.
+
+The :py:class:`VisualiseFFT` component can be used to convert the
+(complex) Fourier transform of a picture into a viewable image.
+
+===========  ===  ====
+Config
+===========  ===  ====
+``xtile``    int  Horizontal tile size. If zero a single tile the width of the picture is used.
+``ytile``    int  Vertical tile size. If zero a single tile the height of the picture is used.
+``inverse``  str  Can be set to ``off`` or ``on``.
+``output``   str  Can be set to ``complex`` or ``real``.
+===========  ===  ====
 
 """
 

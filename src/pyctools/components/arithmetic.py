@@ -29,10 +29,14 @@ For example, to convert video levels from the range ``16..235`` to
 
     setlevel = Arithmetic()
     cfg = setlevel.get_config()
-    cfg['func'] = '((data - 16.0) * (140.0 / 219.0)) + 64.0'
+    cfg['func'] = '((data - pt_float(16.0)) * pt_float(140.0 / 219.0)) + pt_float(64.0)'
     setlevel.set_config(cfg)
     ...
     pipeline(..., setlevel, ...)
+
+Note the liberal use of ``pt_float`` to coerce data to the Pyctools
+default floating point type (``numpy.float32``). NumPy will otherwise
+convert Python :py:class:`float` to ``numpy.float64``.
 
 """
 

@@ -52,7 +52,7 @@ class Frame(object):
     * a :py:class:`Metadata` item
 
     The data item can be a :py:class:`numpy:numpy.ndarray` or
-    :py:class:`PIL.Image.Image` object. In most instances a
+    :py:mod:`PIL.Image.Image <PIL.Image>` object. In most instances a
     :py:class:`numpy:numpy.ndarray` should have 3 dimensions: line,
     pixel, colour component.
 
@@ -124,14 +124,16 @@ class Frame(object):
         return result
 
     def as_PIL(self):
-        """Get image data in :py:class:`PIL.Image.Image` form.
+        """Get image data in :py:mod:`PIL.Image.Image <PIL.Image>`
+        form.
 
         Note that if the image data is already in the correct format
         this is a null operation.
 
-        :return: The image data as :py:class:`PIL.Image.Image`.
+        :return: The image data as :py:mod:`PIL.Image.Image
+            <PIL.Image>`.
 
-        :rtype: :py:class:`PIL.Image.Image`
+        :rtype: :py:mod:`PIL.Image.Image <PIL.Image>`
 
         """
         if isinstance(self.data, numpy.ndarray):

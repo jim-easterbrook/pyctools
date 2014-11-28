@@ -19,6 +19,43 @@
 
 """FFT window functions.
 
+Window functions are used with Fourier transforms to give some control
+over the trade-off between frequency resolution and "leakage". See
+`Wikipedia <http://en.wikipedia.org/wiki/Window_function>`_ for a good
+introduction to the subject.
+
+This module contains components to generate several popular window
+functions, and one to generate a corresponding "inverse window". This
+can be used to reconstruct a signal from its Fourier transform. Note
+that overlapping tiles are almost essential to avoid visible tile edge
+effects when doing this. The inverse windows compensate for the
+attenuation of the original window and "cross fade" from one tile to
+the next, overlapping, tile. There is a choice of crossfade function.
+
+For each window function component there is a "core" function. This
+generates a single :py:class:`~pyctools.core.frame.Frame` containing
+the window data. This is useful if you don't need to change the window
+while your network of components is running. For example::
+
+    window = Modulate()
+    window.cell(HammingCore(xtile=32, ytile=32))
+
+creates a windowing component that uses a 32x32 Hamming window. Its
+``cell`` input does not need to be connected to anything.
+
+.. autosummary::
+   :nosignatures:
+
+   Hann
+   HannCore
+   Hamming
+   HammingCore
+   Blackman
+   BlackmanCore
+   Kaiser
+   KaiserCore
+   InverseWindow
+
 """
 
 __all__ = ['Hann', 'Hamming', 'Blackman', 'Kaiser', 'InverseWindow']
@@ -30,7 +67,7 @@ import scipy.special
 import sys
 import time
 if 'sphinx' in sys.modules:
-    __all__.append('HannCore', 'HammingCore', 'BlackmanCore', 'KaiserCore')
+    __all__ += ['HannCore', 'HammingCore', 'BlackmanCore', 'KaiserCore']
 
 from pyctools.core.base import Component
 from pyctools.core.config import ConfigEnum, ConfigFloat, ConfigInt
@@ -60,6 +97,16 @@ class WindowBase(Component):
 
 
 class Hann(WindowBase):
+    """Hann window.
+
+    ===========  ===  ====
+    Config
+    ===========  ===  ====
+    ``xtile``    int  Horizontal tile size.
+    ``ytile``    int  Vertical tile size.
+    ===========  ===  ====
+
+    """
     def make_window(self):
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
@@ -67,6 +114,16 @@ class Hann(WindowBase):
 
 
 class Hamming(WindowBase):
+    """Hamming window.
+
+    ===========  ===  ====
+    Config
+    ===========  ===  ====
+    ``xtile``    int  Horizontal tile size.
+    ``ytile``    int  Vertical tile size.
+    ===========  ===  ====
+
+    """
     def make_window(self):
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
@@ -74,6 +131,17 @@ class Hamming(WindowBase):
 
 
 class Blackman(WindowBase):
+    """Blackman window.
+
+    ===========  =====  ====
+    Config
+    ===========  =====  ====
+    ``xtile``    int    Horizontal tile size.
+    ``ytile``    int    Vertical tile size.
+    ``alpha``    float  Window control parameter.
+    ===========  =====  ====
+
+    """
     def initialise(self):
         super(Blackman, self).initialise()
         self.config['alpha'] = ConfigFloat(value=0.16, dynamic=True)
@@ -86,6 +154,17 @@ class Blackman(WindowBase):
 
 
 class Kaiser(WindowBase):
+    """Kaiser-Bessel window.
+
+    ===========  =====  ====
+    Config
+    ===========  =====  ====
+    ``xtile``    int    Horizontal tile size.
+    ``ytile``    int    Vertical tile size.
+    ``alpha``    float  Window control parameter.
+    ===========  =====  ====
+
+    """
     def initialise(self):
         super(Kaiser, self).initialise()
         self.config['alpha'] = ConfigFloat(value=3.0, dynamic=True)
@@ -132,12 +211,6 @@ def Window2D(name, x_tile, y_tile, function_1D, x_params={}, y_params={}):
 
 
 def HannCore(x_tile=1, y_tile=1):
-    """
-
-    :return: A :py:class:`~pyctools.core.frame.Frame` object containing the
-        window.
-
-    """
     def Hann_1D(tile):
         result = numpy.ndarray([tile], dtype=numpy.float32)
         for i in range(tile):
@@ -149,12 +222,6 @@ def HannCore(x_tile=1, y_tile=1):
 
 
 def HammingCore(x_tile=1, y_tile=1):
-    """
-
-    :return: A :py:class:`~pyctools.core.frame.Frame` object containing the
-        window.
-
-    """
     def Hamming_1D(tile):
         result = numpy.ndarray([tile], dtype=numpy.float32)
         for i in range(tile):
@@ -166,12 +233,6 @@ def HammingCore(x_tile=1, y_tile=1):
 
 
 def BlackmanCore(x_tile=1, y_tile=1, alpha=0.16):
-    """
-
-    :return: A :py:class:`~pyctools.core.frame.Frame` object containing the
-        window.
-
-    """
     def Blackman_1D(tile, alpha):
         result = numpy.ndarray([tile], dtype=numpy.float32)
         a0 = (1.0 - alpha) / 2.0
@@ -186,13 +247,7 @@ def BlackmanCore(x_tile=1, y_tile=1, alpha=0.16):
                     x_params={'alpha' : alpha}, y_params={'alpha' : alpha})
 
 
-def KaiserCore(x_tile=1, y_tile=1, alpha=0.16):
-    """
-
-    :return: A :py:class:`~pyctools.core.frame.Frame` object containing the
-        window.
-
-    """
+def KaiserCore(x_tile=1, y_tile=1, alpha=3.0):
     def Kaiser_1D(tile, alpha):
         result = numpy.ndarray([tile], dtype=numpy.float32)
         d = scipy.special.i0(math.pi * alpha)
@@ -208,6 +263,25 @@ def KaiserCore(x_tile=1, y_tile=1, alpha=0.16):
 
 
 class InverseWindow(Component):
+    """Generate "inverse" window function with inter-tile cross-fade.
+
+    The ``fade`` config value determines the transition from one tile
+    to the next, within their area of overlap. ``'switch'`` abruptly
+    cuts from one tile to the next, ``'linear'`` does a cross-fade and
+    ``'minsnr'`` does a weighted cross-fade to minimise signal to
+    noise ratio.
+
+    =========  ===  ====
+    Config
+    =========  ===  ====
+    ``xtile``  int  Horizontal tile size.
+    ``ytile``  int  Vertical tile size.
+    ``xoff``   int  Horizontal tile offset. Typically set to xtile / 2.
+    ``yoff``   int  Vertical tile offset. Typically set to ytile / 2.
+    ``fade``   str  Can be ``'switch'``, ``'linear'`` or ``'minsnr'``.
+    =========  ===  ====
+
+    """
     outputs = ['window', 'inv_window']
     with_outframe_pool = False
 

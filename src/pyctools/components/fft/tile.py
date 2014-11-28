@@ -17,7 +17,24 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Arrange image in (overlapping) tiles.
+"""Arrange image in overlapping tiles.
+
+This can be used with the :py:mod:`FFT <.fft>` component if you need
+FFTs of overlapping tiles, so you can reconstruct an image later on
+without visible tile edges.
+
+The ``xoff`` and ``yoff`` configuration sets the distance from the
+edge of one tile to the same edge on the next. For complete overlap
+they are usually set to half the tile width & height.
+
+===========  ===  ====
+Config
+===========  ===  ====
+``xtile``    int  Horizontal tile size.
+``ytile``    int  Vertical tile size.
+``xoff``     int  Horizontal tile offset. Typically set to xtile / 2.
+``yoff``     int  Vertical tile offset. Typically set to ytile / 2.
+===========  ===  ====
 
 """
 
