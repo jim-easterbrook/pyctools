@@ -106,3 +106,11 @@ The ``file`` menu has ``load script`` and ``save script`` actions, with the usua
 
 Note that you can run your saved script directly, without running :py:mod:`pyctools-editor <pyctools.tools.editor>`.
 If you've saved it as ``zone-plate.py`` you can run it with the command ``python zone-plate.py``.
+
+More components
+---------------
+
+A graph can contain many more components than just the source and display shown above.
+Here's something a bit more complicated.
+
+.. image:: /images/transform_screenshot.png
