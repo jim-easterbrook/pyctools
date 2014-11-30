@@ -21,6 +21,8 @@
 
 __docformat__ = 'restructuredtext en'
 
+import logging
+
 from .config import ConfigGrandParent
 
 class Compound(object):
@@ -85,6 +87,7 @@ class Compound(object):
     """
     def __init__(self, **kw):
         super(Compound, self).__init__()
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.inputs = []
         self.outputs = []
         # get child components
@@ -129,13 +132,16 @@ class Compound(object):
         return self
 
     def start(self):
-        for child in self._compound_children.values():
+        for name, child in self._compound_children.items():
+            self.logger.debug('start %s (%s)', name, child.__class__.__name__)
             child.start()
 
     def stop(self):
-        for child in self._compound_children.values():
+        for name, child in self._compound_children.items():
+            self.logger.debug('stop %s (%s)', name, child.__class__.__name__)
             child.stop()
 
     def join(self):
-        for child in self._compound_children.values():
+        for name, child in self._compound_children.items():
+            self.logger.debug('join %s (%s)', name, child.__class__.__name__)
             child.join()
