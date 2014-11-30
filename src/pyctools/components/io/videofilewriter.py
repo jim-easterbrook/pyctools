@@ -139,7 +139,11 @@ class VideoFileWriter(Transformer):
                 self.generator.send(None)
             except StopIteration:
                 return False
-        self.generator.send(in_frame)
+        try:
+            self.generator.send(in_frame)
+        except Exception as ex:
+            self.logger.exception(ex)
+            return False
         return True
 
     def onStop(self):

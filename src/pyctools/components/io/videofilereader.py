@@ -120,7 +120,11 @@ class VideoFileReader(Component):
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     bufsize=bytes_per_line) as sp:
                 while True:
-                    raw_data = sp.stdout.read(bytes_per_line)
+                    try:
+                        raw_data = sp.stdout.read(bytes_per_line)
+                    except Exception as ex:
+                        self.logger.exception(ex)
+                        return
                     if len(raw_data) < bytes_per_line:
                         break
                     if bit16:
