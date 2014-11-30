@@ -211,10 +211,10 @@ def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, x_cut=100,
     audit = out_frame.metadata.get('audit')
     audit += 'data = FilterGenerator()\n'
     if x_up != 1 or x_down != 1 or x_ap != 1:
-        audit += '    x_up: %d, x_down: %d, x_ap: %d, x_cut: %d\n' % (
+        audit += '    x_up: %d, x_down: %d, x_ap: %d, x_cut: %d%%\n' % (
             x_up, x_down, x_ap, x_cut)
     if y_up != 1 or y_down != 1 or y_ap != 1:
-        audit += '    y_up: %d, y_down: %d, y_ap: %d, y_cut: %d\n' % (
+        audit += '    y_up: %d, y_down: %d, y_ap: %d, y_cut: %d%%\n' % (
             y_up, y_down, y_ap, y_cut)
     out_frame.metadata.set('audit', audit)
     return out_frame
