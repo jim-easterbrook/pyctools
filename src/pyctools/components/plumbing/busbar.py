@@ -64,6 +64,11 @@ class Busbar(Splitter, ConfigMixin):
     def queued_stop(self):
         self.stop()
 
+    def is_pipe_end(self):
+        if self._busbar_connections:
+            return False
+        return True
+
     def onStop(self):
         self.logger.debug('stopping')
         super(Busbar, self).onStop()

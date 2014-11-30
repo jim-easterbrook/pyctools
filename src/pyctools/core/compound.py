@@ -141,7 +141,9 @@ class Compound(object):
             self.logger.debug('stop %s (%s)', name, child.__class__.__name__)
             child.stop()
 
-    def join(self):
+    def join(self, end_comps=False):
         for name, child in self._compound_children.items():
+            if end_comps and not child.is_pipe_end():
+                continue
             self.logger.debug('join %s (%s)', name, child.__class__.__name__)
             child.join()

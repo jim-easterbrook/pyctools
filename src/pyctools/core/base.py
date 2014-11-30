@@ -149,6 +149,25 @@ class Component(Actor, ConfigMixin):
                 self.outframe_pool[output] = ObjectPool(
                     Frame, self.config['outframe_pool_len'], self.notify)
 
+    def is_pipe_end(self):
+        """Is component the last one in a pipeline.
+
+        When waiting for a network of components to finish processing
+        it's not necessary to wait for every component to stop, and in
+        many cases they won't all stop anyway.
+
+        This method makes it easier to choose which components to wait
+        for. See the :py:mod:`Compound <.compound>` component for an
+        example.
+
+        :rtype: :py:class:`bool`
+
+        """
+        for output in self.outputs:
+            if getattr(self, output).__self__ != self:
+                return False
+        return True
+
     @actor_method
     def notify(self):
         """notify()
@@ -226,6 +245,10 @@ class Component(Actor, ConfigMixin):
 
         """
         raise NotImplemented()
+
+    def onStop(self):
+        self.logger.debug('stopping')
+        super(Component, self).onStop()
 
 
 class Transformer(Component):
