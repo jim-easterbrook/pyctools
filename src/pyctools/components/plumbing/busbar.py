@@ -30,6 +30,8 @@ is not required to be a Pyctools
 
 """
 
+import logging
+
 from guild.actor import *
 from guild.components import Splitter
 
@@ -44,6 +46,7 @@ class Busbar(Splitter, ConfigMixin):
     def __init__(self):
         super(Busbar, self).__init__()
         ConfigMixin.__init__(self)
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.outputs = ['output0', 'output1']
         self._busbar_connections = {}
 
@@ -55,6 +58,10 @@ class Busbar(Splitter, ConfigMixin):
         super(Busbar, self).publish(data)
         if data is None:
             self.stop()
+
+    def onStop(self):
+        self.logger.debug('stopping')
+        super(Busbar, self).onStop()
 
     def bind(self, source, dest, destmeth):
         self._busbar_connections[source] = getattr(dest, destmeth)
