@@ -173,40 +173,40 @@ class Component(Actor, ConfigMixin):
         example.
 
         """
-        while True:
-            # check output frames are available
-            for output in self.outframe_pool.values():
-                if not output.available():
-                    return
-            # check input frames are available
-            for input in self.input_buffer.values():
-                if not input.available():
-                    return
-            # test for 'None' input, and get current frame number
-            frame_no = -1
-            for input in self.input_buffer.values():
-                in_frame = input.peek()
-                if not in_frame:
-                    for output in self.outputs:
-                        getattr(self, output)(None)
-                    self.stop()
-                    return
-                frame_no = max(frame_no, in_frame.frame_no)
-            # discard old frames that can never be used
-            OK = True
-            for input in self.input_buffer.values():
-                in_frame = input.peek()
-                if in_frame.frame_no < 0:
-                    # special case "static" inputs, only one required
-                    while input.available() > 1:
-                        input.get()
-                elif in_frame.frame_no < frame_no:
+        # check output frames are available
+        for output in self.outframe_pool.values():
+            if not output.available():
+                return
+        # check input frames are available
+        for input in self.input_buffer.values():
+            if not input.available():
+                return
+        # test for 'None' input, and get current frame number
+        frame_no = -1
+        for input in self.input_buffer.values():
+            in_frame = input.peek()
+            if not in_frame:
+                for output in self.outputs:
+                    getattr(self, output)(None)
+                self.stop()
+                return
+            frame_no = max(frame_no, in_frame.frame_no)
+        # discard old frames that can never be used
+        OK = True
+        for input in self.input_buffer.values():
+            in_frame = input.peek()
+            if in_frame.frame_no < 0:
+                # special case "static" inputs, only one required
+                while input.available() > 1:
                     input.get()
-                    OK = False
-            if not OK:
-                continue
+            elif in_frame.frame_no < frame_no:
+                input.get()
+                OK = False
+        if OK:
             # now have a full set of correlated inputs to process
             self.process_frame()
+        # might be more on the queue
+        self.notify()
 
     def process_frame(self):
         """Process an input frame (or set of frames).
