@@ -863,12 +863,15 @@ if __name__ == '__main__':
                          '    QtGui.QApplication.setAttribute(Qt.AA_X11InitThreads)\n' +
                          '    app = QtGui.QApplication([])\n')
             of.write("""
-    logging.basicConfig(level=logging.DEBUG)
     comp = Network().make()
     cnf = comp.get_config()
     parser = argparse.ArgumentParser()
     cnf.parser_add(parser)
+    parser.add_argument('-v', '--verbose', action='count', default=0,
+                        help='increase verbosity of log messages')
     args = parser.parse_args()
+    logging.basicConfig(level=logging.ERROR - (args.verbose * 10))
+    del args.verbose
     cnf.parser_set(args)
     comp.set_config(cnf)
     comp.start()
@@ -1069,7 +1072,6 @@ class MainWindow(QtGui.QMainWindow):
         self.view.scale(zoom, zoom)
 
 def main():
-    logging.basicConfig(level=logging.DEBUG)
     # let PyQt handle its options (need at least one argument after options)
     sys.argv.append('xxx')
     QtGui.QApplication.setAttribute(Qt.AA_X11InitThreads)
@@ -1079,7 +1081,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('-s', '--script', metavar='file_name',
                         help='a script to load at startup')
+    parser.add_argument('-v', '--verbose', action='count', default=0,
+                        help='increase verbosity of log messages')
     args = parser.parse_args(sys.argv[1:])
+    logging.basicConfig(level=logging.ERROR - (args.verbose * 10))
     # create GUI and run application event loop
     main = MainWindow(script=args.script)
     main.show()
