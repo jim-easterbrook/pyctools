@@ -50,14 +50,19 @@ class Busbar(Splitter, ConfigMixin):
         self.outputs = ['output0', 'output1']
         self._busbar_connections = {}
 
-    @actor_method
-    def publish(self, data):
-        """publish(self, data)
+    def input(self, data):
+        """input(self, data)
 
         """
-        super(Busbar, self).publish(data)
+        # base class method uses queued invocation
+        super(Busbar, self).input(data)
         if data is None:
-            self.stop()
+            # use queued stop, should happen after outputs are sent
+            self.queued_stop()
+
+    @actor_method
+    def queued_stop(self):
+        self.stop()
 
     def onStop(self):
         self.logger.debug('stopping')
