@@ -877,9 +877,18 @@ if __name__ == '__main__':
     comp.start()
 """)
             if with_qt:
-                of.write('    app.exec_()\n' +
-                         '    comp.stop()\n')
-            of.write('    comp.join()\n')
+                of.write('    app.exec_()\n')
+            else:
+                of.write("""
+    try:
+        comp.join(end_comps=True)
+    except KeyboardInterrupt:
+        pass
+""")
+            of.write("""
+    comp.stop()
+    comp.join()
+""")
 
 class ComponentItemModel(QtGui.QStandardItemModel):
     def mimeTypes(self):
