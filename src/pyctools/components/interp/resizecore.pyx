@@ -186,8 +186,8 @@ def resize_frame(numpy.ndarray[DTYPE_t, ndim=3] in_frame,
     xlen_in = in_frame.shape[1]
     ylen_in = in_frame.shape[0]
     comps = in_frame.shape[2]
-    xlen_out = (xlen_in * x_up) // x_down
-    ylen_out = (ylen_in * y_up) // y_down
+    xlen_out = ((xlen_in * x_up) + (x_down // 2)) // x_down
+    ylen_out = ((ylen_in * y_up) + (y_down // 2)) // y_down
     xlen_out = max(xlen_out, 1)
     ylen_out = max(ylen_out, 1)
     out_frame = np.zeros(([ylen_out, xlen_out, comps]), dtype=DTYPE)
