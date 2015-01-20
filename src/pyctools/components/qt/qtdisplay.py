@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Jim Easterbrook  jim@jim-easterbrook.me.uk
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -50,43 +50,49 @@ import logging
 import sys
 
 import numpy
-from PyQt4 import QtGui, QtCore
+from OpenGL import GL
+from PyQt4 import QtGui, QtCore, QtOpenGL
 from PyQt4.QtCore import Qt
 
 from pyctools.core.config import ConfigInt, ConfigEnum
 from pyctools.core.base import Transformer
 
-class SimpleDisplay(QtGui.QLabel):
-    def __init__(self, *arg, **kw):
-        super(SimpleDisplay, self).__init__(*arg, **kw)
+class SimpleDisplay(QtOpenGL.QGLWidget):
+    def __init__(self, parent=None, flags=0):
+        super(SimpleDisplay, self).__init__(parent, None, flags)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.in_queue = deque()
         self.framerate = 25
         self.frame_count = 0
         self.missed_count = 0
-        # start timer to show frames at regular intervals
+        self.image = None
+        # create timer to show frames at regular intervals
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.timer_show_frame)
+
+    def start(self):
+        # start timer
         self.timer.start(1000 // self.framerate)
 
-    def show_frame(self, frame, image, framerate, stats):
+    def show_frame(self, frame, image, scale, framerate, stats):
         # this method will be called from another thread, so do
         # nothing except put stuff on queue
-        self.in_queue.append((frame, image, framerate, stats))
+        self.in_queue.append((frame, image, scale, framerate, stats))
 
     def timer_show_frame(self):
         if not self.in_queue:
             self.missed_count += 1
             return
-        frame, image, framerate, stats = self.in_queue.popleft()
+        frame, image, scale, framerate, stats = self.in_queue.popleft()
         if framerate != self.framerate:
             self.framerate = framerate
             self.timer.setInterval(1000 // self.framerate)
+        self.image = image
+        h, w = frame.size()
+        self.resize(w * scale, h * scale)
         if not self.isVisible():
             self.show()
-        pixmap = QtGui.QPixmap.fromImage(image)
-        self.resize(pixmap.size())
-        self.setPixmap(pixmap)
+        self.updateGL()
         self.frame_count += 1
         if self.frame_count >= 200:
             if stats:
@@ -101,6 +107,48 @@ class SimpleDisplay(QtGui.QLabel):
         self.timer.stop()
         self.close()
 
+    def initializeGL(self):
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+        GL.glDisable(GL.GL_DEPTH_TEST)
+        GL.glEnable(GL.GL_TEXTURE_2D)
+        texture = GL.glGenTextures(1)
+        GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, texture)
+        GL.glTexParameterf(
+            GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
+        GL.glTexParameterf(
+            GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
+
+    def resizeGL(self, w, h):
+        GL.glViewport(0, 0, w, h)
+        GL.glMatrixMode(GL.GL_PROJECTION)
+        GL.glLoadIdentity()
+        GL.glOrtho(0, 1, 0, 1, -1, 1)
+        GL.glMatrixMode(GL.GL_MODELVIEW)
+        GL.glLoadIdentity()
+
+    def paintGL(self):
+        if self.image is None:
+            return
+        ylen, xlen, bpc = self.image.shape
+        if bpc == 3:
+            GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
+                            0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, self.image)
+        elif bpc == 1:
+            GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
+                            0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, self.image)
+        GL.glBegin(GL.GL_QUADS)
+        GL.glTexCoord2i(0, 0)
+        GL.glVertex2i(0, 1)
+        GL.glTexCoord2i(0, 1)
+        GL.glVertex2i(0, 0)
+        GL.glTexCoord2i(1, 1)
+        GL.glVertex2i(1, 0)
+        GL.glTexCoord2i(1, 0)
+        GL.glVertex2i(1, 1)
+        GL.glEnd()
+        GL.glFlush()
+
 class QtDisplay(Transformer):
     def initialise(self):
         self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
@@ -109,6 +157,10 @@ class QtDisplay(Transformer):
         self.config['stats'] = ConfigEnum(('off', 'on'))
         self.last_frame_type = None
         self.display = SimpleDisplay(None, Qt.Window | Qt.WindowStaysOnTopHint)
+
+    def process_start(self):
+        super(QtDisplay, self).process_start()
+        self.display.start()
 
     def transform(self, in_frame, out_frame):
         self.update_config()
@@ -123,26 +175,16 @@ class QtDisplay(Transformer):
         if bpc == 3:
             if in_frame.type != 'RGB' and in_frame.type != self.last_frame_type:
                 self.logger.warning('Expected RGB input, got %s', in_frame.type)
-            image = QtGui.QImage(numpy_image.data, xlen, ylen, xlen * bpc,
-                                 QtGui.QImage.Format_RGB888)
         elif bpc == 1:
             if in_frame.type != 'Y' and in_frame.type != self.last_frame_type:
                 self.logger.warning('Expected Y input, got %s', in_frame.type)
-            image = QtGui.QImage(numpy_image.data, xlen, ylen, xlen,
-                                 QtGui.QImage.Format_Indexed8)
-            image.setNumColors(256)
-            for i in range(256):
-                image.setColor(i, QtGui.qRgba(i, i, i, 255))
         else:
             self.logger.critical(
                 'Cannot display %s frame with %d components', in_frame.type, bpc)
             return False
         self.last_frame_type = in_frame.type
-        if shrink > 1 or expand > 1:
-            image = image.scaled(
-                xlen * expand // shrink, ylen * expand // shrink,
-                transformMode=Qt.SmoothTransformation)
-        self.display.show_frame(in_frame, image, framerate, stats)
+        scale = float(expand) / float(shrink)
+        self.display.show_frame(in_frame, numpy_image, scale, framerate, stats)
         return True
 
     def onStop(self):
