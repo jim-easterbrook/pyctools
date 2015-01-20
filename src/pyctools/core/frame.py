@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Jim Easterbrook  jim@jim-easterbrook.me.uk
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -77,6 +77,17 @@ class Frame(object):
         self.data = other.data
         self.type = other.type
         self.metadata.copy(other.metadata)
+
+    def size(self):
+        """Return image dimensions (height, width)"""
+        if isinstance(self.data, numpy.ndarray):
+            h, w = self.data.shape[:2]
+        elif isinstance(self.data, PIL.Image.Image):
+            w, h = self.data.size()
+        else:
+            raise RuntimeError(
+                'Cannot get size of "%s"' % self.data.__class__.__name__)
+        return h, w
 
     def as_numpy(self, dtype=None):
         """Get image data in :py:class:`numpy:numpy.ndarray` form.
