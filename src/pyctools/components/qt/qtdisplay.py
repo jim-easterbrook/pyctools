@@ -24,7 +24,7 @@ pipeline to display the images at that point.
 
 The displayed image can be enlarged or reduced in size by setting the
 ``expand`` and ``shrink`` config values. The size changing is done
-within Qt.
+within OpenGL.
 
 The ``framerate`` config item sets a target rate (default value 25
 fps). If the incoming video cannot keep up then frames will be
@@ -50,6 +50,8 @@ import logging
 import sys
 import time
 
+from guild.actor import actor_method
+from guild.qtactor import QtActorMixin
 import numpy
 from OpenGL import GL
 from PyQt4 import QtGui, QtCore, QtOpenGL
@@ -74,7 +76,7 @@ class BufferSwapper(QtCore.QObject):
         self.done_swap.emit(now)
 
 
-class SimpleDisplay(QtOpenGL.QGLWidget):
+class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
     do_swap = QtCore.pyqtSignal()
 
     def __init__(self, parent=None, flags=0):
@@ -99,21 +101,22 @@ class SimpleDisplay(QtOpenGL.QGLWidget):
             self.logger.warning('Unable to synchronise to video frame rate')
             display_freq = 60
             self._display_sync = False
-        self._display_clock = 0.0
         self._display_period = 1.0 / float(display_freq)
-        self._next_frame_due = 0.0
         self._frame_period = 1.0 / 25.0
-        self._frame_count = -2
+        self._show_stats = False
+        self._scale = 1.0
+        self._next_frame_due = 0.0
+        self._swapping = False
         # create timer to show frames at regular intervals
         self.timer = QtCore.QTimer(self)
         self.timer.setSingleShot(True)
-        self.timer.timeout.connect(self.timer_show_frame)
+        self.timer.timeout.connect(self.display_frame)
         # create separate thread to swap buffers
         self.swapper_thread = QtCore.QThread()
         self.swapper = BufferSwapper(self)
         self.swapper.moveToThread(self.swapper_thread)
         self.do_swap.connect(self.swapper.swap)
-        self.swapper.done_swap.connect(self.timer_show_frame)
+        self.swapper.done_swap.connect(self.done_swap)
         self.swapper_thread.start()
 
     def measure_display_rate(self):
@@ -127,85 +130,105 @@ class SimpleDisplay(QtOpenGL.QGLWidget):
         self.doneCurrent()
         return display_freq
 
-    def show_frame(self, frame, image, scale, framerate, stats):
-        # this method will be called from another thread, so do
-        # nothing except put stuff on queue
-        self.in_queue.append((frame, image, scale, framerate, stats))
-        if not self._next_frame_due:
-            self._next_frame_due = time.time()
-            self._start()
+    def onStop(self):
+        super(SimpleDisplay, self).onStop()
+        self.timer.stop()
+        self.swapper_thread.quit()
+        self.swapper_thread.wait()
+        self.close()
 
-    def _start(self):
-        self.doneCurrent()
-        self.do_swap.emit()
+    def closeEvent(self, event):
+        self.stop()
+
+    @actor_method
+    def set_framerate(self, framerate):
+        self._frame_period = 1.0 / float(framerate)
+
+    @actor_method
+    def set_show_stats(self, show_stats):
+        self._show_stats = show_stats
+
+    @actor_method
+    def set_scale(self, scale):
+        self._scale = scale
+
+    @actor_method
+    def show_frame(self, frame, image):
+        self.in_queue.append((frame, image))
+        if self._swapping or len(self.in_queue) > 1:
+            # no need to set timer
+            return
+        now = time.time()
+        if not self._next_frame_due:
+            # initialise
+            self._next_frame_due = now
+            self._display_clock = now
+            self._frame_count = -2
+        if self._next_frame_due > now + self._display_period:
+            # set timer to show frame later
+            sleep = self._next_frame_due - now
+            print 'sleep A', sleep
+            self.timer.start(int(sleep * 1000.0))
+        else:
+            # show frame immmediately
+            self.display_frame()
 
     @QtCore.pyqtSlot(float)
-    def timer_show_frame(self, now=None):
-        if now:
-            sync = True
-        else:
-            sync = False
-            now = time.time()
+    def done_swap(self, now):
+        self._swapping = False
         self.timer.stop()
-        if not self._display_clock:
-            self._display_clock = now
-            self._next_frame_due = now
         margin = self._display_period / 2.0
         # adjust display clock
         while self._display_clock < now - margin:
             self._display_clock += self._display_period
-        if self._display_sync and sync:
+        if self._display_sync:
             error = self._display_clock - now
             self._display_clock -= error / 100.0
             self._display_period -= error / 10000.0
         # adjust frame clock
-        while self._next_frame_due < now - margin:
+        while self._next_frame_due < self._display_clock - margin:
             self._next_frame_due += self._display_period
-        if self._display_sync and sync:
+        if self._display_sync:
             error = self._next_frame_due - self._display_clock
             while error > margin:
                 error -= self._display_period
             if abs(error) < self._frame_period * self._display_period / 4.0:
                 self._next_frame_due -= error
-        # decide whether to show a frame now
-        skip_frames = int(
-            (self._next_frame_due - self._display_clock) / self._display_period)
         if not self.in_queue:
-            # source is not keeping up, wait for next display clock
-            skip_frames = max(skip_frames, 1)
-        if skip_frames > 0:
-            # sleep for a bit
-            sleep = self._display_period * skip_frames
+            # nothing to do
+            pass
+        elif self._next_frame_due > self._display_clock + self._display_period:
+            # set timer to show frame later
+            sleep = self._next_frame_due - time.time()
+##            print 'sleep B', sleep
             self.timer.start(int(sleep * 1000.0))
-            return
+        else:
+            # show frame immmediately
+            self.display_frame()
+
+    @QtCore.pyqtSlot()
+    def display_frame(self):
         # display an image
-        frame, image, scale, framerate, stats = self.in_queue.popleft()
-        self._frame_period = 1.0 / float(framerate)
+        frame, self.image = self.in_queue.popleft()
         self._next_frame_due += self._frame_period
         self._frame_count += 1
         if self._frame_count <= 0:
             self._block_start = self._next_frame_due
         if self._next_frame_due - self._block_start > 5.0:
-            if stats:
+            if self._show_stats:
                 frame_rate = float(self._frame_count) / (
                     self._next_frame_due - self._block_start)
                 self.logger.warning('Average frame rate: %.2fHz', frame_rate)
             self._frame_count = 0
             self._block_start = self._next_frame_due
-        self.image = image
         h, w = frame.size()
-        self.resize(w * scale, h * scale)
+        self.resize(w * self._scale, h * self._scale)
         if not self.isVisible():
             self.show()
         self.updateGL()
         self.doneCurrent()
+        self._swapping = True
         self.do_swap.emit()
-
-    def shut_down(self):
-        self.timer.stop()
-        self.swapper_thread.quit()
-        self.swapper_thread.wait()
-        self.close()
 
     def initializeGL(self):
         GL.glClear(GL.GL_COLOR_BUFFER_BIT)
@@ -259,12 +282,30 @@ class QtDisplay(Transformer):
         self.last_frame_type = None
         self.display = SimpleDisplay(None, Qt.Window | Qt.WindowStaysOnTopHint)
 
+    def start(self):
+        super(QtDisplay, self).start()
+        self.display.start()
+
+    def stop(self):
+        super(QtDisplay, self).stop()
+        self.display.stop()
+
+    def join(self):
+        super(QtDisplay, self).join()
+        self.display.join()
+
+    def process_start(self):
+        super(QtDisplay, self).process_start()
+        self.display.set_framerate(self.config['framerate'])
+        self.display.set_show_stats(self.config['stats'] == 'on')
+
     def transform(self, in_frame, out_frame):
-        self.update_config()
-        shrink = self.config['shrink']
-        expand = self.config['expand']
-        framerate = self.config['framerate']
-        stats = self.config['stats'] == 'on'
+        if self.update_config():
+            self.display.set_framerate(self.config['framerate'])
+            self.display.set_show_stats(self.config['stats'] == 'on')
+            shrink = self.config['shrink']
+            expand = self.config['expand']
+            self.display.set_scale(float(expand) / float(shrink))
         numpy_image = in_frame.as_numpy(dtype=numpy.uint8)
         if not numpy_image.flags.contiguous:
             numpy_image = numpy.ascontiguousarray(numpy_image)
@@ -280,13 +321,8 @@ class QtDisplay(Transformer):
                 'Cannot display %s frame with %d components', in_frame.type, bpc)
             return False
         self.last_frame_type = in_frame.type
-        scale = float(expand) / float(shrink)
-        self.display.show_frame(in_frame, numpy_image, scale, framerate, stats)
+        self.display.show_frame(in_frame, numpy_image)
         return True
-
-    def onStop(self):
-        super(QtDisplay, self).onStop()
-        self.display.shut_down()
 
 def main():
     import logging
