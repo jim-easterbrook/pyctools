@@ -37,6 +37,7 @@ Config
 ``expand``     int  Image up-conversion factor.
 ``shrink``     int  Image down-conversion factor.
 ``framerate``  int  Target frame rate.
+``sync``       str  Synchronise to video card frame rate. Can be ``'off'`` or ``'on'``.
 ``stats``      str  Show actual frame rate statistics. Can be ``'off'`` or ``'on'``.
 =============  ===  ====
 
@@ -94,11 +95,14 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
             fmt.setSwapInterval(1)
             self.setFormat(fmt)
             display_freq = self.measure_display_rate()
-        self._display_sync = True
+            self.sync_swap_interval = 1
+        else:
+            self.sync_swap_interval = 0
         if display_freq > 500:
             self.owner.logger.warning('Unable to synchronise to video frame rate')
             display_freq = 60
-            self._display_sync = False
+            self.sync_swap_interval = -1
+        self.sync_swap = self.sync_swap_interval >= 0
         self._display_period = 1.0 / float(display_freq)
         self._frame_period = 1.0 / 25.0
         self._next_frame_due = 0.0
@@ -123,7 +127,6 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         for n in range(5):
             self.swapBuffers()
         display_freq = int(0.5 + (5.0 / (time.time() - start)))
-        print "frame freq: %d Hz" % (display_freq)
         self.doneCurrent()
         return display_freq
 
@@ -150,7 +153,7 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
             self._next_frame_due = now
             self._display_clock = now
             self._frame_count = -2
-        if self._next_frame_due > now + self._display_period:
+        if self._next_frame_due > now + 0.002:
             # set timer to show frame later
             sleep = self._next_frame_due - now
             self.timer.start(int(sleep * 1000.0))
@@ -166,14 +169,13 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         # adjust display clock
         while self._display_clock < now - margin:
             self._display_clock += self._display_period
-        if self._display_sync:
+        if self.sync_swap and self.sync_swap_interval >= 0:
             error = self._display_clock - now
             self._display_clock -= error / 100.0
             self._display_period -= error / 10000.0
-        # adjust frame clock
-        while self._next_frame_due < self._display_clock - margin:
-            self._next_frame_due += self._display_period
-        if self._display_sync:
+            # adjust frame clock
+            while self._next_frame_due < self._display_clock - margin:
+                self._next_frame_due += self._display_period
             error = self._next_frame_due - self._display_clock
             while error > margin:
                 error -= self._display_period
@@ -181,10 +183,11 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
                 self._next_frame_due -= error
         if not self.in_queue:
             # nothing to do
-            pass
-        elif self._next_frame_due > self._display_clock + self._display_period:
+            return
+        now = time.time()
+        if self._next_frame_due > now + 0.002:
             # set timer to show frame later
-            sleep = self._next_frame_due - time.time()
+            sleep = self._next_frame_due - now
             self.timer.start(int(sleep * 1000.0))
         else:
             # show frame immmediately
@@ -200,6 +203,13 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         shrink = self.owner.config['shrink']
         expand = self.owner.config['expand']
         scale = float(expand) / float(shrink)
+        sync = self.owner.config['sync'] == 'on'
+        if sync != self.sync_swap:
+            self.sync_swap = sync
+            if self.sync_swap_interval >= 0:
+                fmt = self.format()
+                fmt.setSwapInterval(self.sync_swap_interval)
+                self.setFormat(fmt)
         # get frame to show
         self.in_frame = self.in_queue.popleft()
         self._next_frame_due += self._frame_period
@@ -288,6 +298,8 @@ class QtDisplay(Transformer):
         self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
         self.config['expand'] = ConfigInt(min_value=1, dynamic=True)
         self.config['framerate'] = ConfigInt(min_value=1, value=25)
+        self.config['sync'] = ConfigEnum(('off', 'on'))
+        self.config['sync'] = 'on'
         self.config['stats'] = ConfigEnum(('off', 'on'))
         self.display = SimpleDisplay(
             self, None, Qt.Window | Qt.WindowStaysOnTopHint)
