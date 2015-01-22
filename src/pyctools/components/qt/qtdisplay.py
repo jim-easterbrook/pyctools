@@ -46,8 +46,6 @@ __all__ = ['QtDisplay']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque
-import logging
-import sys
 import time
 
 from guild.actor import actor_method
@@ -79,11 +77,11 @@ class BufferSwapper(QtCore.QObject):
 class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
     do_swap = QtCore.pyqtSignal()
 
-    def __init__(self, parent=None, flags=0):
+    def __init__(self, owner, parent=None, flags=0):
         super(SimpleDisplay, self).__init__(parent, None, flags)
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.owner = owner
         self.in_queue = deque()
-        self.image = None
+        self.in_frame = None
         self.setAutoBufferSwap(False)
         # if user has set "tear free video" or similar, we might not
         # want to increase swap interval any further
@@ -98,15 +96,14 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
             display_freq = self.measure_display_rate()
         self._display_sync = True
         if display_freq > 500:
-            self.logger.warning('Unable to synchronise to video frame rate')
+            self.owner.logger.warning('Unable to synchronise to video frame rate')
             display_freq = 60
             self._display_sync = False
         self._display_period = 1.0 / float(display_freq)
         self._frame_period = 1.0 / 25.0
-        self._show_stats = False
-        self._scale = 1.0
         self._next_frame_due = 0.0
         self._swapping = False
+        self.last_frame_type = None
         # create timer to show frames at regular intervals
         self.timer = QtCore.QTimer(self)
         self.timer.setSingleShot(True)
@@ -133,6 +130,7 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
     def onStop(self):
         super(SimpleDisplay, self).onStop()
         self.timer.stop()
+        self.swapper.blockSignals(True)
         self.swapper_thread.quit()
         self.swapper_thread.wait()
         self.close()
@@ -141,20 +139,8 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         self.stop()
 
     @actor_method
-    def set_framerate(self, framerate):
-        self._frame_period = 1.0 / float(framerate)
-
-    @actor_method
-    def set_show_stats(self, show_stats):
-        self._show_stats = show_stats
-
-    @actor_method
-    def set_scale(self, scale):
-        self._scale = scale
-
-    @actor_method
-    def show_frame(self, frame, image):
-        self.in_queue.append((frame, image))
+    def show_frame(self, frame):
+        self.in_queue.append(frame)
         if self._swapping or len(self.in_queue) > 1:
             # no need to set timer
             return
@@ -167,7 +153,6 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         if self._next_frame_due > now + self._display_period:
             # set timer to show frame later
             sleep = self._next_frame_due - now
-            print 'sleep A', sleep
             self.timer.start(int(sleep * 1000.0))
         else:
             # show frame immmediately
@@ -200,7 +185,6 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         elif self._next_frame_due > self._display_clock + self._display_period:
             # set timer to show frame later
             sleep = self._next_frame_due - time.time()
-##            print 'sleep B', sleep
             self.timer.start(int(sleep * 1000.0))
         else:
             # show frame immmediately
@@ -208,21 +192,30 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
 
     @QtCore.pyqtSlot()
     def display_frame(self):
-        # display an image
-        frame, self.image = self.in_queue.popleft()
+        # get latest config
+        self.owner.update_config()
+        framerate = self.owner.config['framerate']
+        self._frame_period = 1.0 / float(framerate)
+        stats = self.owner.config['stats'] == 'on'
+        shrink = self.owner.config['shrink']
+        expand = self.owner.config['expand']
+        scale = float(expand) / float(shrink)
+        # get frame to show
+        self.in_frame = self.in_queue.popleft()
         self._next_frame_due += self._frame_period
         self._frame_count += 1
         if self._frame_count <= 0:
             self._block_start = self._next_frame_due
         if self._next_frame_due - self._block_start > 5.0:
-            if self._show_stats:
+            if stats:
                 frame_rate = float(self._frame_count) / (
                     self._next_frame_due - self._block_start)
-                self.logger.warning('Average frame rate: %.2fHz', frame_rate)
+                self.owner.logger.warning(
+                    'Average frame rate: %.2fHz', frame_rate)
             self._frame_count = 0
             self._block_start = self._next_frame_due
-        h, w = frame.size()
-        self.resize(w * self._scale, h * self._scale)
+        h, w = self.in_frame.size()
+        self.resize(w * scale, h * scale)
         if not self.isVisible():
             self.show()
         self.updateGL()
@@ -251,15 +244,33 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         GL.glLoadIdentity()
 
     def paintGL(self):
-        if self.image is None:
+        if not self.in_frame:
             return
-        ylen, xlen, bpc = self.image.shape
+        numpy_image = self.in_frame.as_numpy(dtype=numpy.uint8)
+        if not numpy_image.flags.contiguous:
+            numpy_image = numpy.ascontiguousarray(numpy_image)
+        ylen, xlen, bpc = numpy_image.shape
         if bpc == 3:
+            if (self.in_frame.type != 'RGB' and
+                        self.in_frame.type != self.last_frame_type):
+                self.owner.logger.warning(
+                    'Expected RGB input, got %s', self.in_frame.type)
             GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
-                            0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, self.image)
+                            0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, numpy_image)
         elif bpc == 1:
+            if (self.in_frame.type != 'Y' and
+                        self.in_frame.type != self.last_frame_type):
+                self.owner.logger.warning(
+                    'Expected Y input, got %s', self.in_frame.type)
             GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
-                            0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, self.image)
+                            0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, numpy_image)
+        else:
+            self.owner.logger.critical(
+                'Cannot display %s frame with %d components',
+                self.in_frame.type, bpc)
+            self.owner.stop()
+            return
+        self.last_frame_type = self.in_frame.type
         GL.glBegin(GL.GL_QUADS)
         GL.glTexCoord2i(0, 0)
         GL.glVertex2i(0, 1)
@@ -270,7 +281,6 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         GL.glTexCoord2i(1, 0)
         GL.glVertex2i(1, 1)
         GL.glEnd()
-        GL.glFlush()
 
 
 class QtDisplay(Transformer):
@@ -279,8 +289,8 @@ class QtDisplay(Transformer):
         self.config['expand'] = ConfigInt(min_value=1, dynamic=True)
         self.config['framerate'] = ConfigInt(min_value=1, value=25)
         self.config['stats'] = ConfigEnum(('off', 'on'))
-        self.last_frame_type = None
-        self.display = SimpleDisplay(None, Qt.Window | Qt.WindowStaysOnTopHint)
+        self.display = SimpleDisplay(
+            self, None, Qt.Window | Qt.WindowStaysOnTopHint)
 
     def start(self):
         super(QtDisplay, self).start()
@@ -294,64 +304,6 @@ class QtDisplay(Transformer):
         super(QtDisplay, self).join()
         self.display.join()
 
-    def process_start(self):
-        super(QtDisplay, self).process_start()
-        self.display.set_framerate(self.config['framerate'])
-        self.display.set_show_stats(self.config['stats'] == 'on')
-
     def transform(self, in_frame, out_frame):
-        if self.update_config():
-            self.display.set_framerate(self.config['framerate'])
-            self.display.set_show_stats(self.config['stats'] == 'on')
-            shrink = self.config['shrink']
-            expand = self.config['expand']
-            self.display.set_scale(float(expand) / float(shrink))
-        numpy_image = in_frame.as_numpy(dtype=numpy.uint8)
-        if not numpy_image.flags.contiguous:
-            numpy_image = numpy.ascontiguousarray(numpy_image)
-        ylen, xlen, bpc = numpy_image.shape
-        if bpc == 3:
-            if in_frame.type != 'RGB' and in_frame.type != self.last_frame_type:
-                self.logger.warning('Expected RGB input, got %s', in_frame.type)
-        elif bpc == 1:
-            if in_frame.type != 'Y' and in_frame.type != self.last_frame_type:
-                self.logger.warning('Expected Y input, got %s', in_frame.type)
-        else:
-            self.logger.critical(
-                'Cannot display %s frame with %d components', in_frame.type, bpc)
-            return False
-        self.last_frame_type = in_frame.type
-        self.display.show_frame(in_frame, numpy_image)
+        self.display.show_frame(in_frame)
         return True
-
-def main():
-    import logging
-    from ..io.rawfilereader import RawFileReader
-    from ..colourspace.yuvtorgb import YUVtoRGB
-    from guild.actor import pipeline, start, stop, wait_for
-
-    if len(sys.argv) != 2:
-        print('usage: %s yuv_video_file' % sys.argv[0])
-        return 1
-    logging.basicConfig(level=logging.DEBUG)
-    print('Qt display demonstration')
-    QtGui.QApplication.setAttribute(Qt.AA_X11InitThreads)
-    app = QtGui.QApplication([])
-    source = RawFileReader()
-    config = source.get_config()
-    config['path'] = sys.argv[1]
-    config['looping'] = 'reverse'
-    source.set_config(config)
-    conv = YUVtoRGB()
-    sink = QtDisplay()
-    pipeline(source, conv, sink)
-    start(source, conv, sink)
-    try:
-        app.exec_()
-    finally:
-        stop(source, conv, sink)
-        wait_for(source, conv, sink)
-    return 0
-
-if __name__ == '__main__':
-    sys.exit(main())
