@@ -47,6 +47,7 @@ __all__ = ['QtDisplay']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque
+import threading
 import time
 
 from guild.actor import actor_method
@@ -62,16 +63,19 @@ from pyctools.core.base import Transformer
 class BufferSwapper(QtCore.QObject):
     done_swap = QtCore.pyqtSignal(float)
 
-    def __init__(self, widget, parent=None):
+    def __init__(self, widget, ctx_lock, parent=None):
         super(BufferSwapper, self).__init__(parent)
         self.widget = widget
+        self.ctx_lock = ctx_lock
 
     @QtCore.pyqtSlot()
     def swap(self):
+        self.ctx_lock.acquire()
         self.widget.makeCurrent()
         self.widget.swapBuffers()
         now = time.time()
         self.widget.doneCurrent()
+        self.ctx_lock.release()
         self.done_swap.emit(now)
 
 
@@ -106,15 +110,15 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         self._display_period = 1.0 / float(display_freq)
         self._frame_period = 1.0 / 25.0
         self._next_frame_due = 0.0
-        self._swapping = False
         self.last_frame_type = None
         # create timer to show frames at regular intervals
         self.timer = QtCore.QTimer(self)
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.display_frame)
         # create separate thread to swap buffers
+        self.ctx_lock = threading.RLock()
         self.swapper_thread = QtCore.QThread()
-        self.swapper = BufferSwapper(self)
+        self.swapper = BufferSwapper(self, self.ctx_lock)
         self.swapper.moveToThread(self.swapper_thread)
         self.do_swap.connect(self.swapper.swap)
         self.swapper.done_swap.connect(self.done_swap)
@@ -126,8 +130,8 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         start = time.time()
         for n in range(5):
             self.swapBuffers()
-        display_freq = int(0.5 + (5.0 / (time.time() - start)))
         self.doneCurrent()
+        display_freq = int(0.5 + (5.0 / (time.time() - start)))
         return display_freq
 
     def onStop(self):
@@ -144,7 +148,12 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
     @actor_method
     def show_frame(self, frame):
         self.in_queue.append(frame)
-        if self._swapping or len(self.in_queue) > 1:
+        if len(self.in_queue) > 1:
+            # no need to set timer
+            return
+        if self.ctx_lock.acquire(False):
+            self.ctx_lock.release()
+        else:
             # no need to set timer
             return
         if self._next_frame_due:
@@ -168,7 +177,6 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
 
     @QtCore.pyqtSlot(float)
     def done_swap(self, now):
-        self._swapping = False
         self.timer.stop()
         margin = self._display_period / 2.0
         # adjust display clock
@@ -239,8 +247,12 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
             self.show()
         self.updateGL()
         self.doneCurrent()
-        self._swapping = True
         self.do_swap.emit()
+
+    def glInit(self):
+        self.ctx_lock.acquire()
+        super(SimpleDisplay, self).glInit()
+        self.ctx_lock.release()
 
     def initializeGL(self):
         GL.glClear(GL.GL_COLOR_BUFFER_BIT)
@@ -254,6 +266,11 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         GL.glTexParameterf(
             GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
 
+    def resizeEvent(self, event):
+        self.ctx_lock.acquire()
+        super(SimpleDisplay, self).resizeEvent(event)
+        self.ctx_lock.release()
+
     def resizeGL(self, w, h):
         GL.glViewport(0, 0, w, h)
         GL.glMatrixMode(GL.GL_PROJECTION)
@@ -261,6 +278,16 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         GL.glOrtho(0, 1, 0, 1, -1, 1)
         GL.glMatrixMode(GL.GL_MODELVIEW)
         GL.glLoadIdentity()
+
+    def paintEvent(self, event):
+        self.ctx_lock.acquire()
+        super(SimpleDisplay, self).paintEvent(event)
+        self.ctx_lock.release()
+
+    def glDraw(self):
+        self.ctx_lock.acquire()
+        super(SimpleDisplay, self).glDraw()
+        self.ctx_lock.release()
 
     def paintGL(self):
         if not self.in_frame:
