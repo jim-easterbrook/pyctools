@@ -111,6 +111,7 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         self._frame_period = 1.0 / 25.0
         self._next_frame_due = 0.0
         self.last_frame_type = None
+        self.scale = -1.0
         # create timer to show frames at regular intervals
         self.timer = QtCore.QTimer(self)
         self.timer.setSingleShot(True)
@@ -148,6 +149,26 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
     @actor_method
     def show_frame(self, frame):
         self.in_queue.append(frame)
+        # get latest config
+        self.owner.update_config()
+        scale = (float(self.owner.config['expand']) /
+                 float(self.owner.config['shrink']))
+        if self.scale != scale:
+            self.scale = scale
+            h, w = frame.size()
+            self.resize(w * scale, h * scale)
+        self._frame_period = 1.0 / float(self.owner.config['framerate'])
+        self.show_stats = self.owner.config['stats'] == 'on'
+        sync = self.owner.config['sync'] == 'on'
+        if self.sync_swap != sync:
+            self.sync_swap = sync
+            if self.sync_swap_interval >= 0:
+                self.ctx_lock.acquire()
+                self.makeCurrent()
+                fmt = self.format()
+                fmt.setSwapInterval(self.sync_swap_interval)
+                self.setFormat(fmt)
+                self.ctx_lock.release()
         if len(self.in_queue) > 1:
             # no need to set timer
             return
@@ -167,6 +188,7 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
             self._next_frame_due = now
             self._display_clock = now
             self._frame_count = -2
+            self.show()
         if self._next_frame_due > now + self._frame_period:
             # set timer to show frame later
             sleep = self._next_frame_due - now
@@ -212,39 +234,19 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
 
     @QtCore.pyqtSlot()
     def display_frame(self):
-        # get latest config
-        self.owner.update_config()
-        framerate = self.owner.config['framerate']
-        self._frame_period = 1.0 / float(framerate)
-        stats = self.owner.config['stats'] == 'on'
-        shrink = self.owner.config['shrink']
-        expand = self.owner.config['expand']
-        scale = float(expand) / float(shrink)
-        sync = self.owner.config['sync'] == 'on'
-        if sync != self.sync_swap:
-            self.sync_swap = sync
-            if self.sync_swap_interval >= 0:
-                fmt = self.format()
-                fmt.setSwapInterval(self.sync_swap_interval)
-                self.setFormat(fmt)
-        # get frame to show
         self.in_frame = self.in_queue.popleft()
         self._next_frame_due += self._frame_period
         self._frame_count += 1
         if self._frame_count <= 0:
             self._block_start = self._next_frame_due
         if self._next_frame_due - self._block_start > 5.0:
-            if stats:
+            if self.show_stats:
                 frame_rate = float(self._frame_count) / (
                     self._next_frame_due - self._block_start)
                 self.owner.logger.warning(
                     'Average frame rate: %.2fHz', frame_rate)
             self._frame_count = 0
             self._block_start = self._next_frame_due
-        h, w = self.in_frame.size()
-        self.resize(w * scale, h * scale)
-        if not self.isVisible():
-            self.show()
         self.updateGL()
         self.doneCurrent()
         self.do_swap.emit()
