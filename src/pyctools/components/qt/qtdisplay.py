@@ -147,13 +147,18 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         if self._swapping or len(self.in_queue) > 1:
             # no need to set timer
             return
-        now = time.time()
-        if not self._next_frame_due:
+        if self._next_frame_due:
+            now = time.time()
+        else:
             # initialise
+            self.makeCurrent()
+            self.swapBuffers()
+            self.swapBuffers()
+            now = time.time()
             self._next_frame_due = now
             self._display_clock = now
             self._frame_count = -2
-        if self._next_frame_due > now + 0.002:
+        if self._next_frame_due > now + self._frame_period:
             # set timer to show frame later
             sleep = self._next_frame_due - now
             self.timer.start(int(sleep * 1000.0))
@@ -173,9 +178,10 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
             error = self._display_clock - now
             self._display_clock -= error / 100.0
             self._display_period -= error / 10000.0
-            # adjust frame clock
-            while self._next_frame_due < self._display_clock - margin:
-                self._next_frame_due += self._display_period
+        # adjust frame clock
+        while self._next_frame_due < self._display_clock - margin:
+            self._next_frame_due += self._display_period
+        if self.sync_swap and self.sync_swap_interval >= 0:
             error = self._next_frame_due - self._display_clock
             while error > margin:
                 error -= self._display_period
@@ -184,10 +190,13 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         if not self.in_queue:
             # nothing to do
             return
-        now = time.time()
-        if self._next_frame_due > now + 0.002:
+        if self._next_frame_due > self._display_clock + self._display_period:
             # set timer to show frame later
-            sleep = self._next_frame_due - now
+            skip_frames = int(
+                (self._next_frame_due - self._display_clock) /
+                self._display_period)
+            sleep = (self._display_clock + (skip_frames * self._display_period)
+                     - time.time())
             self.timer.start(int(sleep * 1000.0))
         else:
             # show frame immmediately
