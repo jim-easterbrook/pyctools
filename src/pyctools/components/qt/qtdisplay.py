@@ -37,6 +37,7 @@ Config
 ``expand``     int  Image up-conversion factor.
 ``shrink``     int  Image down-conversion factor.
 ``framerate``  int  Target frame rate.
+``repeat``     str  Repeat frames until next one arrives. Can be ``'off'`` or ``'on'``.
 ``sync``       str  Synchronise to video card frame rate. Can be ``'off'`` or ``'on'``.
 ``stats``      str  Show actual frame rate statistics. Can be ``'off'`` or ``'on'``.
 =============  ===  ====
@@ -86,7 +87,7 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         super(SimpleDisplay, self).__init__(parent, None, flags)
         self.owner = owner
         self.in_queue = deque()
-        self.in_frame = None
+        self.numpy_image = None
         self.setAutoBufferSwap(False)
         # if user has set "tear free video" or similar, we might not
         # want to increase swap interval any further
@@ -112,10 +113,6 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         self._next_frame_due = 0.0
         self.last_frame_type = None
         self.scale = -1.0
-        # create timer to show frames at regular intervals
-        self.timer = QtCore.QTimer(self)
-        self.timer.setSingleShot(True)
-        self.timer.timeout.connect(self.display_frame)
         # create separate thread to swap buffers
         self.ctx_lock = threading.RLock()
         self.swapper_thread = QtCore.QThread()
@@ -133,11 +130,11 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
             self.swapBuffers()
         self.doneCurrent()
         display_freq = int(0.5 + (5.0 / (time.time() - start)))
+        self.owner.logger.info('Display frequency: %dHz', display_freq)
         return display_freq
 
     def onStop(self):
         super(SimpleDisplay, self).onStop()
-        self.timer.stop()
         self.swapper.blockSignals(True)
         self.swapper_thread.quit()
         self.swapper_thread.wait()
@@ -149,37 +146,33 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
     @actor_method
     def show_frame(self, frame):
         self.in_queue.append(frame)
+        first_time = not self._next_frame_due
         # get latest config
-        self.owner.update_config()
-        scale = (float(self.owner.config['expand']) /
-                 float(self.owner.config['shrink']))
-        if self.scale != scale:
-            self.scale = scale
-            h, w = frame.size()
-            self.resize(w * scale, h * scale)
-        self._frame_period = 1.0 / float(self.owner.config['framerate'])
-        self.show_stats = self.owner.config['stats'] == 'on'
-        sync = self.owner.config['sync'] == 'on'
-        if self.sync_swap != sync:
-            self.sync_swap = sync
-            if self.sync_swap_interval >= 0:
-                self.ctx_lock.acquire()
-                self.makeCurrent()
-                fmt = self.format()
-                fmt.setSwapInterval(self.sync_swap_interval)
-                self.setFormat(fmt)
-                self.ctx_lock.release()
-        if len(self.in_queue) > 1:
-            # no need to set timer
-            return
-        if self.ctx_lock.acquire(False):
-            self.ctx_lock.release()
-        else:
-            # no need to set timer
-            return
-        if self._next_frame_due:
-            now = time.time()
-        else:
+        if first_time or self.owner.update_config():
+            scale = (float(self.owner.config['expand']) /
+                     float(self.owner.config['shrink']))
+            if self.scale != scale:
+                self.scale = scale
+                h, w = frame.size()
+                self.resize(w * scale, h * scale)
+            self._frame_period = 1.0 / float(self.owner.config['framerate'])
+            self.show_stats = self.owner.config['stats'] == 'on'
+            self._repeat = self.owner.config['repeat'] == 'on'
+            sync = (self.sync_swap_interval >= 0 and
+                    self.owner.config['sync'] == 'on')
+            if self.sync_swap != sync:
+                self.sync_swap = sync
+                if self.sync_swap_interval > 0:
+                    self.ctx_lock.acquire()
+                    self.makeCurrent()
+                    fmt = self.format()
+                    if self.sync_swap:
+                        fmt.setSwapInterval(self.sync_swap_interval)
+                    else:
+                        fmt.setSwapInterval(0)
+                    self.setFormat(fmt)
+                    self.ctx_lock.release()
+        if first_time:
             # initialise
             self.makeCurrent()
             self.swapBuffers()
@@ -188,53 +181,61 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
             self._next_frame_due = now
             self._display_clock = now
             self._frame_count = -2
+            self.done_swap(now)
             self.show()
-        if self._next_frame_due > now + self._frame_period:
-            # set timer to show frame later
-            sleep = self._next_frame_due - now
-            self.timer.start(int(sleep * 1000.0))
-        else:
-            # show frame immmediately
-            self.display_frame()
 
     @QtCore.pyqtSlot(float)
     def done_swap(self, now):
-        self.timer.stop()
         margin = self._display_period / 2.0
         # adjust display clock
         while self._display_clock < now - margin:
             self._display_clock += self._display_period
-        if self.sync_swap and self.sync_swap_interval >= 0:
+        if self.sync_swap:
             error = self._display_clock - now
             self._display_clock -= error / 100.0
             self._display_period -= error / 10000.0
         # adjust frame clock
         while self._next_frame_due < self._display_clock - margin:
             self._next_frame_due += self._display_period
-        if self.sync_swap and self.sync_swap_interval >= 0:
+        if self.sync_swap:
             error = self._next_frame_due - self._display_clock
             while error > margin:
                 error -= self._display_period
             if abs(error) < self._frame_period * self._display_period / 4.0:
                 self._next_frame_due -= error
-        if not self.in_queue:
-            # nothing to do
-            return
-        if self._next_frame_due > self._display_clock + self._display_period:
-            # set timer to show frame later
-            skip_frames = int(
-                (self._next_frame_due - self._display_clock) /
-                self._display_period)
-            sleep = (self._display_clock + (skip_frames * self._display_period)
-                     - time.time())
-            self.timer.start(int(sleep * 1000.0))
-        else:
+        next_slot = self._display_clock + self._display_period
+        if self.in_queue and self._next_frame_due <= next_slot + margin:
             # show frame immmediately
-            self.display_frame()
+            self.next_frame()
+        elif not self._repeat:
+            # show blank frame immediately
+            self.numpy_image = numpy.zeros((1, 1, 1), dtype=numpy.uint8)
+        # refresh displayed image
+        self.updateGL()
+        self.doneCurrent()
+        self.do_swap.emit()
 
-    @QtCore.pyqtSlot()
-    def display_frame(self):
-        self.in_frame = self.in_queue.popleft()
+    def next_frame(self):
+        in_frame = self.in_queue.popleft()
+        self.numpy_image = in_frame.as_numpy(dtype=numpy.uint8)
+        if not self.numpy_image.flags.contiguous:
+            self.numpy_image = numpy.ascontiguousarray(self.numpy_image)
+        bpc = self.numpy_image.shape[2]
+        if bpc == 3:
+            if in_frame.type != 'RGB' and in_frame.type != self.last_frame_type:
+                self.owner.logger.warning(
+                    'Expected RGB input, got %s', in_frame.type)
+        elif bpc == 1:
+            if in_frame.type != 'Y' and in_frame.type != self.last_frame_type:
+                self.owner.logger.warning(
+                    'Expected Y input, got %s', in_frame.type)
+        else:
+            self.owner.logger.critical(
+                'Cannot display %s frame with %d components', in_frame.type, bpc)
+            self.owner.stop()
+            self.numpy_image = None
+            return
+        self.last_frame_type = in_frame.type
         self._next_frame_due += self._frame_period
         self._frame_count += 1
         if self._frame_count <= 0:
@@ -247,9 +248,6 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
                     'Average frame rate: %.2fHz', frame_rate)
             self._frame_count = 0
             self._block_start = self._next_frame_due
-        self.updateGL()
-        self.doneCurrent()
-        self.do_swap.emit()
 
     def glInit(self):
         self.ctx_lock.acquire()
@@ -282,9 +280,8 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         GL.glLoadIdentity()
 
     def paintEvent(self, event):
-        self.ctx_lock.acquire()
-        super(SimpleDisplay, self).paintEvent(event)
-        self.ctx_lock.release()
+        # ignore paint events as widget is redrawn every frame period anyway
+        return
 
     def glDraw(self):
         self.ctx_lock.acquire()
@@ -292,33 +289,17 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         self.ctx_lock.release()
 
     def paintGL(self):
-        if not self.in_frame:
+        if self.numpy_image is None:
             return
-        numpy_image = self.in_frame.as_numpy(dtype=numpy.uint8)
-        if not numpy_image.flags.contiguous:
-            numpy_image = numpy.ascontiguousarray(numpy_image)
-        ylen, xlen, bpc = numpy_image.shape
+        ylen, xlen, bpc = self.numpy_image.shape
         if bpc == 3:
-            if (self.in_frame.type != 'RGB' and
-                        self.in_frame.type != self.last_frame_type):
-                self.owner.logger.warning(
-                    'Expected RGB input, got %s', self.in_frame.type)
             GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
-                            0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, numpy_image)
+                            0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, self.numpy_image)
         elif bpc == 1:
-            if (self.in_frame.type != 'Y' and
-                        self.in_frame.type != self.last_frame_type):
-                self.owner.logger.warning(
-                    'Expected Y input, got %s', self.in_frame.type)
             GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
-                            0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, numpy_image)
+                            0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, self.numpy_image)
         else:
-            self.owner.logger.critical(
-                'Cannot display %s frame with %d components',
-                self.in_frame.type, bpc)
-            self.owner.stop()
             return
-        self.last_frame_type = self.in_frame.type
         GL.glBegin(GL.GL_QUADS)
         GL.glTexCoord2i(0, 0)
         GL.glVertex2i(0, 1)
@@ -338,6 +319,8 @@ class QtDisplay(Transformer):
         self.config['framerate'] = ConfigInt(min_value=1, value=25)
         self.config['sync'] = ConfigEnum(('off', 'on'))
         self.config['sync'] = 'on'
+        self.config['repeat'] = ConfigEnum(('off', 'on'))
+        self.config['repeat'] = 'on'
         self.config['stats'] = ConfigEnum(('off', 'on'))
         self.display = SimpleDisplay(
             self, None, Qt.Window | Qt.WindowStaysOnTopHint)
