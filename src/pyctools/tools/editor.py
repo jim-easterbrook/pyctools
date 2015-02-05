@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Jim Easterbrook  jim@jim-easterbrook.me.uk
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -183,7 +183,7 @@ class ConfigParentWidget(QtGui.QWidget):
         self.setLayout(QtGui.QFormLayout())
         for name in sorted(self.config.value):
             child = self.config.value[name]
-            widget = ConfigWidget(child)
+            widget = config_widget[type(child)](child)
             self.layout().addRow(name, widget)
 
 class ConfigGrandParentWidget(QtGui.QTabWidget):
@@ -192,26 +192,18 @@ class ConfigGrandParentWidget(QtGui.QTabWidget):
         self.config = config
         for name in sorted(self.config.value):
             child = self.config.value[name]
-            widget = ConfigWidget(child)
+            widget = config_widget[type(child)](child)
             self.addTab(widget, name)
 
-def ConfigWidget(config):
-    if isinstance(config, ConfigGrandParent):
-        return ConfigGrandParentWidget(config)
-    elif isinstance(config, ConfigParent):
-        return ConfigParentWidget(config)
-    elif isinstance(config, ConfigPath):
-        return ConfigPathWidget(config)
-    elif isinstance(config, ConfigInt):
-        return ConfigIntWidget(config)
-    elif isinstance(config, ConfigFloat):
-        return ConfigFloatWidget(config)
-    elif isinstance(config, ConfigStr):
-        return ConfigStrWidget(config)
-    elif isinstance(config, ConfigEnum):
-        return ConfigEnumWidget(config)
-    else:
-        raise RuntimeError('Unknown config type %s', config.__class__.__name__)
+config_widget = {
+    ConfigEnum        : ConfigEnumWidget,
+    ConfigFloat       : ConfigFloatWidget,
+    ConfigGrandParent : ConfigGrandParentWidget,
+    ConfigInt         : ConfigIntWidget,
+    ConfigParent      : ConfigParentWidget,
+    ConfigPath        : ConfigPathWidget,
+    ConfigStr         : ConfigStrWidget,
+    }
 
 class ConfigDialog(QtGui.QDialog):
     def __init__(self, parent):
@@ -222,7 +214,7 @@ class ConfigDialog(QtGui.QDialog):
         self.setLayout(QtGui.QGridLayout())
         self.layout().setColumnStretch(0, 1)
         # central area
-        main_area = ConfigWidget(self.config)
+        main_area = config_widget[type(self.config)](self.config)
         self.layout().addWidget(main_area, 0, 0, 1, 4)
         # buttons
         cancel_button = QtGui.QPushButton('Cancel')
