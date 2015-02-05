@@ -154,8 +154,7 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
                      float(self.owner.config['shrink']))
             if self.scale != scale:
                 self.scale = scale
-                h, w = frame.size()
-                self.resize(w * scale, h * scale)
+                self.frame_size = None
             self._frame_period = 1.0 / float(self.owner.config['framerate'])
             self.show_stats = self.owner.config['stats'] == 'on'
             self._repeat = self.owner.config['repeat'] == 'on'
@@ -173,6 +172,10 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
                         fmt.setSwapInterval(0)
                     self.setFormat(fmt)
                     self.ctx_lock.release()
+        h, w = frame.size()
+        if self.frame_size != (w, h):
+            self.frame_size = w, h
+            self.resize(w * self.scale, h * self.scale)
         if first_time:
             # initialise
             self.makeCurrent()
