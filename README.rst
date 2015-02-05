@@ -19,7 +19,7 @@ Requirements
 * `gexiv2 <https://wiki.gnome.org/Projects/gexiv2>`_ to handle metadata.
 * `OpenCV <http://opencv.org/>`_ python bindings (optional) for advanced image processing.
 * `FFmpeg <https://www.ffmpeg.org/>`_ (optional) to read and write video files.
-* `PyQt4 <http://www.riverbankcomputing.com/software/pyqt/intro>`_ (optional) graphic toolkit used by the Pyctools visual editor.
+* `PyQt4 <http://www.riverbankcomputing.com/software/pyqt/intro>`_ and `PyOpenGL <http://pyopengl.sourceforge.net/>`_ (optional) graphic toolkit used by the Pyctools visual editor and the Qt display component.
 
 Installation
 ------------
@@ -31,7 +31,7 @@ Licence
 
 | Pyctools - a picture processing algorithm development kit.
 | http://github.com/jim-easterbrook/pyctools
-| Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+| Copyright (C) 2014-15  Jim Easterbrook  jim@jim-easterbrook.me.uk
 
 This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as

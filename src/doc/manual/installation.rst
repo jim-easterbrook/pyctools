@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+   Copyright (C) 2014-15  Jim Easterbrook  jim@jim-easterbrook.me.uk
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -116,6 +116,17 @@ If it is not installed then the Pyctools visual editor will not be usable.
 If PyQt4 is already installed the ``python -c 'import PyQt4'`` command will run without error.
 
 PyQt4 should be installable with your system's package manager.
+
+`PyOpenGL <http://pyopengl.sourceforge.net/>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+PyOpenGL is an optional dependency.
+If it is not installed then the Qt display component will not be usable.
+
+If PyOpenGL is already installed the ``python -c 'import PyOpenGL'`` command will run without error.
+
+PyOpenGL should be installable with your system's package manager.
+It may be called ``python-opengl`` or similar.
 
 `pillow <http://python-pillow.github.io/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
