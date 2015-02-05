@@ -124,7 +124,8 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
 
     def measure_display_rate(self):
         self.makeCurrent()
-        self.swapBuffers()
+        for n in range(3):
+            self.swapBuffers()
         start = time.time()
         for n in range(5):
             self.swapBuffers()
@@ -175,8 +176,8 @@ class SimpleDisplay(QtActorMixin, QtOpenGL.QGLWidget):
         if first_time:
             # initialise
             self.makeCurrent()
-            self.swapBuffers()
-            self.swapBuffers()
+            for n in range(3):
+                self.swapBuffers()
             now = time.time()
             self._next_frame_due = now
             self._display_clock = now
