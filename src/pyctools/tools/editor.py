@@ -207,7 +207,7 @@ config_widget = {
 
 class ConfigDialog(QtGui.QDialog):
     def __init__(self, parent):
-        super(ConfigDialog, self).__init__()
+        super(ConfigDialog, self).__init__(flags=Qt.WindowStaysOnTopHint)
         self.setWindowTitle('%s configuration' % parent.name)
         self.component = parent
         self.config = self.component.obj.get_config()
