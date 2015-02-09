@@ -205,9 +205,9 @@ class Component(Actor, ConfigMixin):
         for input in self.input_buffer.values():
             in_frame = input.peek()
             if not in_frame:
+                self.stop()
                 for output in self.outputs:
                     getattr(self, output)(None)
-                self.stop()
                 return
             frame_no = max(frame_no, in_frame.frame_no)
         # discard old frames that can never be used
