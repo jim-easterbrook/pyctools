@@ -26,11 +26,12 @@ want to do some spatial processing, e.g. taking a Fourier transform.
 In ``inverse`` mode pairs of half-height frames are reassembled into
 single full height frames.
 
-===========  ===  ====
+============  ===  ====
 Config
-===========  ===  ====
-``inverse``  str  Can be set to ``off`` or ``on``.
-===========  ===  ====
+============  ===  ====
+``inverse``   str  Can be set to ``off`` or ``on``.
+``topfirst``  str  Top field first. Can be set to ``off`` or ``on``.
+============  ===  ====
 
 """
 
@@ -48,16 +49,19 @@ class HalfSize(Component):
 
     def initialise(self):
         self.config['inverse'] = ConfigEnum(('off', 'on'))
+        self.config['topfirst'] = ConfigEnum(('off', 'on'))
+        self.config['topfirst'] = 'on'
         self.first_field = True
 
     def process_frame(self):
         self.update_config()
+        top_field_first = self.config['topfirst'] == 'on'
         if self.config['inverse'] == 'on':
-            self.do_inverse()
+            self.do_inverse(top_field_first)
         else:
-            self.do_forward()
+            self.do_forward(top_field_first)
 
-    def do_forward(self):
+    def do_forward(self, top_field_first):
         if self.first_field:
             in_frame = self.input_buffer['input'].peek()
         else:
@@ -69,15 +73,16 @@ class HalfSize(Component):
         audit += 'data = HalfSizeDeinterlace(data)\n'
         out_frame.metadata.set('audit', audit)
         out_frame.frame_no = in_frame.frame_no * 2
-        if self.first_field:
+        if self.first_field == top_field_first:
             out_frame.data = in_data[0::2]
         else:
             out_frame.data = in_data[1::2]
+        if not self.first_field:
             out_frame.frame_no += 1
         self.output(out_frame)
         self.first_field = not self.first_field
 
-    def do_inverse(self):
+    def do_inverse(self, top_field_first):
         in_frame = self.input_buffer['input'].get()
         if self.first_field:
             self.first_field_data = in_frame.as_numpy()
@@ -93,7 +98,11 @@ class HalfSize(Component):
         out_frame.data = numpy.empty(
             [self.first_field_data.shape[0] + second_field_data.shape[0]] +
             list(second_field_data.shape[1:]), dtype=second_field_data.dtype)
-        out_frame.data[0::2] = self.first_field_data
-        out_frame.data[1::2] = second_field_data
+        if top_field_first:
+            out_frame.data[0::2] = self.first_field_data
+            out_frame.data[1::2] = second_field_data
+        else:
+            out_frame.data[1::2] = self.first_field_data
+            out_frame.data[0::2] = second_field_data
         self.output(out_frame)
         self.first_field = not self.first_field

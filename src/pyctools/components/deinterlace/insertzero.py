@@ -24,6 +24,12 @@ the lines in each are filled with zero. It can be used for viewing
 pictures directly but you probably want to follow it with a suitable
 filter.
 
+============  ===  ====
+Config
+============  ===  ====
+``topfirst``  str  Top field first. Can be set to ``off`` or ``on``.
+============  ===  ====
+
 """
 
 __all__ = ['InsertZero']
@@ -39,9 +45,13 @@ class InsertZero(Component):
     with_outframe_pool = True
 
     def initialise(self):
+        self.config['topfirst'] = ConfigEnum(('off', 'on'))
+        self.config['topfirst'] = 'on'
         self.first_field = True
 
     def process_frame(self):
+        self.update_config()
+        top_field_first = self.config['topfirst'] == 'on'
         if self.first_field:
             in_frame = self.input_buffer['input'].peek()
         else:
@@ -54,10 +64,11 @@ class InsertZero(Component):
         out_frame.metadata.set('audit', audit)
         out_frame.frame_no = in_frame.frame_no * 2
         out_frame.data = numpy.zeros(in_data.shape, dtype=pt_float)
-        if self.first_field:
+        if self.first_field == top_field_first:
             out_frame.data[0::2] = in_data[0::2]
         else:
             out_frame.data[1::2] = in_data[1::2]
+        if not self.first_field:
             out_frame.frame_no += 1
         self.output(out_frame)
         self.first_field = not self.first_field
