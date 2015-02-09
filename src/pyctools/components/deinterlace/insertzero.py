@@ -58,16 +58,16 @@ class InsertZero(Component):
             in_frame = self.input_buffer['input'].get()
         out_frame = self.outframe_pool['output'].get()
         out_frame.initialise(in_frame)
-        in_data = in_frame.as_numpy()
+        self.in_data = in_frame.as_numpy()
         audit = out_frame.metadata.get('audit')
         audit += 'data = InsertZeroDeinterlace(data)\n'
         out_frame.metadata.set('audit', audit)
         out_frame.frame_no = in_frame.frame_no * 2
-        out_frame.data = numpy.zeros(in_data.shape, dtype=pt_float)
+        out_frame.data = numpy.zeros(self.in_data.shape, dtype=pt_float)
         if self.first_field == top_field_first:
-            out_frame.data[0::2] = in_data[0::2]
+            out_frame.data[0::2] = self.in_data[0::2]
         else:
-            out_frame.data[1::2] = in_data[1::2]
+            out_frame.data[1::2] = self.in_data[1::2]
         if not self.first_field:
             out_frame.frame_no += 1
         self.output(out_frame)
