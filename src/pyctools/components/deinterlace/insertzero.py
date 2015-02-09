@@ -40,7 +40,6 @@ import numpy
 
 from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Component
-from pyctools.core.types import pt_float
 
 class InsertZero(Component):
     with_outframe_pool = True
@@ -71,7 +70,8 @@ class InsertZero(Component):
         audit += 'data = InsertZeroDeinterlace(data)\n'
         out_frame.metadata.set('audit', audit)
         out_frame.frame_no = in_frame.frame_no * 2
-        out_frame.data = numpy.zeros(self.in_data.shape, dtype=pt_float)
+        out_frame.data = numpy.zeros(
+            self.in_data.shape, dtype=self.in_data.dtype)
         if self.first_field == top_field_first:
             out_frame.data[0::2] = self.in_data[0::2]
         else:

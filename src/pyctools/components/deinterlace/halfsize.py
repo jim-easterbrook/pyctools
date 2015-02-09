@@ -42,7 +42,6 @@ import numpy
 
 from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Component
-from pyctools.core.types import pt_float
 
 class HalfSize(Component):
     with_outframe_pool = True
