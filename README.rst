@@ -8,6 +8,8 @@ It works with stills or video, and utilises popular libraries such as `Python Im
 
 .. image:: https://pythonhosted.org/pyctools.core/_images/editor_8.png
 
+Example projects using pyctools include `pyctools-pal <https://github.com/jim-easterbrook/pyctools-pal>`_ (a simulation of the `Transform PAL decoder <http://www.jim-easterbrook.me.uk/pal/>`_) and `pyctools-demo <https://github.com/jim-easterbrook/pyctools-demo>`_ (demonstrations of some simple processing).
+
 Requirements
 ------------
 
