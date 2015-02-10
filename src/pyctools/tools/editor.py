@@ -831,20 +831,15 @@ from pyctools.core.compound import Compound
                 of.write('import %s\n' % module)
             of.write("""
 class Network(object):
-    def __init__(self):
-        self.components = \\
+    components = \\
 %s
-        self.linkages = \\
+    linkages = \\
 %s
 
     def make(self):
         comps = {}
         for name, component in self.components.items():
-            comps[name] = eval(component['class'])()
-            cnf = comps[name].get_config()
-            for key, value in eval(component['config']).items():
-                cnf[key] = value
-            comps[name].set_config(cnf)
+            comps[name] = eval(component['class'])(**eval(component['config']))
         return Compound(linkages=self.linkages, **comps)
 
 if __name__ == '__main__':
