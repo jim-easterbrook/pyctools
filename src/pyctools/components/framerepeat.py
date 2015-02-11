@@ -39,6 +39,7 @@ class FrameRepeat(Component):
     def initialise(self):
         self.config['count'] = ConfigInt(min_value=1)
         self.repeat_count = 0
+        self.frame_no = 0
 
     def process_frame(self):
         self.update_config()
@@ -55,4 +56,6 @@ class FrameRepeat(Component):
         audit += 'data = FrameRepeat(data)\n'
         audit += '    count = {}\n'.format(count)
         out_frame.metadata.set('audit', audit)
+        out_frame.frame_no = self.frame_no
+        self.frame_no += 1
         self.output(out_frame)
