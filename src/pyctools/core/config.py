@@ -1,21 +1,6 @@
-#!/usr/bin/env python
-#  Pyctools - a picture processing algorithm development kit.
-#  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
-#
-#  This program is free software: you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License as
-#  published by the Free Software Foundation, either version 3 of the
-#  License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#  General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see
-#  <http://www.gnu.org/licenses/>.
+# This file is part of pyctools http://github.com/jim-easterbrook/pyctools
+# Copyright pyctools contributors
+# Released under the GNU GPL3 licence
 
 """Component configuration classes.
 
@@ -75,6 +60,7 @@ __docformat__ = 'restructuredtext en'
 
 import collections
 import copy
+import os.path
 
 class ConfigLeafNode(object):
     """Base class for configuration nodes.
@@ -96,7 +82,9 @@ class ConfigLeafNode(object):
         self.dynamic = dynamic
         self.min_value = min_value
         self.max_value = max_value
-        self.default = value
+        if value is not None:
+            self.set(value)
+        self.default = self.value
 
     def parser_add(self, parser, key):
         parser.add_argument('--' + key, default=self.value, **self.parser_kw)
@@ -134,8 +122,16 @@ class ConfigPath(ConfigLeafNode):
     """
     parser_kw = {'metavar' : 'path'}
 
+    def __init__(self, exists=True, **kw):
+        self.exists = exists
+        super(ConfigPath, self).__init__(**kw)
+
     def validate(self, value):
-        return isinstance(value, str)
+        if not isinstance(value, str):
+            return False
+        if self.exists:
+            return os.path.isfile(value)
+        return os.path.isdir(os.path.dirname(value))
 
 
 class ConfigInt(ConfigLeafNode):
@@ -202,12 +198,12 @@ class ConfigEnum(ConfigLeafNode):
 
     """
     def __init__(self, choices, extendable=False, **kw):
-        super(ConfigEnum, self).__init__(value=choices[0], **kw)
         self.choices = list(choices)
         self.extendable = extendable
         self.parser_kw = {'metavar' : 'str'}
         if not self.extendable:
             self.parser_kw['choices'] = self.choices
+        super(ConfigEnum, self).__init__(value=choices[0], **kw)
 
     def validate(self, value):
         if self.extendable and value not in self.choices:
