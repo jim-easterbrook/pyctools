@@ -82,8 +82,8 @@ class ConfigLeafNode(object):
         self.dynamic = dynamic
         self.min_value = min_value
         self.max_value = max_value
-        if value is not None:
-            self.set(value)
+        if value is not None and self.validate(value):
+            self.value = value
         self.default = self.value
 
     def parser_add(self, parser, key):
