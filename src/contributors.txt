@@ -1,0 +1,10 @@
+# This file is part of pyctools http://github.com/jim-easterbrook/pyctools
+# Copyright pyctools contributors
+# Released under the GNU GPL3 licence
+
+Pyctools developers
+-------------------
+
+Pyctools copyright is held by the following:
+
+Jim Easterbrook    jim@jim-easterbrook.me.uk
