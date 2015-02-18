@@ -1,39 +1,23 @@
-#!/usr/bin/env python
-#  Pyctools - a picture processing algorithm development kit.
-#  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015  Jim Easterbrook  jim@jim-easterbrook.me.uk
-#
-#  This program is free software: you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License as
-#  published by the Free Software Foundation, either version 3 of the
-#  License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#  General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see
-#  <http://www.gnu.org/licenses/>.
+# This file is part of pyctools http://github.com/jim-easterbrook/pyctools
+# Copyright pyctools contributors
+# Released under the GNU GPL3 licence
 
-"""Zero-inserting interlace to sequential converter.
+"""Simple interlace to sequential converter.
 
-This simply rearranges each interlaced frame into two frames where half
-the lines in each are filled with zero. It can be used for viewing
-pictures directly but you probably want to follow it with a suitable
-filter.
+Insert lines of zero or repeat above line to convert each interlaced
+frame to two sequential frames.
 
 ============  ===  ====
 Config
 ============  ===  ====
+``mode``      str  Can be set to ``insertzero`` or ``repeatline``.
 ``inverse``   str  Can be set to ``off`` or ``on``.
 ``topfirst``  str  Top field first. Can be set to ``off`` or ``on``.
 ============  ===  ====
 
 """
 
-__all__ = ['InsertZero']
+__all__ = ['SimpleDeinterlace']
 __docformat__ = 'restructuredtext en'
 
 import numpy
@@ -41,10 +25,11 @@ import numpy
 from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Component
 
-class InsertZero(Component):
+class SimpleDeinterlace(Component):
     with_outframe_pool = True
 
     def initialise(self):
+        self.config['mode'] = ConfigEnum(('insertzero', 'repeatline'))
         self.config['inverse'] = ConfigEnum(('off', 'on'))
         self.config['topfirst'] = ConfigEnum(('off', 'on'))
         self.config['topfirst'] = 'on'
@@ -52,13 +37,14 @@ class InsertZero(Component):
 
     def process_frame(self):
         self.update_config()
+        repeat_line = self.config['mode'] == 'repeatline'
         top_field_first = self.config['topfirst'] == 'on'
         if self.config['inverse'] == 'on':
             self.do_inverse(top_field_first)
         else:
-            self.do_forward(top_field_first)
+            self.do_forward(top_field_first, repeat_line)
 
-    def do_forward(self, top_field_first):
+    def do_forward(self, top_field_first, repeat_line):
         if self.first_field:
             in_frame = self.input_buffer['input'].peek()
             self.in_data = in_frame.as_numpy()
@@ -67,15 +53,29 @@ class InsertZero(Component):
         out_frame = self.outframe_pool['output'].get()
         out_frame.initialise(in_frame)
         audit = out_frame.metadata.get('audit')
-        audit += 'data = InsertZeroDeinterlace(data)\n'
+        audit += 'data = SimpleDeinterlace(data)\n'
+        audit += '    mode: {}\n'.format(self.config['mode'])
+        audit += '    topfirst: {}\n'.format(self.config['topfirst'])
         out_frame.metadata.set('audit', audit)
         out_frame.frame_no = in_frame.frame_no * 2
-        out_frame.data = numpy.zeros(
+        out_frame.data = numpy.empty(
             self.in_data.shape, dtype=self.in_data.dtype)
+        ylen = self.in_data.shape[0]
         if self.first_field == top_field_first:
             out_frame.data[0::2] = self.in_data[0::2]
+            if repeat_line:
+                stop = ylen - (ylen % 2)
+                out_frame.data[1::2] = self.in_data[0:stop:2]
+            else:
+                out_frame.data[1::2] = 0
         else:
             out_frame.data[1::2] = self.in_data[1::2]
+            if repeat_line:
+                stop = ylen - ((ylen + 1) % 2)
+                out_frame.data[0] = 0
+                out_frame.data[2::2] = self.in_data[1:stop:2]
+            else:
+                out_frame.data[0::2] = 0
         if not self.first_field:
             out_frame.frame_no += 1
         self.output(out_frame)
@@ -91,7 +91,8 @@ class InsertZero(Component):
         out_frame.initialise(in_frame)
         second_field_data = in_frame.as_numpy()
         audit = out_frame.metadata.get('audit')
-        audit += 'data = InsertZeroReinterlace(data)\n'
+        audit += 'data = SimpleReinterlace(data)\n'
+        audit += '    topfirst: {}\n'.format(self.config['topfirst'])
         out_frame.metadata.set('audit', audit)
         out_frame.frame_no = in_frame.frame_no // 2
         out_frame.data = numpy.empty(
