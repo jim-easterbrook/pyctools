@@ -119,7 +119,6 @@ class GLDisplay(QtOpenGL.QGLWidget):
         self.swapper.moveToThread(self.swapper_thread)
         self.do_swap.connect(self.swapper.swap)
         self.swapper.done_swap.connect(self.done_swap)
-        self.swapper_thread.start()
 
     def measure_display_rate(self):
         self.makeCurrent()
@@ -134,6 +133,7 @@ class GLDisplay(QtOpenGL.QGLWidget):
         return display_freq
 
     def startup(self):
+        self.swapper_thread.start()
         self.makeCurrent()
         for n in range(3):
             self.swapBuffers()
