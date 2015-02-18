@@ -4,6 +4,11 @@
 
 """HHI pre-interlace filter.
 
+Coefficients taken from: 'Specification of a Generic Format Converter',
+S. Pigeon, L. Vandendorpe, L. Cuvelier and B. Maison, CEC RACE/HAMLET
+Deliverable no R2110/WP2/DS/S/006/b1, September 1995.
+http://www.stephanepigeon.com/Docs/deliv2.pdf
+
 """
 
 __all__ = ['HHIPreFilter']
