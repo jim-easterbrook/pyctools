@@ -508,14 +508,19 @@ class CompoundIcon(BasicComponentIcon):
                     if isinstance(self.obj._compound_children[src],
                                   pyctools.components.plumbing.busbar.Busbar):
                         x -= 50
-                    y = pos[src][1] - (150 * (
-                        self.obj._compound_children[dest].inputs.index(inbox) -
-                        self.obj._compound_children[src].outputs.index(outbox)))
                     if pos[dest][0] < x:
                         pos[dest][0] = x
                         no_move = False
+                    y_off = (150 * (
+                        self.obj._compound_children[dest].inputs.index(inbox) -
+                        self.obj._compound_children[src].outputs.index(outbox)))
+                    y = pos[src][1] - y_off
                     if pos[dest][1] < y:
                         pos[dest][1] = y
+                        no_move = False
+                    y = pos[dest][1] + y_off
+                    if pos[src][1] < y:
+                        pos[src][1] = y
                         no_move = False
                 if no_move:
                     break
