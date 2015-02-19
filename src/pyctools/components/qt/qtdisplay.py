@@ -34,6 +34,7 @@ supply images at the correct rate.
 =============  ===  ====
 Config
 =============  ===  ====
+``title``      str  Window title.
 ``expand``     int  Image up-conversion factor.
 ``shrink``     int  Image down-conversion factor.
 ``framerate``  int  Target frame rate.
@@ -58,7 +59,7 @@ from OpenGL import GL
 from PyQt4 import QtGui, QtCore, QtOpenGL
 from PyQt4.QtCore import Qt
 
-from pyctools.core.config import ConfigInt, ConfigEnum
+from pyctools.core.config import ConfigInt, ConfigEnum, ConfigStr
 from pyctools.core.base import Transformer
 
 class BufferSwapper(QtCore.QObject):
@@ -299,6 +300,10 @@ class SimpleDisplay(QtActorMixin, QtGui.QWidget):
             self.pause_button.setText('pause')
 
     @actor_method
+    def set_title(self, title):
+        self.setWindowTitle(title)
+
+    @actor_method
     def set_size(self, w, h):
         self.display.setMinimumSize(w, h)
 
@@ -334,6 +339,7 @@ class SimpleDisplay(QtActorMixin, QtGui.QWidget):
 
 class QtDisplay(Transformer):
     def initialise(self):
+        self.config['title'] = ConfigStr(dynamic=True)
         self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
         self.config['expand'] = ConfigInt(min_value=1, dynamic=True)
         self.config['framerate'] = ConfigInt(min_value=1, value=25)
@@ -344,6 +350,7 @@ class QtDisplay(Transformer):
         self.config['stats'] = ConfigEnum(('off', 'on'))
         self.display = SimpleDisplay(
             self, None, Qt.Window | Qt.WindowStaysOnTopHint)
+        self.title = None
         self.display_size = None
         self.framerate = None
         self.show_stats = None
@@ -361,6 +368,10 @@ class QtDisplay(Transformer):
 
     def transform(self, in_frame, out_frame):
         self.update_config()
+        title = self.config['title']
+        if self.title != title:
+            self.title = title
+            self.display.set_title(title)
         h, w = in_frame.size()
         w = (w * self.config['expand']) // self.config['shrink']
         h = (h * self.config['expand']) // self.config['shrink']
