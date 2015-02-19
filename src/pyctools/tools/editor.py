@@ -133,7 +133,10 @@ class ConfigStrWidget(QtGui.QLineEdit):
     def __init__(self, config):
         super(ConfigStrWidget, self).__init__()
         self.config = config
-        self.setText(self.config.get())
+        value = self.config.get()
+        if value is None:
+            value = ''
+        self.setText(value)
         self.editingFinished.connect(self.set_value)
 
     def set_value(self):
