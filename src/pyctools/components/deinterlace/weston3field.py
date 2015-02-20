@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2015  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -89,8 +88,7 @@ class Weston3Field(Component):
         audit += 'data = Weston3FieldDeinterlace(data)\n'
         out_frame.metadata.set('audit', audit)
         out_frame.frame_no = in_frame.frame_no * 2
-        out_frame.data = numpy.empty(
-            self.in_data.shape, dtype=self.in_data.dtype)
+        out_frame.data = numpy.empty(self.in_data.shape, dtype=pt_float)
         out_frame.data[top_line::2] = self.in_data[top_line::2]
         out_frame.data[1-top_line::2] = (
             self.lf_data[1-top_line::2] + self.hf_data[1-top_line::2])
