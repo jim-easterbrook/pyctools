@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -72,7 +71,6 @@ import sys
 if 'sphinx' in sys.modules:
     __all__.append('FilterGeneratorCore')
 
-from guild.actor import *
 import numpy
 
 from pyctools.core.config import ConfigInt
@@ -218,32 +216,3 @@ def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, x_cut=100,
             y_up, y_down, y_ap, y_cut)
     out_frame.metadata.set('audit', audit)
     return out_frame
-
-def main():
-    import logging
-    import time
-    class Sink(Actor):
-        @actor_method
-        def input(self, coefs):
-            print(coefs.data)
-
-    logging.basicConfig(level=logging.DEBUG)
-    print('FilterGenerator demonstration')
-    source = FilterGenerator()
-    config = source.get_config()
-    config['xup'] = 2
-    config['xaperture'] = 8
-    source.set_config(config)
-    sink = Sink()
-    pipeline(source, sink)
-    start(source, sink)
-    time.sleep(5)
-    config['xaperture'] = 4
-    source.set_config(config)
-    time.sleep(5)
-    stop(source, sink)
-    wait_for(source, sink)
-    return 0
-
-if __name__ == '__main__':
-    main()

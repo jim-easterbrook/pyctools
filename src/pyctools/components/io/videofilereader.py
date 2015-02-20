@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -46,7 +45,6 @@ import re
 import subprocess
 import sys
 
-from guild.actor import *
 import numpy
 
 from pyctools.core.config import ConfigPath, ConfigEnum
@@ -152,32 +150,3 @@ class VideoFileReader(Component):
         self.frame_no += 1
         frame.metadata.copy(self.metadata)
         self.output(frame)
-
-def main():
-    from PyQt4 import QtGui
-    from ..qt.qtdisplay import QtDisplay
-
-    if len(sys.argv) != 2:
-        print('usage: %s video_file' % sys.argv[0])
-        return 1
-    logging.basicConfig(level=logging.DEBUG)
-    print('VideoFileReader demonstration')
-    QtGui.QApplication.setAttribute(Qt.AA_X11InitThreads)
-    app = QtGui.QApplication([])
-    source = VideoFileReader()
-    config = source.get_config()
-    config['path'] = sys.argv[1]
-    config['looping'] = 'repeat'
-    source.set_config(config)
-    sink = QtDisplay()
-    pipeline(source, sink)
-    start(source, sink)
-    try:
-        app.exec_()
-    finally:
-        stop(source, sink)
-        wait_for(source, sink)
-    return 0
-
-if __name__ == '__main__':
-    sys.exit(main())
