@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -206,8 +205,6 @@ class Component(Actor, ConfigMixin):
             in_frame = input.peek()
             if not in_frame:
                 self.stop()
-                for output in self.outputs:
-                    getattr(self, output)(None)
                 return
             frame_no = max(frame_no, in_frame.frame_no)
         # discard old frames that can never be used
@@ -248,6 +245,8 @@ class Component(Actor, ConfigMixin):
 
     def onStop(self):
         self.logger.debug('stopping')
+        for output in self.outputs:
+            getattr(self, output)(None)
         super(Component, self).onStop()
 
 
@@ -272,7 +271,6 @@ class Transformer(Component):
         if self.transform(in_frame, out_frame):
             self.output(out_frame)
         else:
-            self.output(None)
             self.stop()
             return
 
