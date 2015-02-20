@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -41,7 +40,6 @@ import sys
 if 'sphinx' in sys.modules:
     __all__.append('resize_frame')
 
-from guild.actor import *
 import numpy
 
 from pyctools.core.config import ConfigInt
