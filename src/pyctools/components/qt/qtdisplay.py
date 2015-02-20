@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -213,6 +213,11 @@ class GLDisplay(QtOpenGL.QGLWidget):
             self._frame_count = 0
             self._block_start = self._next_frame_due
 
+    def step(self):
+        if self.in_queue:
+            self.next_frame()
+            self.show_black = False
+
     def glInit(self):
         self.ctx_lock.acquire()
         super(GLDisplay, self).glInit()
@@ -291,6 +296,10 @@ class SimpleDisplay(QtActorMixin, QtGui.QWidget):
         self.pause_button.setShortcut(Qt.Key_Space)
         self.pause_button.clicked.connect(self.pause)
         self.layout().addWidget(self.pause_button, 1, 0)
+        self.step_button = QtGui.QPushButton('step')
+        self.step_button.setShortcut(QtGui.QKeySequence.MoveToNextChar)
+        self.step_button.clicked.connect(self.step)
+        self.layout().addWidget(self.step_button, 1, 1)
 
     def pause(self):
         self.display.paused = not self.display.paused
@@ -298,6 +307,12 @@ class SimpleDisplay(QtActorMixin, QtGui.QWidget):
             self.pause_button.setText('play')
         else:
             self.pause_button.setText('pause')
+
+    def step(self):
+        if not self.display.paused:
+            self.pause()
+            return
+        self.display.step()
 
     @actor_method
     def set_title(self, title):
