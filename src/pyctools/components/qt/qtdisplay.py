@@ -373,13 +373,11 @@ class QtDisplay(Transformer):
         self.sync = None
         self.last_frame_type = None
 
-    def start(self):
-        super(QtDisplay, self).start()
+    def on_start(self):
         self.display.start()
 
-    def stop(self):
+    def on_stop(self):
         self.display.close()
-        super(QtDisplay, self).stop()
 
     def transform(self, in_frame, out_frame):
         self.update_config()
