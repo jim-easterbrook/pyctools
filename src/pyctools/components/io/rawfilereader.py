@@ -71,8 +71,7 @@ class RawFileReader(Component):
         self.config['looping'] = ConfigEnum(
             ('off', 'repeat', 'reverse'), dynamic=True)
 
-    def process_start(self):
-        super(RawFileReader, self).process_start()
+    def on_start(self):
         # set metadata
         self.update_config()
         path = self.config['path']

@@ -152,6 +152,22 @@ class Component(Actor, ConfigMixin):
         """
         pass
 
+    def on_start(self):
+        """Over ride this in your derived class if you need to do
+        anything when the component is started.
+
+        """
+        pass
+
+    def on_stop(self):
+        """Over ride this in your derived class if you need to do
+        anything when the component is stopped. This method is called
+        before :py:ref:`None` is sent to all outputs, so you can use it
+        to flush any remaining output.
+
+        """
+        pass
+
     def send(self, output_name, frame):
         """Send an output frame.
 
@@ -206,6 +222,7 @@ class Component(Actor, ConfigMixin):
             for output in self.outputs:
                 self.outframe_pool[output] = ObjectPool(
                     Frame, self.config['outframe_pool_len'], self._frame_notify)
+        self.on_start()
 
     def is_pipe_end(self):
         """Is component the last one in a pipeline.
@@ -310,6 +327,7 @@ class Component(Actor, ConfigMixin):
 
     def onStop(self):
         self.logger.debug('stopping')
+        self.on_stop()
         for output in self.outputs:
             self.send(output, None)
         super(Component, self).onStop()

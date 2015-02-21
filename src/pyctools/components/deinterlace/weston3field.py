@@ -102,9 +102,8 @@ class Weston3Field(Component):
             self.delayed_frame = out_frame
         self.first_field = not self.first_field
 
-    def onStop(self):
+    def on_stop(self):
         if self.delayed_frame:
             # send last frame before stopping
             self.send('output', self.delayed_frame)
             self.delayed_frame = None
-        super(Weston3Field, self).onStop()
