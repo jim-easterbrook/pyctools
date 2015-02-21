@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -46,11 +45,7 @@ class ImageFileReader(Component):
     def initialise(self):
         self.config['path'] = ConfigPath()
 
-    def gen_process(self):
-        # wait for self.output to be connected
-        while self.output.__self__ == self:
-            yield 1
-            time.sleep(0.01)
+    def on_connect(self, output_name):
         # read file
         self.update_config()
         path = self.config['path']

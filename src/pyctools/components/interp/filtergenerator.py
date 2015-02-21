@@ -104,14 +104,12 @@ class FilterGenerator(Component):
         self.config['yaperture'] = ConfigInt(min_value=1)
         self.config['ycut'] = ConfigInt(min_value=1, value=100)
 
-    def gen_process(self):
-        # wait for self.output to be connected
-        while self.output.__self__ == self:
-            yield 1
-            time.sleep(0.01)
+    def on_connect(self, output_name):
         # send first filter coefs
         self.update_config()
         self.make_filter()
+
+    def gen_process(self):
         # send more coefs if config changes
         while True:
             yield 1
