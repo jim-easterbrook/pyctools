@@ -66,7 +66,6 @@ __all__ = ['FilterGenerator']
 __docformat__ = 'restructuredtext en'
 
 import math
-import time
 import sys
 if 'sphinx' in sys.modules:
     __all__.append('FilterGeneratorCore')
@@ -106,18 +105,14 @@ class FilterGenerator(Component):
 
     def on_connect(self, output_name):
         # send first filter coefs
-        self.update_config()
         self.make_filter()
 
-    def gen_process(self):
+    def on_set_config(self):
         # send more coefs if config changes
-        while True:
-            yield 1
-            time.sleep(0.1)
-            if self.update_config():
-                self.make_filter()
+        self.make_filter()
 
     def make_filter(self):
+        self.update_config()
         x_up = self.config['xup']
         x_down = self.config['xdown']
         x_ap = self.config['xaperture']

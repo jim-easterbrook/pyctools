@@ -64,7 +64,6 @@ import math
 import numpy
 import scipy.special
 import sys
-import time
 if 'sphinx' in sys.modules:
     __all__ += ['HannCore', 'HammingCore', 'BlackmanCore', 'KaiserCore']
 
@@ -81,16 +80,11 @@ class WindowBase(Component):
 
     def on_connect(self, output_name):
         # send first window
-        self.update_config()
         self.make_window()
 
-    def gen_process(self):
+    def on_set_config(self):
         # send more windows if config changes
-        while True:
-            yield 1
-            time.sleep(0.1)
-            if self.update_config():
-                self.make_window()
+        self.make_window()
 
 
 class Hann(WindowBase):
@@ -105,6 +99,7 @@ class Hann(WindowBase):
 
     """
     def make_window(self):
+        self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
         self.output(HannCore(x_tile=x_tile, y_tile=y_tile))
@@ -122,6 +117,7 @@ class Hamming(WindowBase):
 
     """
     def make_window(self):
+        self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
         self.output(HammingCore(x_tile=x_tile, y_tile=y_tile))
@@ -144,6 +140,7 @@ class Blackman(WindowBase):
         self.config['alpha'] = ConfigFloat(value=0.16, dynamic=True)
 
     def make_window(self):
+        self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
         alpha = self.config['alpha']
@@ -167,6 +164,7 @@ class Kaiser(WindowBase):
         self.config['alpha'] = ConfigFloat(value=3.0, dynamic=True)
 
     def make_window(self):
+        self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
         alpha = self.config['alpha']

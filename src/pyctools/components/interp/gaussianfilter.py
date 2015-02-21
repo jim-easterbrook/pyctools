@@ -65,7 +65,6 @@ __all__ = ['GaussianFilter']
 __docformat__ = 'restructuredtext en'
 
 import math
-import time
 import sys
 if 'sphinx' in sys.modules:
     __all__.append('GaussianFilterCore')
@@ -93,18 +92,14 @@ class GaussianFilter(Component):
 
     def on_connect(self, output_name):
         # send first filter coefs
-        self.update_config()
         self.make_filter()
 
-    def gen_process(self):
+    def on_set_config(self):
         # send more coefs if config changes
-        while True:
-            yield 1
-            time.sleep(0.1)
-            if self.update_config():
-                self.make_filter()
+        self.make_filter()
 
     def make_filter(self):
+        self.update_config()
         x_sigma = self.config['xsigma']
         y_sigma = self.config['ysigma']
         self.output(GaussianFilterCore(x_sigma=x_sigma, y_sigma=y_sigma))
@@ -156,31 +151,3 @@ def GaussianFilterCore(x_sigma=0.0, y_sigma=0.0):
         audit += '    y_sigma: %g\n' % (y_sigma)
     out_frame.metadata.set('audit', audit)
     return out_frame
-
-def main():
-    import logging
-    from guild.actor import Actor, actor_method, pipeline, start, stop, wait_for
-    class Sink(Actor):
-        @actor_method
-        def input(self, coefs):
-            print(coefs.data)
-
-    logging.basicConfig(level=logging.DEBUG)
-    print('GaussianFilter demonstration')
-    source = GaussianFilter()
-    config = source.get_config()
-    config['xsigma'] = 1.7
-    source.set_config(config)
-    sink = Sink()
-    pipeline(source, sink)
-    start(source, sink)
-    time.sleep(5)
-    config['xsigma'] = 2.5
-    source.set_config(config)
-    time.sleep(5)
-    stop(source, sink)
-    wait_for(source, sink)
-    return 0
-
-if __name__ == '__main__':
-    main()
