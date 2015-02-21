@@ -70,9 +70,7 @@ class Component(Actor, ConfigMixin):
 
     The base class creates a threadsafe input buffer for each of your
     :py:attr:`inputs`. This allows each component to run in its own
-    thread. It also creates a "do nothing" method for each of your
-    :py:attr:`outputs`. These output methods are bound to other
-    components' input methods when the components are connected.
+    thread.
 
     To help with load balancing, components can have a limited size
     :py:class:`ObjectPool` of output :py:class:`~.frame.Frame`
@@ -120,7 +118,7 @@ class Component(Actor, ConfigMixin):
             self.config[key] = value
         # create a threadsafe buffer for each input and adopt its input method
         for input in self.inputs:
-            self.input_buffer[input] = InputBuffer(self.notify)
+            self.input_buffer[input] = InputBuffer(self._frame_notify)
             setattr(self, input, self.input_buffer[input].input)
         # initialise output connections lists
         self._component_connections = {}
@@ -155,6 +153,18 @@ class Component(Actor, ConfigMixin):
         pass
 
     def send(self, output_name, frame):
+        """Send an output frame.
+
+        The frame is sent to each input the output is connected to. If
+        there are no connections this is a null operation with little
+        overhead.
+
+        :param str output_name: the output to use. Must be one of
+            :py:attr:`outputs`.
+
+        :param Frame frame: the frame to send.
+
+        """
         for input_method in self._component_connections[output_name]:
             input_method(frame)
 
@@ -167,6 +177,12 @@ class Component(Actor, ConfigMixin):
 
         It also calls :py:meth`on_connect` to allow components to do
         something when an output is conected.
+
+        :param str output_name: the output to connect. Must be one of
+            :py:attr:`outputs`.
+
+        :param callable input_method: the callable to invoke when
+            :py:meth:`send` is called.
 
         """
         self.logger.debug('connect "%s"', output_name)
@@ -189,7 +205,7 @@ class Component(Actor, ConfigMixin):
             self.update_config()
             for output in self.outputs:
                 self.outframe_pool[output] = ObjectPool(
-                    Frame, self.config['outframe_pool_len'], self.notify)
+                    Frame, self.config['outframe_pool_len'], self._frame_notify)
 
     def is_pipe_end(self):
         """Is component the last one in a pipeline.
@@ -222,14 +238,9 @@ class Component(Actor, ConfigMixin):
         self.on_set_config()
 
     @actor_method
-    def notify(self):
-        """notify()
-
-        Alert component to a change in status.
-
-        This method is called whenever an input frame arrives or an
-        output frame becomes available from the pool. It is unlikely
-        your derived class will want to over-ride it.
+    def _frame_notify(self):
+        """Notify component that a new input or output frame is
+        available.
 
         The base class correlates all inputs by comparing their frame
         numbers. If there is a complete set of inputs, and all output
@@ -276,7 +287,7 @@ class Component(Actor, ConfigMixin):
             # now have a full set of correlated inputs to process
             self.process_frame()
         # might be more on the queue
-        self.notify()
+        self._frame_notify()
 
     def process_frame(self):
         """Process an input frame (or set of frames).
