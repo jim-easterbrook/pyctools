@@ -122,10 +122,16 @@ class Component(Actor, ConfigMixin):
         for input in self.inputs:
             self.input_buffer[input] = InputBuffer(self.notify)
             setattr(self, input, self.input_buffer[input].input)
-        # initialise outputs to default "do nothing" output
+        # initialise output connections lists
+        self._component_connections = {}
         for output in self.outputs:
-            if output != 'output':
-                setattr(self, output, self.output)
+            self._component_connections[output] = []
+
+    def output(self, *argv, **argd):
+        raise NotImplementedError()
+
+    def input(self, *argv, **argd):
+        raise NotImplementedError()
 
     def initialise(self):
         """Over ride this in your derived class if you need to do any
@@ -148,6 +154,10 @@ class Component(Actor, ConfigMixin):
         """
         pass
 
+    def send(self, output_name, frame):
+        for input_method in self._component_connections[output_name]:
+            input_method(frame)
+
     def connect(self, output_name, input_method):
         """Connect an output to any callable object.
 
@@ -160,7 +170,7 @@ class Component(Actor, ConfigMixin):
 
         """
         self.logger.debug('connect "%s"', output_name)
-        setattr(self, output_name, input_method)
+        self._component_connections[output_name].append(input_method)
         self.on_connect(output_name)
 
     def bind(self, source, dest, destmeth):
@@ -196,7 +206,7 @@ class Component(Actor, ConfigMixin):
 
         """
         for output in self.outputs:
-            if getattr(self, output).__self__ != self:
+            if self._component_connections[output]:
                 return False
         return True
 
@@ -290,7 +300,7 @@ class Component(Actor, ConfigMixin):
     def onStop(self):
         self.logger.debug('stopping')
         for output in self.outputs:
-            getattr(self, output)(None)
+            self.send(output, None)
         super(Component, self).onStop()
 
 
@@ -313,7 +323,7 @@ class Transformer(Component):
         out_frame = self.outframe_pool['output'].get()
         out_frame.initialise(in_frame)
         if self.transform(in_frame, out_frame):
-            self.output(out_frame)
+            self.send('output', out_frame)
         else:
             self.stop()
             return

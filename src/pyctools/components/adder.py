@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -39,4 +38,4 @@ class Adder(Component):
         audit += 'data = input0 + input1\n'
         out_frame.metadata.set('audit', audit)
         out_frame.data = in_frame1.as_numpy() + in_frame2.as_numpy()
-        self.output(out_frame)
+        self.send('output', out_frame)

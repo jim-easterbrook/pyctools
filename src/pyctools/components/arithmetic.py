@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -90,4 +89,4 @@ class Arithmetic2(Component):
         audit += 'data2 = {\n%s}\n' % in_frame2.metadata.get('audit')
         audit += 'data = %s\n' % func
         out_frame.metadata.set('audit', audit)
-        self.output(out_frame)
+        self.send('output', out_frame)

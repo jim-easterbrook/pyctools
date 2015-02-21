@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -89,8 +88,6 @@ class RawFileReader(Component):
         try:
             Y_data, UV_data = next(self.generator)
         except StopIteration:
-            self.output_Y_RGB(None)
-            self.output_UV(None)
             self.stop()
             return
         Y_frame = self.outframe_pool['output_Y_RGB'].get()
@@ -99,13 +96,13 @@ class RawFileReader(Component):
         self.frame_no += 1
         Y_frame.data = Y_data
         Y_frame.type = self.Y_type
-        self.output_Y_RGB(Y_frame)
+        self.send('output_Y_RGB', Y_frame)
         if UV_data is not None:
             UV_frame = self.outframe_pool['output_UV'].get()
             UV_frame.initialise(Y_frame)
             UV_frame.data = UV_data
             UV_frame.type = self.UV_type
-            self.output_UV(UV_frame)
+            self.send('output_UV', UV_frame)
 
     def file_reader(self):
         """Generator process to read file"""

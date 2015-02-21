@@ -80,7 +80,7 @@ class Weston3Field(Component):
         if self.delayed_frame:
             # complete last frame with hf from first field of this frame
             self.delayed_frame.data[top_line::2] += self.hf_data[top_line::2]
-            self.output(self.delayed_frame)
+            self.send('output', self.delayed_frame)
             self.delayed_frame = None
         out_frame = self.outframe_pool['output'].get()
         out_frame.initialise(in_frame)
@@ -95,7 +95,7 @@ class Weston3Field(Component):
         if self.first_field:
             if self.prev_hf is not None:
                 out_frame.data[1-top_line::2] += self.prev_hf[1-top_line::2]
-            self.output(out_frame)
+            self.send('output', out_frame)
             self.prev_hf = self.hf_data
         else:
             out_frame.frame_no += 1
@@ -105,6 +105,6 @@ class Weston3Field(Component):
     def onStop(self):
         if self.delayed_frame:
             # send last frame before stopping
-            self.output(self.delayed_frame)
+            self.send('output', self.delayed_frame)
             self.delayed_frame = None
         super(Weston3Field, self).onStop()

@@ -102,7 +102,7 @@ class Hann(WindowBase):
         self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
-        self.output(HannCore(x_tile=x_tile, y_tile=y_tile))
+        self.send('output', HannCore(x_tile=x_tile, y_tile=y_tile))
 
 
 class Hamming(WindowBase):
@@ -120,7 +120,7 @@ class Hamming(WindowBase):
         self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
-        self.output(HammingCore(x_tile=x_tile, y_tile=y_tile))
+        self.send('output', HammingCore(x_tile=x_tile, y_tile=y_tile))
 
 
 class Blackman(WindowBase):
@@ -144,7 +144,7 @@ class Blackman(WindowBase):
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
         alpha = self.config['alpha']
-        self.output(BlackmanCore(x_tile=x_tile, y_tile=y_tile, alpha=alpha))
+        self.send('output', BlackmanCore(x_tile=x_tile, y_tile=y_tile, alpha=alpha))
 
 
 class Kaiser(WindowBase):
@@ -168,7 +168,7 @@ class Kaiser(WindowBase):
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
         alpha = self.config['alpha']
-        self.output(KaiserCore(x_tile=x_tile, y_tile=y_tile, alpha=alpha))
+        self.send('output', KaiserCore(x_tile=x_tile, y_tile=y_tile, alpha=alpha))
 
 
 def Window2D(name, x_tile, y_tile, function_1D, x_params={}, y_params={}):
@@ -296,7 +296,7 @@ class InverseWindow(Component):
         y_off = self.config['yoff']
         fade = self.config['fade']
         in_frame = self.input_buffer['input'].get()
-        self.window(in_frame)
+        self.send('window', in_frame)
         out_frame = Frame()
         out_frame.initialise(in_frame)
         audit = out_frame.metadata.get('audit')
@@ -342,4 +342,4 @@ class InverseWindow(Component):
                     else:
                         result[0, y, x, 0] = 0.5 / max(centre, 0.000001)
         out_frame.data = result
-        self.inv_window(out_frame)
+        self.send('inv_window', out_frame)

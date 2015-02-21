@@ -142,11 +142,10 @@ class VideoFileReader(Component):
         try:
             frame.data = next(self.generator)
         except StopIteration:
-            self.output(None)
             self.stop()
             return
         frame.type = self.frame_type
         frame.frame_no = self.frame_no
         self.frame_no += 1
         frame.metadata.copy(self.metadata)
-        self.output(frame)
+        self.send('output', frame)

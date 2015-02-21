@@ -121,7 +121,7 @@ class FilterGenerator(Component):
         y_down = self.config['ydown']
         y_ap = self.config['yaperture']
         y_cut = self.config['ycut']
-        self.output(FilterGeneratorCore(
+        self.send('output', FilterGeneratorCore(
             x_up=x_up, x_down=x_down, x_ap=x_ap, x_cut=x_cut,
             y_up=y_up, y_down=y_down, y_ap=y_ap, y_cut=y_cut))
 

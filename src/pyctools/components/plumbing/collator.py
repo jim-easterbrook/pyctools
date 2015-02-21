@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -46,4 +45,4 @@ class Collator(Component):
         out_frame.metadata.set('audit', audit)
         out_frame.data = numpy.concatenate(
             (in_frame1.as_numpy(), in_frame2.as_numpy()), axis=2)
-        self.output(out_frame)
+        self.send('output', out_frame)

@@ -102,7 +102,7 @@ class GaussianFilter(Component):
         self.update_config()
         x_sigma = self.config['xsigma']
         y_sigma = self.config['ysigma']
-        self.output(GaussianFilterCore(x_sigma=x_sigma, y_sigma=y_sigma))
+        self.send('output', GaussianFilterCore(x_sigma=x_sigma, y_sigma=y_sigma))
 
 def GaussianFilterCore(x_sigma=0.0, y_sigma=0.0):
     """

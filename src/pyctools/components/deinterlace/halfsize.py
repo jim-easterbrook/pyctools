@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -78,7 +77,7 @@ class HalfSize(Component):
             out_frame.data = self.in_data[1::2]
         if not self.first_field:
             out_frame.frame_no += 1
-        self.output(out_frame)
+        self.send('output', out_frame)
         self.first_field = not self.first_field
 
     def do_inverse(self, top_field_first):
@@ -103,5 +102,5 @@ class HalfSize(Component):
         else:
             out_frame.data[1::2] = self.first_field_data
             out_frame.data[0::2] = second_field_data
-        self.output(out_frame)
+        self.send('output', out_frame)
         self.first_field = not self.first_field

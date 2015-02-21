@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -65,11 +64,9 @@ class RGBtoYUV(Component):
         UV_frame = self.outframe_pool['output_UV'].get()
         UV_frame.initialise(in_frame)
         if self.transform(in_frame, Y_frame, UV_frame):
-            self.output_Y(Y_frame)
-            self.output_UV(UV_frame)
+            self.send('output_Y', Y_frame)
+            self.send('output_UV', UV_frame)
         else:
-            self.output_Y(None)
-            self.output_UV(None)
             self.stop()
             return
 

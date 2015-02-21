@@ -1,6 +1,20 @@
-# This file is part of pyctools http://github.com/jim-easterbrook/pyctools
-# Copyright pyctools contributors
-# Released under the GNU GPL3 licence
+#  Pyctools - a picture processing algorithm development kit.
+#  http://github.com/jim-easterbrook/pyctools
+#  Copyright (C) 2014-15  Pyctools contributors
+#
+#  This program is free software: you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License as
+#  published by the Free Software Foundation, either version 3 of the
+#  License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#  General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see
+#  <http://www.gnu.org/licenses/>.
 
 """Simple interlace to sequential converter.
 
@@ -78,7 +92,7 @@ class SimpleDeinterlace(Component):
                 out_frame.data[0::2] = 0
         if not self.first_field:
             out_frame.frame_no += 1
-        self.output(out_frame)
+        self.send('output', out_frame)
         self.first_field = not self.first_field
 
     def do_inverse(self, top_field_first):
@@ -103,5 +117,5 @@ class SimpleDeinterlace(Component):
         else:
             out_frame.data[1::2] = self.first_field_data[1::2]
             out_frame.data[0::2] = second_field_data[0::2]
-        self.output(out_frame)
+        self.send('output', out_frame)
         self.first_field = not self.first_field

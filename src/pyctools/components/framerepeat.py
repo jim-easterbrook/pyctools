@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2015  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -58,4 +57,4 @@ class FrameRepeat(Component):
         out_frame.metadata.set('audit', audit)
         out_frame.frame_no = self.frame_no
         self.frame_no += 1
-        self.output(out_frame)
+        self.send('output', out_frame)

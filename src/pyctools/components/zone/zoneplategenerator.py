@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -162,7 +161,6 @@ class ZonePlateGenerator(Component):
         ylen = self.config['ylen']
         zlen = self.config['zlen']
         if self.frame_no >= zlen and self.config['looping'] == 'off':
-            self.output(None)
             self.stop()
             return
         k0  = self.config['k0']
@@ -232,4 +230,4 @@ class ZonePlateGenerator(Component):
         frame.type = 'Y'
         frame.frame_no = self.frame_no
         self.frame_no += 1
-        self.output(frame)
+        self.send('output', frame)

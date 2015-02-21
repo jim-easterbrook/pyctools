@@ -59,7 +59,6 @@ class ImageFileReader(Component):
         audit = out_frame.metadata.get('audit')
         audit += 'data = %s\n' % path
         out_frame.metadata.set('audit', audit)
-        self.output(out_frame)
+        self.send('output', out_frame)
         # shut down pipeline
-        self.output(None)
         self.stop()
