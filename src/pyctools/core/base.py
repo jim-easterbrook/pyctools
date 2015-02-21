@@ -134,6 +134,32 @@ class Component(Actor, ConfigMixin):
         """
         pass
 
+    def on_connect(self, output_name):
+        """Over ride this in your derived class if you need to do
+        anything when an output is connected.
+
+        """
+        pass
+
+    def connect(self, output_name, input_method):
+        """Connect an output to any callable object.
+
+        This is equivalent to :py:meth:`guild.actor.bind` but is not an
+        actor method. This means it is executed when called, rather than
+        waiting until the component is started.
+
+        It also calls :py:meth`on_connect` to allow components to do
+        something when an output is conected.
+
+        """
+        self.logger.debug('connect "%s"', output_name)
+        setattr(self, output_name, input_method)
+        self.on_connect(output_name)
+
+    def bind(self, source, dest, destmeth):
+        # for Guild compatibility
+        self.connect(source, getattr(dest, destmeth))
+
     def process_start(self):
         """Set up the outframe pool(s), if
         :py:attr:`with_outframe_pool` is ``True``

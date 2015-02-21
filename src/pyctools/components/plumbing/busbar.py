@@ -72,11 +72,12 @@ class Busbar(Splitter, ConfigMixin):
         self.logger.debug('stopping')
         super(Busbar, self).onStop()
 
-    def bind(self, source, dest, destmeth):
-        self._busbar_connections[source] = getattr(dest, destmeth)
-        self.subscribe(self._busbar_connections[source])
-        if source not in self.outputs:
-            self.outputs.append(source)
+    def connect(self, output_name, input_method):
+        self.logger.debug('connect "%s"', output_name)
+        self._busbar_connections[output_name] = input_method
+        self.subscribe(self._busbar_connections[output_name])
+        if output_name not in self.outputs:
+            self.outputs.append(output_name)
         n = 0
         while len(self.outputs) <= len(self._busbar_connections):
             name = 'output%d' % n
@@ -84,3 +85,6 @@ class Busbar(Splitter, ConfigMixin):
                 self.outputs.append(name)
             n += 1
         self.outputs.sort()
+
+    def bind(self, source, dest, destmeth):
+        self.connect(source, getattr(dest, destmeth))

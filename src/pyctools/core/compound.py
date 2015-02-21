@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-15  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -109,12 +108,15 @@ class Compound(object):
                 self._compound_outputs[inbox] = (src, outbox)
                 self.outputs.append(inbox)
             else:
-                self._compound_children[src].bind(
-                    outbox, self._compound_children[dest], inbox)
+                self._compound_children[src].connect(
+                    outbox, getattr(self._compound_children[dest], inbox))
+
+    def connect(self, output_name, input_method):
+        src, outbox = self._compound_outputs[output_name]
+        self._compound_children[src].connect(outbox, input_method)
 
     def bind(self, source, dest, destmeth):
-        src, outbox = self._compound_outputs[source]
-        self._compound_children[src].bind(outbox, dest, destmeth)
+        self.connect(source, getattr(dest, destmeth))
 
     def get_config(self):
         config = ConfigGrandParent()
