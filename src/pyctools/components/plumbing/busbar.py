@@ -88,3 +88,6 @@ class Busbar(Splitter, ConfigMixin):
 
     def bind(self, source, dest, destmeth):
         self.connect(source, getattr(dest, destmeth))
+
+    def _config_notify(self):
+        pass

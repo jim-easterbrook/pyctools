@@ -141,6 +141,13 @@ class Component(Actor, ConfigMixin):
         """
         pass
 
+    def on_set_config(self):
+        """Over ride this in your derived class if you need to do
+        anything when the configuration is updated.
+
+        """
+        pass
+
     def connect(self, output_name, input_method):
         """Connect an output to any callable object.
 
@@ -192,6 +199,17 @@ class Component(Actor, ConfigMixin):
             if getattr(self, output).__self__ != self:
                 return False
         return True
+
+    @actor_method
+    def _config_notify(self):
+        """Notify component that new config is available.
+
+        The config isn't actually changed until :py:meth`update_config`
+        is called, so be sure to do this in your
+        :py:meth`on_set_config` method, if you have one.
+
+        """
+        self.on_set_config()
 
     @actor_method
     def notify(self):

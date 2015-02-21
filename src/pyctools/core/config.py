@@ -1,6 +1,20 @@
-# This file is part of pyctools http://github.com/jim-easterbrook/pyctools
-# Copyright pyctools contributors
-# Released under the GNU GPL3 licence
+#  Pyctools - a picture processing algorithm development kit.
+#  http://github.com/jim-easterbrook/pyctools
+#  Copyright (C) 2014-15  Pyctools contributors
+#
+#  This program is free software: you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License as
+#  published by the Free Software Foundation, either version 3 of the
+#  License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#  General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see
+#  <http://www.gnu.org/licenses/>.
 
 """Component configuration classes.
 
@@ -314,6 +328,8 @@ class ConfigMixin(object):
         """
         # put copy of config on queue for running component
         self._configmixin_queue.append(copy.deepcopy(config))
+        # notify component, using thread safe actor method
+        self._config_notify()
 
     def update_config(self):
         """Pull any changes made with :py:meth:`set_config`.
