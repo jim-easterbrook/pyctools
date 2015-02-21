@@ -46,6 +46,7 @@ class Busbar(Splitter, ConfigMixin):
         super(Busbar, self).__init__()
         ConfigMixin.__init__(self)
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.warning('Deprecation warning: Busbar is no longer required')
         self.outputs = ['output0', 'output1']
         self._busbar_connections = {}
 

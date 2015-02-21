@@ -34,6 +34,9 @@ class Collator(Component):
     inputs = ['input1', 'input2']
     with_outframe_pool = True
 
+    def initialise(self):
+        self.logger.warning('Deprecation warning: Collator is no longer required')
+
     def process_frame(self):
         in_frame1 = self.input_buffer['input1'].get()
         in_frame2 = self.input_buffer['input2'].get()
