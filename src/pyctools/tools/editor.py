@@ -47,6 +47,7 @@ __all__ = []
 __docformat__ = 'restructuredtext en'
 
 import argparse
+from collections import defaultdict
 import logging
 import os
 import pprint
@@ -328,7 +329,8 @@ class IOIcon(QtGui.QGraphicsRectItem):
             dest = link_from.parentItem()
             inbox = link_from.name
         for link in self.scene().matching_items(ComponentLink):
-            if link.source == source and link.outbox == outbox:
+            if (link.source == source and link.outbox == outbox and
+                                link.dest == dest and link.inbox == inbox):
                 self.scene().removeItem(link)
         link = ComponentLink(source, outbox, dest, inbox)
         self.scene().addItem(link)
@@ -516,29 +518,30 @@ class CompoundIcon(BasicComponentIcon):
             # move components down and/or right according to linkages
             while True:
                 no_move = True
-                for source, target in self.obj._compound_linkages.items():
+                for source in self.obj._compound_linkages:
                     src, outbox = source
-                    dest, inbox = target
-                    if src == 'self' or dest == 'self':
-                        continue
-                    x = pos[src][0] + 150
-                    if isinstance(self.obj._compound_children[src],
-                                  pyctools.components.plumbing.busbar.Busbar):
-                        x -= 50
-                    if pos[dest][0] < x:
-                        pos[dest][0] = x
-                        no_move = False
-                    y_off = (150 * (
-                        self.obj._compound_children[dest].inputs.index(inbox) -
-                        self.obj._compound_children[src].outputs.index(outbox)))
-                    y = pos[src][1] - y_off
-                    if pos[dest][1] < y:
-                        pos[dest][1] = y
-                        no_move = False
-                    y = pos[dest][1] + y_off
-                    if pos[src][1] < y:
-                        pos[src][1] = y
-                        no_move = False
+                    targets = self.obj._compound_linkages[source]
+                    for dest, inbox in zip(targets[0::2], targets[1::2]):
+                        if src == 'self' or dest == 'self':
+                            continue
+                        x = pos[src][0] + 150
+                        if isinstance(self.obj._compound_children[src],
+                                      pyctools.components.plumbing.busbar.Busbar):
+                            x -= 50
+                        if pos[dest][0] < x:
+                            pos[dest][0] = x
+                            no_move = False
+                        y_off = (150 * (
+                            self.obj._compound_children[dest].inputs.index(inbox) -
+                            self.obj._compound_children[src].outputs.index(outbox)))
+                        y = pos[src][1] - y_off
+                        if pos[dest][1] < y:
+                            pos[dest][1] = y
+                            no_move = False
+                        y = pos[dest][1] + y_off
+                        if pos[src][1] < y:
+                            pos[src][1] = y
+                            no_move = False
                 if no_move:
                     break
             x_min, y_min = pos[pos.keys()[0]]
@@ -576,22 +579,23 @@ class CompoundIcon(BasicComponentIcon):
         super(CompoundIcon, self).draw_icon()
         # draw linkages
         if self.expanded:
-            for source, target in self.obj._compound_linkages.items():
+            for source in self.obj._compound_linkages:
                 src, outbox = source
-                dest, inbox = target
-                if src == 'self':
-                    source_pos = self.in_pos(outbox, None)
-                    dest_pos = self.child_comps[dest].in_pos(inbox, source_pos)
-                elif dest == 'self':
-                    dest_pos = self.out_pos(outbox, None)
-                    source_pos = self.child_comps[src].out_pos(outbox, dest_pos)
-                else:
-                    source_pos = self.child_comps[src].out_pos(outbox, None)
-                    dest_pos = self.child_comps[dest].in_pos(inbox, source_pos)
-                    source_pos = self.child_comps[src].out_pos(outbox, dest_pos)
-                line = QtGui.QGraphicsLineItem(QtCore.QLineF(
-                    self.mapFromScene(source_pos), self.mapFromScene(dest_pos)
-                    ), self)
+                targets = self.obj._compound_linkages[source]
+                for dest, inbox in zip(targets[0::2], targets[1::2]):
+                    if src == 'self':
+                        source_pos = self.in_pos(outbox, None)
+                        dest_pos = self.child_comps[dest].in_pos(inbox, source_pos)
+                    elif dest == 'self':
+                        dest_pos = self.out_pos(outbox, None)
+                        source_pos = self.child_comps[src].out_pos(outbox, dest_pos)
+                    else:
+                        source_pos = self.child_comps[src].out_pos(outbox, None)
+                        dest_pos = self.child_comps[dest].in_pos(inbox, source_pos)
+                        source_pos = self.child_comps[src].out_pos(outbox, dest_pos)
+                    line = QtGui.QGraphicsLineItem(QtCore.QLineF(
+                        self.mapFromScene(source_pos), self.mapFromScene(dest_pos)
+                        ), self)
 
 
 class BusbarIcon(BasicComponentIcon):
@@ -795,11 +799,12 @@ class NetworkArea(QtGui.QGraphicsScene):
             for key, value in eval(comp['config']).items():
                 self.set_config(cnf, key, value)
             comps[name].obj.set_config(cnf)
-        for source, dest in network.linkages.items():
-            source, outbox = source
-            dest, inbox = dest
-            link = ComponentLink(comps[source], outbox, comps[dest], inbox)
-            self.addItem(link)
+        for source in network.linkages:
+            src, outbox = source
+            targets = network.linkages[source]
+            for dest, inbox in zip(targets[0::2], targets[1::2]):
+                link = ComponentLink(comps[src], outbox, comps[dest], inbox)
+                self.addItem(link)
         self.views()[0].centerOn(self.itemsBoundingRect().center())
 
     def set_config(self, cnf, key, value):
@@ -812,7 +817,7 @@ class NetworkArea(QtGui.QGraphicsScene):
     def save_script(self, file_name, needs_qt):
         components = {}
         modules = []
-        linkages = {}
+        linkages = defaultdict(list)
         with_qt = False
         for child in self.items():
             if isinstance(child, BasicComponentIcon) and child.isEnabled():
@@ -826,8 +831,9 @@ class NetworkArea(QtGui.QGraphicsScene):
                     modules.append(mod)
                     with_qt = with_qt or needs_qt[mod]
             elif isinstance(child, ComponentLink):
-                linkages[(child.source.name, child.outbox)] = (
-                    child.dest.name, child.inbox)
+                linkages[(child.source.name, child.outbox)] += [
+                    child.dest.name, child.inbox]
+        linkages = dict(linkages)
         components = pprint.pformat(components, indent=4)
         linkages = pprint.pformat(linkages, indent=4)
         with open(file_name, 'w') as of:

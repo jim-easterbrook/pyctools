@@ -99,17 +99,24 @@ class Compound(object):
                 self._compound_children[key] = value
         # set up linkages
         self._compound_outputs = {}
-        for (src, outbox), (dest, inbox) in self._compound_linkages.items():
-            if src == 'self':
-                setattr(self, inbox,
-                        getattr(self._compound_children[dest], inbox))
-                self.inputs.append(outbox)
-            elif dest == 'self':
-                self._compound_outputs[inbox] = (src, outbox)
-                self.outputs.append(inbox)
-            else:
-                self._compound_children[src].connect(
-                    outbox, getattr(self._compound_children[dest], inbox))
+        for source in self._compound_linkages:
+            src, outbox = source
+            targets = self._compound_linkages[source]
+            for dest, inbox in zip(targets[0::2], targets[1::2]):
+                if src == 'self':
+                    if hasattr(self, outbox):
+                        self.logger.critical(
+                            'cannot link (%s, %s) to more than one target',
+                            src, outbox)
+                    setattr(self, outbox,
+                            getattr(self._compound_children[dest], inbox))
+                    self.inputs.append(outbox)
+                elif dest == 'self':
+                    self._compound_outputs[inbox] = (src, outbox)
+                    self.outputs.append(inbox)
+                else:
+                    self._compound_children[src].connect(
+                        outbox, getattr(self._compound_children[dest], inbox))
 
     def connect(self, output_name, input_method):
         src, outbox = self._compound_outputs[output_name]
