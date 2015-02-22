@@ -59,24 +59,49 @@ class InputBuffer(object):
         return self.queue.popleft()
 
 
-class Component(Actor, ConfigMixin):
+class GuildEventLoop(Actor):
+    def __init__(self, owner):
+        super(GuildEventLoop, self).__init__()
+        self.owner = owner
+
+    def process_start(self):
+        self.owner.start_event()
+
+    def onStop(self):
+        self.owner.stop_event()
+
+    def running(self):
+        return self.isAlive()
+
+    @actor_method
+    def new_frame(self):
+        self.owner.new_frame_event()
+
+    @actor_method
+    def new_config(self):
+        self.owner.new_config_event()
+
+
+class Component(ConfigMixin):
     """Base class for all Pyctools components, i.e. objects designed
     to be used in processing pipelines (or graph networks).
 
     By default every component has one input and one output. To help
     other software introspect the component their names are listed in
-    :py:attr:`inputs` and :py:attr:`outputs`. Redefine these
-    attributes if your component has different inputs and outputs.
+    :py:attr:`~Component.inputs` and :py:attr:`~Component.outputs`.
+    Redefine these attributes if your component has different inputs and
+    outputs.
 
     The base class creates a threadsafe input buffer for each of your
-    :py:attr:`inputs`. This allows each component to run in its own
+    :py:attr:`~Component.inputs`. This allows each component to run in its own
     thread.
 
     To help with load balancing, components can have a limited size
-    :py:class:`ObjectPool` of output :py:class:`~.frame.Frame`
-    objects. To use this your class must set
-    :py:attr:`with_outframe_pool` to ``True``. The base class creates
-    an output frame pool for each of your :py:attr:`outputs`.
+    :py:class:`ObjectPool` of output :py:class:`~.frame.Frame` objects.
+    To use this your class must set
+    :py:attr:`~Component.with_outframe_pool` to ``True``. The base class
+    creates an output frame pool for each of your
+    :py:attr:`~Component.outputs`.
 
     A :py:class:`logging.Logger` object is created for every
     component. Use this to report any errors or warnings from your
@@ -105,31 +130,33 @@ class Component(Actor, ConfigMixin):
     inputs = ['input']
     outputs = ['output']
 
-    def __init__(self, **config):
+    def __init__(self, event_loop=GuildEventLoop, **config):
         super(Component, self).__init__()
-        ConfigMixin.__init__(self)
         self.logger = logging.getLogger(self.__class__.__name__)
+        # create event loop and adopt some of its methods
+        component_event_loop = event_loop(self)
+        self.start = component_event_loop.start
+        self.stop = component_event_loop.stop
+        self.running = component_event_loop.running
+        self.new_frame = component_event_loop.new_frame
+        self.new_config = component_event_loop.new_config
+        # set up inputs and outputs
         self.input_buffer = {}
         self.outframe_pool = {}
         if self.with_outframe_pool:
             self.config['outframe_pool_len'] = ConfigInt(min_value=2, value=3)
+        # final initialisation
         self.initialise()
         for key, value in config.items():
             self.config[key] = value
         # create a threadsafe buffer for each input and adopt its input method
         for input in self.inputs:
-            self.input_buffer[input] = InputBuffer(self._frame_notify)
+            self.input_buffer[input] = InputBuffer(self.new_frame)
             setattr(self, input, self.input_buffer[input].input)
         # initialise output connections lists
         self._component_connections = {}
         for output in self.outputs:
             self._component_connections[output] = []
-
-    def output(self, *argv, **argd):
-        raise NotImplementedError()
-
-    def input(self, *argv, **argd):
-        raise NotImplementedError()
 
     def initialise(self):
         """Over ride this in your derived class if you need to do any
@@ -149,6 +176,9 @@ class Component(Actor, ConfigMixin):
         """Over ride this in your derived class if you need to do
         anything when the configuration is updated.
 
+        The config isn't actually changed until :py:meth:`update_config`
+        is called, so be sure to do this in your method.
+
         """
         pass
 
@@ -161,9 +191,10 @@ class Component(Actor, ConfigMixin):
 
     def on_stop(self):
         """Over ride this in your derived class if you need to do
-        anything when the component is stopped. This method is called
-        before :py:ref:`None` is sent to all outputs, so you can use it
-        to flush any remaining output.
+        anything when the component is stopped.
+
+        This method is called before :py:data:`None` is sent to all
+        outputs, so you can use it to flush any remaining output.
 
         """
         pass
@@ -175,8 +206,8 @@ class Component(Actor, ConfigMixin):
         there are no connections this is a null operation with little
         overhead.
 
-        :param str output_name: the output to use. Must be one of
-            :py:attr:`outputs`.
+        :param str output_name: the output to use. Must be a member of
+            :py:attr:`~Component.outputs`.
 
         :param Frame frame: the frame to send.
 
@@ -187,21 +218,19 @@ class Component(Actor, ConfigMixin):
     def connect(self, output_name, input_method):
         """Connect an output to any callable object.
 
-        This is equivalent to :py:meth:`guild.actor.bind` but is not an
-        actor method. This means it is executed when called, rather than
-        waiting until the component is started.
+        :py:meth`on_connect` is called after the connection is made to
+        allow components to do something when an output is conected.
 
-        It also calls :py:meth`on_connect` to allow components to do
-        something when an output is conected.
-
-        :param str output_name: the output to connect. Must be one of
-            :py:attr:`outputs`.
+        :param str output_name: the output to connect. Must be a member
+            of :py:attr:`~Component.outputs`.
 
         :param callable input_method: the callable to invoke when
             :py:meth:`send` is called.
 
         """
         self.logger.debug('connect "%s"', output_name)
+        if self.running():
+            raise RuntimeError('Cannot connect running component')
         self._component_connections[output_name].append(input_method)
         self.on_connect(output_name)
 
@@ -209,20 +238,32 @@ class Component(Actor, ConfigMixin):
         # for Guild compatibility
         self.connect(source, getattr(dest, destmeth))
 
-    def process_start(self):
-        """Set up the outframe pool(s), if
-        :py:attr:`with_outframe_pool` is ``True``
+    def start_event(self):
+        """Called by the event loop when it is started.
 
-        If you over ride this in your component, don't forget to call
-        the base class method.
+        Set up the outframe pool(s), if
+        :py:attr:`~Component.with_outframe_pool` is ``True``, then calls
+        :py:meth:`on_start`.
 
         """
         if self.with_outframe_pool:
             self.update_config()
             for output in self.outputs:
                 self.outframe_pool[output] = ObjectPool(
-                    Frame, self.config['outframe_pool_len'], self._frame_notify)
+                    Frame, self.config['outframe_pool_len'], self.new_frame)
         self.on_start()
+
+    def stop_event(self):
+        """Called by the event loop when it is stopped.
+
+        Calls :py:meth:`on_stop`, then sends :py:data:`None` to each
+        output to shut down the rest of the processing pipeline.
+
+        """
+        self.logger.debug('stopping')
+        self.on_stop()
+        for output in self.outputs:
+            self.send(output, None)
 
     def is_pipe_end(self):
         """Is component the last one in a pipeline.
@@ -243,26 +284,19 @@ class Component(Actor, ConfigMixin):
                 return False
         return True
 
-    @actor_method
-    def _config_notify(self):
-        """Notify component that new config is available.
-
-        The config isn't actually changed until :py:meth`update_config`
-        is called, so be sure to do this in your
-        :py:meth`on_set_config` method, if you have one.
+    def new_config_event(self):
+        """Called by the event loop when new config is available.
 
         """
         self.on_set_config()
 
-    @actor_method
-    def _frame_notify(self):
-        """Notify component that a new input or output frame is
+    def new_frame_event(self):
+        """Called by the event loop when a new input or output frame is
         available.
 
-        The base class correlates all inputs by comparing their frame
-        numbers. If there is a complete set of inputs, and all output
-        frame pools are ready, it calls the :py:meth:`process_frame`
-        method.
+        Inputs are correlated by comparing their frame numbers. If there
+        is a complete set of inputs, and all output frame pools are
+        ready, the :py:meth:`process_frame` method is called.
 
         If an input frame has a negative frame number it is not
         correlated with other inputs, it is merely required to exist.
@@ -303,8 +337,8 @@ class Component(Actor, ConfigMixin):
         if OK:
             # now have a full set of correlated inputs to process
             self.process_frame()
-        # might be more on the queue
-        self._frame_notify()
+        # might be more on the queue, so run again (via event loop)
+        self.new_frame()
 
     def process_frame(self):
         """Process an input frame (or set of frames).
@@ -325,20 +359,13 @@ class Component(Actor, ConfigMixin):
         """
         raise NotImplemented()
 
-    def onStop(self):
-        self.logger.debug('stopping')
-        self.on_stop()
-        for output in self.outputs:
-            self.send(output, None)
-        super(Component, self).onStop()
-
 
 class Transformer(Component):
-    """ A Transformer is a Pyctools component that has one input and
-    one output. When an input :py:class:`~.frame.Frame` object is
-    received, and an output :py:class:`~.frame.Frame` object is
-    available from a pool, the ":py:meth:`~Transformer.transform`"
-    method is called to do the component's actual work.
+    """A Transformer is a Pyctools component that has one input and one
+    output. When an input :py:class:`~.frame.Frame` object is received,
+    and an output :py:class:`~.frame.Frame` object is available from a
+    pool, the :py:meth:`~Transformer.transform` method is called to do
+    the component's actual work.
 
     """
     with_outframe_pool = True
@@ -438,7 +465,7 @@ class ObjectPool(object):
     def get(self):
         """Get an object from the pool.
 
-        :rtype: the object or ``None``
+        :rtype: the object or :py:data:`None`
 
         """
         if self.obj_list:
