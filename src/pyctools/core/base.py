@@ -359,6 +359,7 @@ class Component(ConfigMixin):
         for input in self.input_buffer.values():
             in_frame = input.peek()
             if not in_frame:
+                input.get()
                 self.stop()
                 return
             frame_no = max(frame_no, in_frame.frame_no)
