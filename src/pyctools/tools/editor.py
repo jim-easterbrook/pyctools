@@ -521,7 +521,10 @@ class CompoundIcon(BasicComponentIcon):
                 for source in self.obj._compound_linkages:
                     src, outbox = source
                     targets = self.obj._compound_linkages[source]
-                    for dest, inbox in zip(targets[0::2], targets[1::2]):
+                    if isinstance(targets[0], basestring):
+                        # not a list of pairs, so make it into one
+                        targets = zip(targets[0::2], targets[1::2])
+                    for dest, inbox in targets:
                         if src == 'self' or dest == 'self':
                             continue
                         x = pos[src][0] + 150
@@ -582,7 +585,10 @@ class CompoundIcon(BasicComponentIcon):
             for source in self.obj._compound_linkages:
                 src, outbox = source
                 targets = self.obj._compound_linkages[source]
-                for dest, inbox in zip(targets[0::2], targets[1::2]):
+                if isinstance(targets[0], basestring):
+                    # not a list of pairs, so make it into one
+                    targets = zip(targets[0::2], targets[1::2])
+                for dest, inbox in targets:
                     if src == 'self':
                         source_pos = self.in_pos(outbox, None)
                         dest_pos = self.child_comps[dest].in_pos(inbox, source_pos)
@@ -802,7 +808,10 @@ class NetworkArea(QtGui.QGraphicsScene):
         for source in network.linkages:
             src, outbox = source
             targets = network.linkages[source]
-            for dest, inbox in zip(targets[0::2], targets[1::2]):
+            if isinstance(targets[0], basestring):
+                # not a list of pairs, so make it into one
+                targets = zip(targets[0::2], targets[1::2])
+            for dest, inbox in targets:
                 link = ComponentLink(comps[src], outbox, comps[dest], inbox)
                 self.addItem(link)
         self.views()[0].centerOn(self.itemsBoundingRect().center())
@@ -831,8 +840,8 @@ class NetworkArea(QtGui.QGraphicsScene):
                     modules.append(mod)
                     with_qt = with_qt or needs_qt[mod]
             elif isinstance(child, ComponentLink):
-                linkages[(child.source.name, child.outbox)] += [
-                    child.dest.name, child.inbox]
+                linkages[(child.source.name, child.outbox)].append(
+                    (child.dest.name, child.inbox))
         linkages = dict(linkages)
         components = pprint.pformat(components, indent=4)
         linkages = pprint.pformat(linkages, indent=4)

@@ -102,7 +102,10 @@ class Compound(object):
         for source in self._compound_linkages:
             src, outbox = source
             targets = self._compound_linkages[source]
-            for dest, inbox in zip(targets[0::2], targets[1::2]):
+            if isinstance(targets[0], basestring):
+                # not a list of pairs, so make it into one
+                targets = zip(targets[0::2], targets[1::2])
+            for dest, inbox in targets:
                 if src == 'self':
                     if hasattr(self, outbox):
                         self.logger.critical(
