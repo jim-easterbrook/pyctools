@@ -191,6 +191,10 @@ class Component(ConfigMixin):
         for input in self.inputs:
             self.input_buffer[input] = InputBuffer(self.new_frame)
             setattr(self, input, self.input_buffer[input].input)
+        # create object pool for each output
+        if self.with_outframe_pool:
+            for output in self.outputs:
+                self.outframe_pool[output] = ObjectPool(Frame, self.new_frame)
         # initialise output connections lists
         self._component_connections = {}
         for output in self.outputs:
@@ -279,17 +283,14 @@ class Component(ConfigMixin):
     def start_event(self):
         """Called by the event loop when it is started.
 
-        Set up the outframe pool(s), if
-        :py:attr:`~Component.with_outframe_pool` is ``True``, then calls
-        :py:meth:`on_start`.
+        Calls :py:meth:`on_start`, then starts any output frame pools.
 
         """
+        self.on_start()
         if self.with_outframe_pool:
             self.update_config()
-            for output in self.outputs:
-                self.outframe_pool[output] = ObjectPool(
-                    Frame, self.config['outframe_pool_len'], self.new_frame)
-        self.on_start()
+            for output in self.outframe_pool.values():
+                output.start(self.config['outframe_pool_len'])
 
     def stop_event(self):
         """Called by the event loop when it is stopped.
@@ -465,19 +466,28 @@ class ObjectPool(object):
     :param callable factory: The function to call to create new
         objects.
 
-    :param int size: The maximum number of objects allowed to exist at
-        any time.
-
     :param callable notify: A function to call when a new object
         is available.
 
     """
-    def __init__(self, factory, size, notify):
+    def __init__(self, factory, notify):
         super(ObjectPool, self).__init__()
         self.factory = factory
         self.notify = notify
         self.ref_list = []
         self.obj_list = deque()
+
+    def start(self, size):
+        """Start the object pool.
+
+        Call this when the component is ready to run. Setting the pool
+        size here allows it to be part of the component's config,
+        adjusted after initialisation but before the component is run.
+
+        :param int size: The maximum number of objects allowed to exist
+            at any time.
+
+        """
         # create first objects
         for i in range(size):
             self._new_object()
