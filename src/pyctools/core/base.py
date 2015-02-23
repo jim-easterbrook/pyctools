@@ -31,6 +31,8 @@ __docformat__ = 'restructuredtext en'
 
 from collections import deque
 import logging
+import threading
+import time
 import weakref
 
 from guild.actor import Actor, actor_method
@@ -82,6 +84,41 @@ class GuildEventLoop(Actor):
         self.owner.new_config_event()
 
 
+class ThreadEventLoop(threading.Thread):
+    def __init__(self, owner):
+        super(ThreadEventLoop, self).__init__()
+        self.daemon = True
+        self.owner = owner
+        self.incoming = deque()
+
+    def run(self):
+        self.owner.start_event()
+        while True:
+            while not self.incoming:
+                time.sleep(0.01)
+            command = self.incoming.popleft()
+            if command is None:
+                break
+            try:
+                command()
+            except Exception as ex:
+                self.owner.logger.exception(ex)
+                break
+        self.owner.stop_event()
+
+    def stop(self):
+        self.incoming.append(None)
+
+    def running(self):
+        return self.is_alive()
+
+    def new_frame(self):
+        self.incoming.append(self.owner.new_frame_event)
+
+    def new_config(self):
+        self.incoming.append(self.owner.new_config_event)
+
+
 class Component(ConfigMixin):
     """Base class for all Pyctools components, i.e. objects designed
     to be used in processing pipelines (or graph networks).
@@ -130,7 +167,7 @@ class Component(ConfigMixin):
     inputs = ['input']
     outputs = ['output']
 
-    def __init__(self, event_loop=GuildEventLoop, **config):
+    def __init__(self, event_loop=ThreadEventLoop, **config):
         super(Component, self).__init__()
         self.logger = logging.getLogger(self.__class__.__name__)
         # create event loop and adopt some of its methods
@@ -138,6 +175,7 @@ class Component(ConfigMixin):
         self.start = component_event_loop.start
         self.stop = component_event_loop.stop
         self.running = component_event_loop.running
+        self.join = component_event_loop.join
         self.new_frame = component_event_loop.new_frame
         self.new_config = component_event_loop.new_config
         # set up inputs and outputs
