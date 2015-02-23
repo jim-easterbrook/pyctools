@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
 #  Copyright (C) 2014-15  Pyctools contributors
@@ -52,8 +51,6 @@ from collections import deque
 import threading
 import time
 
-from guild.actor import actor_method
-from guild.qtactor import QtActorMixin
 import numpy
 from OpenGL import GL
 from PyQt4 import QtGui, QtCore, QtOpenGL
@@ -61,6 +58,7 @@ from PyQt4.QtCore import Qt
 
 from pyctools.core.config import ConfigInt, ConfigEnum, ConfigStr
 from pyctools.core.base import Transformer
+from pyctools.core.qt import QtEventLoop
 
 class BufferSwapper(QtCore.QObject):
     done_swap = QtCore.pyqtSignal(float)
@@ -112,7 +110,7 @@ class GLDisplay(QtOpenGL.QGLWidget):
             self.sync_swap_interval = -1
         self.sync_swap = self.sync_swap_interval >= 0
         self._display_period = 1.0 / display_freq
-        self._frame_period = 1.0 / 25.0
+        self.frame_period = 1.0 / 25.0
         # create separate thread to swap buffers
         self.ctx_lock = threading.RLock()
         self.swapper_thread = QtCore.QThread()
@@ -181,7 +179,7 @@ class GLDisplay(QtOpenGL.QGLWidget):
             error = self._next_frame_due - self._display_clock
             while error > margin:
                 error -= self._display_period
-            if abs(error) < self._frame_period * self._display_period / 4.0:
+            if abs(error) < self.frame_period * self._display_period / 4.0:
                 self._next_frame_due -= error
         next_slot = self._display_clock + self._display_period
         if self.paused:
@@ -190,7 +188,7 @@ class GLDisplay(QtOpenGL.QGLWidget):
             # show frame immmediately
             self.next_frame()
             self.show_black = False
-        elif not self._repeat:
+        elif not self.repeat:
             # show blank frame immediately
             self.show_black = True
         # refresh displayed image
@@ -200,7 +198,7 @@ class GLDisplay(QtOpenGL.QGLWidget):
 
     def next_frame(self):
         in_frame, self.numpy_image = self.in_queue.popleft()
-        self._next_frame_due += self._frame_period
+        self._next_frame_due += self.frame_period
         self._frame_count += 1
         if self._frame_count <= 0:
             self._block_start = self._next_frame_due
@@ -283,13 +281,12 @@ class GLDisplay(QtOpenGL.QGLWidget):
         GL.glEnd()
 
 
-class SimpleDisplay(QtActorMixin, QtGui.QWidget):
-    def __init__(self, owner, parent=None, flags=0):
-        super(SimpleDisplay, self).__init__(parent, flags)
-        self.owner = owner
-        self.displaying = False
+class QtDisplay(Transformer, QtGui.QWidget):
+    def __init__(self, **config):
+        super(QtDisplay, self).__init__(event_loop=QtEventLoop, **config)
+        QtGui.QWidget.__init__(self, None, Qt.Window | Qt.WindowStaysOnTopHint)
         self.setLayout(QtGui.QGridLayout())
-        self.display = GLDisplay(owner.logger, parent)
+        self.display = GLDisplay(self.logger)
         self.layout().addWidget(self.display, 0, 0, 1, 4)
         # control buttons
         self.pause_button = QtGui.QPushButton('pause')
@@ -300,6 +297,19 @@ class SimpleDisplay(QtActorMixin, QtGui.QWidget):
         self.step_button.setShortcut(QtGui.QKeySequence.MoveToNextChar)
         self.step_button.clicked.connect(self.step)
         self.layout().addWidget(self.step_button, 1, 1)
+        self.display_size = None
+        self.last_frame_type = None
+
+    def initialise(self):
+        self.config['title'] = ConfigStr(dynamic=True)
+        self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
+        self.config['expand'] = ConfigInt(min_value=1, dynamic=True)
+        self.config['framerate'] = ConfigInt(min_value=1, value=25)
+        self.config['sync'] = ConfigEnum(('off', 'on'))
+        self.config['sync'] = 'on'
+        self.config['repeat'] = ConfigEnum(('off', 'on'))
+        self.config['repeat'] = 'on'
+        self.config['stats'] = ConfigEnum(('off', 'on'))
 
     def pause(self):
         self.display.paused = not self.display.paused
@@ -314,103 +324,39 @@ class SimpleDisplay(QtActorMixin, QtGui.QWidget):
             return
         self.display.step()
 
-    @actor_method
-    def set_title(self, title):
-        self.setWindowTitle(title)
-
-    @actor_method
-    def set_size(self, w, h):
-        self.display.setMinimumSize(w, h)
-
-    @actor_method
-    def set_framerate(self, framerate):
-        self.display._frame_period = 1.0 / float(framerate)
-
-    @actor_method
-    def set_show_stats(self, show_stats):
-        self.display.show_stats = show_stats
-
-    @actor_method
-    def set_repeat(self, repeat):
-        self.display._repeat = repeat
-
-    @actor_method
-    def set_sync(self, sync):
-        self.display.set_sync(sync)
-
-    @actor_method
-    def show_frame(self, frame, numpy_image):
-        self.display.in_queue.append((frame, numpy_image))
-        if not self.displaying:
-            self.displaying = True
-            self.display.startup()
-            self.show()
-
     def closeEvent(self, event):
-        self.owner.stop()
-        self.display.shutdown()
-        super(SimpleDisplay, self).closeEvent(event)
-
-
-class QtDisplay(Transformer):
-    def initialise(self):
-        self.config['title'] = ConfigStr(dynamic=True)
-        self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['expand'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['framerate'] = ConfigInt(min_value=1, value=25)
-        self.config['sync'] = ConfigEnum(('off', 'on'))
-        self.config['sync'] = 'on'
-        self.config['repeat'] = ConfigEnum(('off', 'on'))
-        self.config['repeat'] = 'on'
-        self.config['stats'] = ConfigEnum(('off', 'on'))
-        self.display = SimpleDisplay(
-            self, None, Qt.Window | Qt.WindowStaysOnTopHint)
-        self.title = None
-        self.display_size = None
-        self.framerate = None
-        self.show_stats = None
-        self.repeat = None
-        self.sync = None
-        self.last_frame_type = None
+        event.accept()
+        self.stop()
 
     def on_start(self):
-        self.display.start()
+        self.on_set_config()
+        self.display.startup()
 
     def on_stop(self):
-        self.display.close()
+        self.display.shutdown()
+        self.close()
+
+    def on_set_config(self):
+        self.update_config()
+        self.setWindowTitle(self.config['title'])
+        self.display.frame_period = 1.0 / float(self.config['framerate'])
+        self.display.show_stats = self.config['stats'] == 'on'
+        self.display.repeat = self.config['repeat'] == 'on'
+        self.display.set_sync(self.config['sync'] == 'on')
 
     def transform(self, in_frame, out_frame):
+        numpy_image = in_frame.as_numpy(dtype=numpy.uint8)
+        if not numpy_image.flags.contiguous:
+            numpy_image = numpy.ascontiguousarray(numpy_image)
         self.update_config()
-        title = self.config['title']
-        if self.title != title:
-            self.title = title
-            self.display.set_title(title)
-        h, w = in_frame.size()
+        h, w, bpc = numpy_image.shape
         w = (w * self.config['expand']) // self.config['shrink']
         h = (h * self.config['expand']) // self.config['shrink']
         if self.display_size != (w, h):
             self.display_size = w, h
-            self.display.set_size(w, h)
-        framerate = self.config['framerate']
-        if self.framerate != framerate:
-            self.framerate = framerate
-            self.display.set_framerate(framerate)
-        show_stats = self.config['stats'] == 'on'
-        if self.show_stats != show_stats:
-            self.show_stats = show_stats
-            self.display.set_show_stats(show_stats)
-        repeat = self.config['repeat'] == 'on'
-        if self.repeat != repeat:
-            self.repeat = repeat
-            self.display.set_repeat(repeat)
-        sync = self.config['sync'] == 'on'
-        if self.sync != sync:
-            self.sync = sync
-            self.display.set_sync(sync)
-        numpy_image = in_frame.as_numpy(dtype=numpy.uint8)
-        if not numpy_image.flags.contiguous:
-            numpy_image = numpy.ascontiguousarray(numpy_image)
-        bpc = numpy_image.shape[2]
+            self.display.setMinimumSize(w, h)
+            if not self.isVisible():
+                self.show()
         if bpc == 3:
             if in_frame.type != 'RGB' and in_frame.type != self.last_frame_type:
                 self.logger.warning(
@@ -424,5 +370,5 @@ class QtDisplay(Transformer):
                 'Cannot display %s frame with %d components', in_frame.type, bpc)
             return False
         self.last_frame_type = in_frame.type
-        self.display.show_frame(in_frame, numpy_image)
+        self.display.in_queue.append((in_frame, numpy_image))
         return True
