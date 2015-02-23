@@ -141,7 +141,7 @@ class ConfigPath(ConfigLeafNode):
         super(ConfigPath, self).__init__(**kw)
 
     def validate(self, value):
-        if not isinstance(value, str):
+        if not isinstance(value, basestring):
             return False
         if self.exists:
             return os.path.isfile(value)
@@ -194,8 +194,14 @@ class ConfigStr(ConfigLeafNode):
     """
     parser_kw = {'metavar' : 'str'}
 
+    def __init__(self, **kw):
+        super(ConfigStr, self).__init__(**kw)
+        if self.value is None:
+            self.value = ''
+            self.default = self.value
+
     def validate(self, value):
-        return isinstance(value, str)
+        return isinstance(value, basestring)
 
 
 class ConfigEnum(ConfigLeafNode):
