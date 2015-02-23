@@ -23,10 +23,13 @@
    Component
    Transformer
    ObjectPool
+   ThreadEventLoop
+   GuildEventLoop
 
 """
 
-__all__ = ['Component', 'Transformer', 'ObjectPool']
+__all__ = ['Component', 'Transformer', 'ObjectPool',
+           'ThreadEventLoop', 'GuildEventLoop']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque
@@ -62,6 +65,12 @@ class InputBuffer(object):
 
 
 class GuildEventLoop(Actor):
+    """Event loop using `Guild <https://github.com/sparkslabs/guild>`_.
+
+    This is a Guild "actor" that uses Guild "actor_method" decorators to
+    make thread-safe event handlers.
+
+    """
     def __init__(self, owner):
         super(GuildEventLoop, self).__init__()
         self.owner = owner
@@ -85,6 +94,27 @@ class GuildEventLoop(Actor):
 
 
 class ThreadEventLoop(threading.Thread):
+    """Event loop using :py:class:`threading.Thread`.
+
+    This is the standard Pyctools event loop. It runs as a Python
+    thread, allowing Pyctools components to run "concurrently".
+
+    The event loop provides four methods that the owning component
+    should "adopt" as its own: :py:meth:`~threading.Thread.start`,
+    :py:meth:`stop`, :py:meth:`running` &
+    :py:meth:`~threading.Thread.join`.
+
+    The owning component provides four methods that the event loop calls
+    in response to events: :py:meth:`~Component.start_event`,
+    :py:meth:`~Component.stop_event`,
+    :py:meth:`~Component.new_frame_event` &
+    :py:meth:`~Component.new_config_event`. It also provides a
+    :py:class:`logging.Logger` object.
+
+    :param Component owner: the Pyctools component that is using this
+        instance of :py:class:`ThreadEventLoop`.
+
+    """
     def __init__(self, owner):
         super(ThreadEventLoop, self).__init__()
         self.daemon = True
@@ -107,15 +137,33 @@ class ThreadEventLoop(threading.Thread):
         self.owner.stop_event()
 
     def stop(self):
+        """Thread-safe method to stop the component."""
         self.incoming.append(None)
 
     def running(self):
+        """Is the even loop running.
+
+        :rtype: bool
+
+        """
         return self.is_alive()
 
     def new_frame(self):
+        """Thread-safe method to alert the component to a new input or
+        output frame.
+
+        Called by the component's input buffers when an input frame
+        arrives, and by its output frame pools when a new output frame
+        is available.
+
+        """
         self.incoming.append(self.owner.new_frame_event)
 
     def new_config(self):
+        """Thread-safe method to alert the component to new config
+        values.
+
+        """
         self.incoming.append(self.owner.new_config_event)
 
 
@@ -159,6 +207,8 @@ class Component(ConfigMixin):
     :cvar list outputs: The component's outputs.
 
     :ivar logger: :py:class:`logging.Logger` object for the component.
+
+    :param class event_loop: The type of event loop to use.
 
     :param dict config: Initial configuration values.
 
@@ -218,8 +268,9 @@ class Component(ConfigMixin):
         """Over ride this in your derived class if you need to do
         anything when the configuration is updated.
 
-        The config isn't actually changed until :py:meth:`update_config`
-        is called, so be sure to do this in your method.
+        The config isn't actually changed until
+        :py:meth:`~ConfigMixin.update_config` is called, so be sure to
+        do this in your method.
 
         """
         pass
@@ -260,14 +311,14 @@ class Component(ConfigMixin):
     def connect(self, output_name, input_method):
         """Connect an output to any callable object.
 
-        :py:meth`on_connect` is called after the connection is made to
+        :py:meth:`on_connect` is called after the connection is made to
         allow components to do something when an output is conected.
 
         :param str output_name: the output to connect. Must be a member
             of :py:attr:`~Component.outputs`.
 
-        :param callable input_method: the callable to invoke when
-            :py:meth:`send` is called.
+        :param callable input_method: the thread-safe callable to invoke
+            when :py:meth:`send` is called.
 
         """
         self.logger.debug('connect "%s"', output_name)
@@ -277,7 +328,11 @@ class Component(ConfigMixin):
         self.on_connect(output_name)
 
     def bind(self, source, dest, destmeth):
-        # for Guild compatibility
+        """Guild compatible version of :py:meth:`connect`.
+
+        This allows Pyctools components to be used in Guild pipelines.
+
+        """
         self.connect(source, getattr(dest, destmeth))
 
     def start_event(self):
