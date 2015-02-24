@@ -69,11 +69,11 @@ class ThreadEventLoop(threading.Thread):
     :py:meth:`stop`, :py:meth:`running` &
     :py:meth:`~threading.Thread.join`.
 
-    The owning component provides four methods that the event loop calls
-    in response to events: :py:meth:`~Component.start_event`,
+    The owner component must provide four methods that the event loop
+    calls in response to events: :py:meth:`~Component.start_event`,
     :py:meth:`~Component.stop_event`,
     :py:meth:`~Component.new_frame_event` &
-    :py:meth:`~Component.new_config_event`. It also provides a
+    :py:meth:`~Component.new_config_event`. It must also provide a
     :py:class:`logging.Logger` object.
 
     :param Component owner: the Pyctools component that is using this
@@ -106,7 +106,7 @@ class ThreadEventLoop(threading.Thread):
         self.incoming.append(None)
 
     def running(self):
-        """Is the even loop running.
+        """Is the event loop running.
 
         :rtype: bool
 
@@ -137,14 +137,14 @@ class Component(ConfigMixin):
     to be used in processing pipelines (or graph networks).
 
     By default every component has one input and one output. To help
-    other software introspect the component their names are listed in
-    :py:attr:`~Component.inputs` and :py:attr:`~Component.outputs`.
-    Redefine these attributes if your component has different inputs and
-    outputs.
+    other software introspect the component the input and output names
+    are listed in :py:attr:`~Component.inputs` and
+    :py:attr:`~Component.outputs`. Redefine these attributes if your
+    component has different inputs and outputs.
 
-    The base class creates a threadsafe input buffer for each of your
-    :py:attr:`~Component.inputs`. This allows each component to run in its own
-    thread.
+    The base class creates a thread-safe input buffer for each of your
+    :py:attr:`~Component.inputs`. This allows each component to run in
+    its own thread.
 
     To help with load balancing, components can have a limited size
     :py:class:`ObjectPool` of output :py:class:`~.frame.Frame` objects.
@@ -161,7 +161,7 @@ class Component(ConfigMixin):
 
     Every component also has configuration methods. See
     :py:class:`~.config.ConfigMixin` for more information. The
-    configuration can be initialised by passing appropriate key, value
+    configuration can be initialised by passing appropriate (key, value)
     pairs to a component's constructor. These values are applied after
     calling :py:meth:`initialise`.
 
@@ -295,7 +295,8 @@ class Component(ConfigMixin):
     def bind(self, source, dest, destmeth):
         """Guild compatible version of :py:meth:`connect`.
 
-        This allows Pyctools components to be used in Guild pipelines.
+        This allows Pyctools components to be used in `Guild
+        <https://github.com/sparkslabs/guild>`_ pipelines.
 
         """
         self.connect(source, getattr(dest, destmeth))

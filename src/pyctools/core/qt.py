@@ -70,6 +70,16 @@ class CoreEventLoop(QtCore.QObject):
 
 
 class QtEventLoop(CoreEventLoop):
+    """Event loop using the Qt "main thread" (or "GUI thread").
+
+    Use this event loop if your component is a Qt widget or needs to run
+    in the main thread for any other reason. See the :py:mod:`QtDisplay
+    <pyctools.components.qt.qtdisplay>` component for an example.
+
+    Pyctools event loops are described in more detail in the
+    :py:class:`~.base.ThreadEventLoop` documentation.
+
+    """
     def __init__(self, owner):
         super(QtEventLoop, self).__init__()
         self.owner = owner
@@ -90,6 +100,21 @@ class QtEventLoop(CoreEventLoop):
 
 
 class QtThreadEventLoop(CoreEventLoop):
+    """Event loop using a Qt "worker thread".
+
+    Use this event loop if your component is a Qt component that does
+    not need to run in the main thread. This allows a Pyctools component
+    to send or receive Qt signals, giving easy integration with other Qt
+    components.
+
+    I have experimented with using :py:class:`QtThreadEventLoop` instead
+    of :py:class:`~.base.ThreadEventLoop` in all the components in a
+    network. Surprisingly it ran at the same speed.
+
+    Pyctools event loops are described in more detail in the
+    :py:class:`~.base.ThreadEventLoop` documentation.
+
+    """
     def __init__(self, owner):
         super(QtThreadEventLoop, self).__init__()
         self.owner = owner
