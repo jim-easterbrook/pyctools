@@ -91,7 +91,9 @@ class ConfigLeafNode(object):
         where it's relevant.
 
     """
-    def __init__(self, value=None, dynamic=False, min_value=None, max_value=None):
+    def __init__(self, value=None, dynamic=False,
+                 min_value=None, max_value=None, **kwds):
+        super(ConfigLeafNode, self).__init__(**kwds)
         self.value = value
         self.dynamic = dynamic
         self.min_value = min_value
@@ -237,8 +239,8 @@ class ConfigParent(ConfigLeafNode):
     Stores a set of child nodes in a :py:class:`dict`.
 
     """
-    def __init__(self):
-        super(ConfigParent, self).__init__(value={})
+    def __init__(self, **kwds):
+        super(ConfigParent, self).__init__(value={}, **kwds)
 
     def validate(self, value):
         return isinstance(value, dict)
@@ -296,7 +298,8 @@ class ConfigMixin(object):
     """Add a config tree to a pyctools component.
 
     """
-    def __init__(self):
+    def __init__(self, **kwds):
+        super(ConfigMixin, self).__init__(**kwds)
         self.config = ConfigParent()
         self._configmixin_queue = collections.deque()
 

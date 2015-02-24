@@ -72,8 +72,8 @@ _INPUT_MIMETYPE = 'application/x-pyctools-component-input'
 _OUTPUT_MIMETYPE = 'application/x-pyctools-component-output'
 
 class ConfigPathWidget(QtGui.QPushButton):
-    def __init__(self, config):
-        super(ConfigPathWidget, self).__init__()
+    def __init__(self, config, **kwds):
+        super(ConfigPathWidget, self).__init__(**kwds)
         self.config = config
         self.show_value(self.config.get())
         self.clicked.connect(self.set_value)
@@ -113,8 +113,8 @@ class ConfigPathWidget(QtGui.QPushButton):
         self.setText(value)
 
 class ConfigIntWidget(QtGui.QSpinBox):
-    def __init__(self, config):
-        super(ConfigIntWidget, self).__init__()
+    def __init__(self, config, **kwds):
+        super(ConfigIntWidget, self).__init__(**kwds)
         self.config = config
         if self.config.min_value is None:
             self.setMinimum(-(2**31))
@@ -128,8 +128,8 @@ class ConfigIntWidget(QtGui.QSpinBox):
         self.valueChanged.connect(self.config.set)
 
 class ConfigFloatWidget(QtGui.QDoubleSpinBox):
-    def __init__(self, config):
-        super(ConfigFloatWidget, self).__init__()
+    def __init__(self, config, **kwds):
+        super(ConfigFloatWidget, self).__init__(**kwds)
         self.config = config
         self.setDecimals(self.config.decimals)
         if self.config.min_value is None:
@@ -145,8 +145,8 @@ class ConfigFloatWidget(QtGui.QDoubleSpinBox):
         self.valueChanged.connect(self.config.set)
 
 class ConfigStrWidget(QtGui.QLineEdit):
-    def __init__(self, config):
-        super(ConfigStrWidget, self).__init__()
+    def __init__(self, config, **kwds):
+        super(ConfigStrWidget, self).__init__(**kwds)
         self.config = config
         value = self.config.get()
         if value is None:
@@ -158,8 +158,8 @@ class ConfigStrWidget(QtGui.QLineEdit):
         self.config.set(str(self.text()))
 
 class ConfigEnumWidget(QtGui.QComboBox):
-    def __init__(self, config):
-        super(ConfigEnumWidget, self).__init__()
+    def __init__(self, config, **kwds):
+        super(ConfigEnumWidget, self).__init__(**kwds)
         self.config = config
         for item in self.config.choices:
             self.addItem(item)
@@ -184,8 +184,8 @@ class ConfigEnumWidget(QtGui.QComboBox):
         self.config.set(value)
 
 class ConfigParentWidget(QtGui.QWidget):
-    def __init__(self, config):
-        super(ConfigParentWidget, self).__init__()
+    def __init__(self, config, **kwds):
+        super(ConfigParentWidget, self).__init__(**kwds)
         self.config = config
         self.setLayout(QtGui.QFormLayout())
         for name in sorted(self.config.value):
@@ -194,8 +194,8 @@ class ConfigParentWidget(QtGui.QWidget):
             self.layout().addRow(name, widget)
 
 class ConfigGrandParentWidget(QtGui.QTabWidget):
-    def __init__(self, config):
-        super(ConfigGrandParentWidget, self).__init__()
+    def __init__(self, config, **kwds):
+        super(ConfigGrandParentWidget, self).__init__(**kwds)
         self.config = config
         for name in sorted(self.config.value):
             child = self.config.value[name]
@@ -213,8 +213,8 @@ config_widget = {
     }
 
 class ConfigDialog(QtGui.QDialog):
-    def __init__(self, parent):
-        super(ConfigDialog, self).__init__(flags=Qt.WindowStaysOnTopHint)
+    def __init__(self, parent, **kwds):
+        super(ConfigDialog, self).__init__(flags=Qt.WindowStaysOnTopHint, **kwds)
         self.setWindowTitle('%s configuration' % parent.name)
         self.component = parent
         self.config = self.component.obj.get_config()
@@ -242,8 +242,8 @@ class ConfigDialog(QtGui.QDialog):
         self.component.obj.set_config(self.config)
 
 class ComponentLink(QtGui.QGraphicsLineItem):
-    def __init__(self, source, outbox, dest, inbox, parent=None):
-        super(ComponentLink, self).__init__(parent)
+    def __init__(self, source, outbox, dest, inbox, **kwds):
+        super(ComponentLink, self).__init__(**kwds)
         self.setFlags(QtGui.QGraphicsItem.ItemIsSelectable)
         self.source = source
         self.outbox = outbox
@@ -276,8 +276,8 @@ class ComponentLink(QtGui.QGraphicsLineItem):
         self.setLine(QtCore.QLineF(source_pos, dest_pos))
 
 class IOIcon(QtGui.QGraphicsRectItem):
-    def __init__(self, name, parent):
-        super(IOIcon, self).__init__(parent)
+    def __init__(self, name, **kwds):
+        super(IOIcon, self).__init__(**kwds)
         self.name = name
         self.setAcceptDrops(True)
         # draw an invisible rectangle to define drag-and-drop area
@@ -288,7 +288,8 @@ class IOIcon(QtGui.QGraphicsRectItem):
         # draw a smaller visible triangle
         self.triangle = QtGui.QGraphicsPolygonItem(
             QtGui.QPolygonF(QtGui.QPolygon([0, -5, 6, 0, 0, 5, 0, -5])), self)
-        self.label = QtGui.QGraphicsSimpleTextItem(name, parent)
+        self.label = QtGui.QGraphicsSimpleTextItem(
+            name, parent=self.parentItem())
         font = self.label.font()
         font.setPointSizeF(font.pointSize() * 0.75)
         self.label.setFont(font)
@@ -363,8 +364,8 @@ class OutputIcon(IOIcon):
 
 class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
     width = 100
-    def __init__(self, name, klass, obj, parent=None):
-        super(BasicComponentIcon, self).__init__(parent)
+    def __init__(self, name, klass, obj, **kwds):
+        super(BasicComponentIcon, self).__init__(**kwds)
         self.setFlags(QtGui.QGraphicsItem.ItemIsMovable |
                       QtGui.QGraphicsItem.ItemIsSelectable |
                       QtGui.QGraphicsItem.ItemSendsGeometryChanges)
@@ -398,12 +399,12 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
         # inputs
         self.inputs = {}
         for idx, name in enumerate(self.obj.inputs):
-            self.inputs[name] = InputIcon(name, self)
+            self.inputs[name] = InputIcon(name, parent=self)
             self.inputs[name].setPos(0, 100 + (idx * 20))
         # outputs
         self.outputs = {}
         for idx, name in enumerate(self.obj.outputs):
-            self.outputs[name] = OutputIcon(name, self)
+            self.outputs[name] = OutputIcon(name, parent=self)
             self.outputs[name].setPos(self.width, 100 + (idx * 20))
 
     def rename(self, name):
@@ -478,10 +479,10 @@ class ComponentIcon(BasicComponentIcon):
             [0, 0, self.width, 0, self.width, height, 0, height, 0, 0])))
 
 class CompoundIcon(BasicComponentIcon):
-    def __init__(self, *arg, **kw):
+    def __init__(self, **kwds):
         self.expanded = False
         self.child_comps = {}
-        super(CompoundIcon, self).__init__(*arg, **kw)
+        super(CompoundIcon, self).__init__(**kwds)
         self.context_menu_actions.append(
             ('Expand/contract', self.expand_contract))
 
@@ -611,7 +612,7 @@ class BusbarIcon(BasicComponentIcon):
         for name in self.obj.outputs:
             if name in self.outputs:
                 continue
-            self.outputs[name] = OutputIcon(name, self)
+            self.outputs[name] = OutputIcon(name, parent=self)
             y = 0
             while not self.out_pos_free(name, y):
                 y += 20
@@ -665,8 +666,8 @@ class BusbarIcon(BasicComponentIcon):
 class NetworkArea(QtGui.QGraphicsScene):
     min_size = QtCore.QRectF(0, 0, 800, 600)
 
-    def __init__(self, parent=None):
-        super(NetworkArea, self).__init__(parent)
+    def __init__(self, **kwds):
+        super(NetworkArea, self).__init__(**kwds)
         self.setSceneRect(self.min_size)
 
     def dragEnterEvent(self, event):
@@ -724,11 +725,11 @@ class NetworkArea(QtGui.QGraphicsScene):
         if not obj:
             obj = klass()
         if isinstance(obj, pyctools.components.plumbing.busbar.Busbar):
-            component = BusbarIcon(name, klass, obj, parent)
+            component = BusbarIcon(name, klass, obj, parent=parent)
         elif isinstance(obj, Compound):
-            component = CompoundIcon(name, klass, obj, parent)
+            component = CompoundIcon(name, klass, obj, parent=parent)
         else:
-            component = ComponentIcon(name, klass, obj, parent)
+            component = ComponentIcon(name, klass, obj, parent=parent)
         component.setPos(position)
         if not parent:
             self.addItem(component)
@@ -924,8 +925,8 @@ class ComponentItemModel(QtGui.QStandardItemModel):
         return result
 
 class ComponentList(QtGui.QTreeView):
-    def __init__(self, parent=None):
-        super(ComponentList, self).__init__(parent)
+    def __init__(self, **kwds):
+        super(ComponentList, self).__init__(**kwds)
         self.setModel(ComponentItemModel(self))
         self.setDragEnabled(True)
         self.setHeaderHidden(True)
@@ -986,8 +987,8 @@ class ComponentList(QtGui.QTreeView):
                     node.setData(item)
 
 class MainWindow(QtGui.QMainWindow):
-    def __init__(self, parent=None, script=None):
-        super(MainWindow, self).__init__(parent)
+    def __init__(self, script=None, **kwds):
+        super(MainWindow, self).__init__(**kwds)
         self.setWindowTitle("Pyctools graph editor")
         self.script_file = os.getcwd()
         ## file menu
@@ -1023,9 +1024,9 @@ class MainWindow(QtGui.QMainWindow):
         # component list and network drawing area
         splitter = QtGui.QSplitter(self)
         splitter.setChildrenCollapsible(False)
-        self.component_list = ComponentList(self)
+        self.component_list = ComponentList(parent=self)
         splitter.addWidget(self.component_list)
-        self.network_area = NetworkArea(self)
+        self.network_area = NetworkArea(parent=self)
         self.view = QtGui.QGraphicsView(self.network_area)
         self.view.setAcceptDrops(True)
         self.view.setDragMode(QtGui.QGraphicsView.RubberBandDrag)

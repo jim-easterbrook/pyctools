@@ -63,8 +63,8 @@ from pyctools.core.qt import QtEventLoop
 class BufferSwapper(QtCore.QObject):
     done_swap = QtCore.pyqtSignal(float)
 
-    def __init__(self, widget, ctx_lock, parent=None):
-        super(BufferSwapper, self).__init__(parent)
+    def __init__(self, widget, ctx_lock, **kwds):
+        super(BufferSwapper, self).__init__(**kwds)
         self.widget = widget
         self.ctx_lock = ctx_lock
 
@@ -82,8 +82,8 @@ class BufferSwapper(QtCore.QObject):
 class GLDisplay(QtOpenGL.QGLWidget):
     do_swap = QtCore.pyqtSignal()
 
-    def __init__(self, logger, parent=None):
-        super(GLDisplay, self).__init__(parent)
+    def __init__(self, logger, **kwds):
+        super(GLDisplay, self).__init__(**kwds)
         self.logger = logger
         self.in_queue = deque()
         self.black_image = numpy.zeros((1, 1, 1), dtype=numpy.uint8)
@@ -284,7 +284,7 @@ class GLDisplay(QtOpenGL.QGLWidget):
 class QtDisplay(Transformer, QtGui.QWidget):
     def __init__(self, **config):
         super(QtDisplay, self).__init__(event_loop=QtEventLoop, **config)
-        QtGui.QWidget.__init__(self, None, Qt.Window | Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
         self.setLayout(QtGui.QGridLayout())
         self.display = GLDisplay(self.logger)
         self.layout().addWidget(self.display, 0, 0, 1, 4)

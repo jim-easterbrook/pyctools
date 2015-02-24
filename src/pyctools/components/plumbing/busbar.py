@@ -39,12 +39,11 @@ from pyctools.core.config import ConfigMixin
 __all__ = ['Busbar']
 __docformat__ = 'restructuredtext en'
 
-class Busbar(Splitter, ConfigMixin):
+class Busbar(ConfigMixin, Splitter):
     inputs = ['input']
 
-    def __init__(self):
-        super(Busbar, self).__init__()
-        ConfigMixin.__init__(self)
+    def __init__(self, **kwds):
+        super(Busbar, self).__init__(**kwds)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.warning('Deprecation warning: Busbar is no longer required')
         self.outputs = ['output0', 'output1']

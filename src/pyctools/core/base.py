@@ -40,7 +40,8 @@ from .config import ConfigMixin, ConfigInt
 from .frame import Frame, Metadata
 
 class InputBuffer(object):
-    def __init__(self, notify):
+    def __init__(self, notify, **kwds):
+        super(InputBuffer, self).__init__(**kwds)
         self.notify = notify
         self.queue = deque()
 
@@ -80,8 +81,8 @@ class ThreadEventLoop(threading.Thread):
         instance of :py:class:`ThreadEventLoop`.
 
     """
-    def __init__(self, owner):
-        super(ThreadEventLoop, self).__init__()
+    def __init__(self, owner, **kwds):
+        super(ThreadEventLoop, self).__init__(**kwds)
         self.daemon = True
         self.owner = owner
         self.incoming = deque()
@@ -492,8 +493,8 @@ class ObjectPool(object):
         is available.
 
     """
-    def __init__(self, factory, notify):
-        super(ObjectPool, self).__init__()
+    def __init__(self, factory, notify, **kwds):
+        super(ObjectPool, self).__init__(**kwds)
         self.factory = factory
         self.notify = notify
         self.ref_list = []

@@ -57,7 +57,8 @@ class Frame(object):
     pixel, colour component.
 
     """
-    def __init__(self):
+    def __init__(self, **kwds):
+        super(Frame, self).__init__(**kwds)
         self.frame_no = -1
         self.data = None
         self.type = 'empty'
@@ -185,7 +186,8 @@ class Metadata(object):
     information is missing.
 
     """
-    def __init__(self):
+    def __init__(self, **kwds):
+        super(Metadata, self).__init__(**kwds)
         self.data = {}
         self.comment = None
         self.set('audit', '')

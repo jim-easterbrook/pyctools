@@ -34,8 +34,8 @@ from PyQt4 import QtCore
 _queue_event = QtCore.QEvent.registerEventType()
 
 class ActionEvent(QtCore.QEvent):
-    def __init__(self, command):
-        super(ActionEvent, self).__init__(_queue_event)
+    def __init__(self, command, **kwds):
+        super(ActionEvent, self).__init__(_queue_event, **kwds)
         self.command = command
 
 
@@ -80,8 +80,8 @@ class QtEventLoop(CoreEventLoop):
     :py:class:`~.base.ThreadEventLoop` documentation.
 
     """
-    def __init__(self, owner):
-        super(QtEventLoop, self).__init__()
+    def __init__(self, owner, **kwds):
+        super(QtEventLoop, self).__init__(**kwds)
         self.owner = owner
         self.is_running = False
 
@@ -115,8 +115,8 @@ class QtThreadEventLoop(CoreEventLoop):
     :py:class:`~.base.ThreadEventLoop` documentation.
 
     """
-    def __init__(self, owner):
-        super(QtThreadEventLoop, self).__init__()
+    def __init__(self, owner, **kwds):
+        super(QtThreadEventLoop, self).__init__(**kwds)
         self.owner = owner
         # create thread and move to it
         self.thread = QtCore.QThread()
