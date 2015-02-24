@@ -479,10 +479,10 @@ class ComponentIcon(BasicComponentIcon):
             [0, 0, self.width, 0, self.width, height, 0, height, 0, 0])))
 
 class CompoundIcon(BasicComponentIcon):
-    def __init__(self, **kwds):
+    def __init__(self, name, klass, obj, **kwds):
         self.expanded = False
         self.child_comps = {}
-        super(CompoundIcon, self).__init__(**kwds)
+        super(CompoundIcon, self).__init__(name, klass, obj, **kwds)
         self.context_menu_actions.append(
             ('Expand/contract', self.expand_contract))
 
@@ -866,7 +866,7 @@ class Network(object):
     def make(self):
         comps = {}
         for name, component in self.components.items():
-            comps[name] = eval(component['class'])(**eval(component['config']))
+            comps[name] = eval(component['class'])(config=eval(component['config']))
         return Compound(linkages=self.linkages, **comps)
 
 if __name__ == '__main__':

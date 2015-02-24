@@ -42,7 +42,7 @@ __docformat__ = 'restructuredtext en'
 class Busbar(ConfigMixin, Splitter):
     inputs = ['input']
 
-    def __init__(self, **kwds):
+    def __init__(self, config={}, **kwds):
         super(Busbar, self).__init__(**kwds)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.warning('Deprecation warning: Busbar is no longer required')

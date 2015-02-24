@@ -19,13 +19,13 @@ def IntraField():
     return Compound(
         deint = SimpleDeinterlace(),
         interp = Resize(),
-        filgen = FilterGenerator(yaperture=8, ycut=50),
-        gain = Arithmetic(func='data * pt_float(2)'),
+        filgen = FilterGenerator(config={'yaperture' : 8, 'ycut' : 50}),
+        gain = Arithmetic(config={'func' : 'data * pt_float(2)'}),
         linkages = {
-            ('self',   'input')  : ('deint',  'input'),
-            ('deint',  'output') : ('interp', 'input'),
-            ('interp', 'output') : ('self',   'output'),
-            ('filgen', 'output') : ('gain',   'input'),
-            ('gain',   'output') : ('interp', 'filter'),
+            ('self',   'input')  : [('deint',  'input')],
+            ('deint',  'output') : [('interp', 'input')],
+            ('interp', 'output') : [('self',   'output')],
+            ('filgen', 'output') : [('gain',   'input')],
+            ('gain',   'output') : [('interp', 'filter')],
             }
         )

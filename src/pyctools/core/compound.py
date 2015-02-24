@@ -43,10 +43,11 @@ class Compound(object):
             yaperture = 1
             if y_up != 1 or y_down != 1:
                 yaperture = 16
-            filgen = FilterGenerator(
-                xup=x_up, xdown=x_down, xaperture=xaperture,
-                yup=y_up, ydown=y_down, yaperture=yaperture)
-            resize = Resize(xup=x_up, xdown=x_down, yup=y_up, ydown=y_down)
+            filgen = FilterGenerator(config={
+                'xup' : x_up, 'xdown' : x_down, 'xaperture' : xaperture,
+                'yup' : y_up, 'ydown' : y_down, 'yaperture' : yaperture})
+            resize = Resize(config={
+                'xup' : x_up, 'xdown' : x_down, 'yup' : y_up, 'ydown' : y_down})
             return Compound(
                 filgen = filgen,
                 resize = resize,

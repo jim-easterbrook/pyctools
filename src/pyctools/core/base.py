@@ -183,7 +183,7 @@ class Component(ConfigMixin):
     inputs = ['input']
     outputs = ['output']
 
-    def __init__(self, event_loop=ThreadEventLoop, **config):
+    def __init__(self, event_loop=ThreadEventLoop, config={}, **kwds):
         super(Component, self).__init__()
         self.logger = logging.getLogger(self.__class__.__name__)
         # create event loop and adopt some of its methods
@@ -201,6 +201,8 @@ class Component(ConfigMixin):
             self.config['outframe_pool_len'] = ConfigInt(min_value=2, value=3)
         # final initialisation
         self.initialise()
+        for key, value in kwds.items():
+            self.config[key] = value
         for key, value in config.items():
             self.config[key] = value
         # create a threadsafe buffer for each input and adopt its input method
