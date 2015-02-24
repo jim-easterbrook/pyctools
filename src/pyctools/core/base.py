@@ -24,12 +24,10 @@
    Transformer
    ObjectPool
    ThreadEventLoop
-   GuildEventLoop
 
 """
 
-__all__ = ['Component', 'Transformer', 'ObjectPool',
-           'ThreadEventLoop', 'GuildEventLoop']
+__all__ = ['Component', 'Transformer', 'ObjectPool', 'ThreadEventLoop']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque
@@ -37,8 +35,6 @@ import logging
 import threading
 import time
 import weakref
-
-from guild.actor import Actor, actor_method
 
 from .config import ConfigMixin, ConfigInt
 from .frame import Frame, Metadata
@@ -59,38 +55,7 @@ class InputBuffer(object):
         return self.queue[0]
 
     def get(self):
-        if not self.queue:
-            return None
         return self.queue.popleft()
-
-
-class GuildEventLoop(Actor):
-    """Event loop using `Guild <https://github.com/sparkslabs/guild>`_.
-
-    This is a Guild "actor" that uses Guild "actor_method" decorators to
-    make thread-safe event handlers.
-
-    """
-    def __init__(self, owner):
-        super(GuildEventLoop, self).__init__()
-        self.owner = owner
-
-    def process_start(self):
-        self.owner.start_event()
-
-    def onStop(self):
-        self.owner.stop_event()
-
-    def running(self):
-        return self.isAlive()
-
-    @actor_method
-    def new_frame(self):
-        self.owner.new_frame_event()
-
-    @actor_method
-    def new_config(self):
-        self.owner.new_config_event()
 
 
 class ThreadEventLoop(threading.Thread):
