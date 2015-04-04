@@ -282,8 +282,10 @@ class GLDisplay(QtOpenGL.QGLWidget):
 
 
 class QtDisplay(Transformer, QtGui.QWidget):
+    event_loop = QtEventLoop
+
     def __init__(self, **config):
-        super(QtDisplay, self).__init__(event_loop=QtEventLoop, **config)
+        super(QtDisplay, self).__init__(**config)
         self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
         self.setLayout(QtGui.QGridLayout())
         self.display = GLDisplay(self.logger)

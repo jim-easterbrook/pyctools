@@ -172,9 +172,9 @@ class Component(ConfigMixin):
 
     :cvar list outputs: The component's outputs.
 
-    :ivar logger: :py:class:`logging.Logger` object for the component.
+    :cvar class event_loop: The type of event loop to use.
 
-    :param class event_loop: The type of event loop to use.
+    :ivar logger: :py:class:`logging.Logger` object for the component.
 
     :param dict config: Initial configuration values.
 
@@ -182,12 +182,13 @@ class Component(ConfigMixin):
     with_outframe_pool = False
     inputs = ['input']
     outputs = ['output']
+    event_loop = ThreadEventLoop
 
-    def __init__(self, event_loop=ThreadEventLoop, config={}, **kwds):
+    def __init__(self, config={}, **kwds):
         super(Component, self).__init__()
         self.logger = logging.getLogger(self.__class__.__name__)
         # create event loop and adopt some of its methods
-        component_event_loop = event_loop(self)
+        component_event_loop = self.event_loop(self)
         self.start = component_event_loop.start
         self.stop = component_event_loop.stop
         self.running = component_event_loop.running
