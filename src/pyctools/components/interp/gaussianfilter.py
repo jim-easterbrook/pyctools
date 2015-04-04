@@ -85,6 +85,7 @@ class GaussianFilter(Component):
 
     """
     inputs = []
+    with_outframe_pool = False
 
     def initialise(self):
         self.config['xsigma'] = ConfigFloat(min_value=0.0)

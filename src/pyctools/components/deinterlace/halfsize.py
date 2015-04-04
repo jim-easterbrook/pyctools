@@ -43,8 +43,6 @@ from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Component
 
 class HalfSize(Component):
-    with_outframe_pool = True
-
     def initialise(self):
         self.config['inverse'] = ConfigEnum(('off', 'on'))
         self.config['topfirst'] = ConfigEnum(('off', 'on'))

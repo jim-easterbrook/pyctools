@@ -70,7 +70,6 @@ class Arithmetic(Transformer):
 
 class Arithmetic2(Component):
     inputs = ['input1', 'input2']
-    with_outframe_pool = True
 
     def initialise(self):
         self.config['func'] = ConfigStr(value='data1 + data2')

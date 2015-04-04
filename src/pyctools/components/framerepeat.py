@@ -33,8 +33,6 @@ from pyctools.core.base import Component
 from pyctools.core.config import ConfigInt
 
 class FrameRepeat(Component):
-    with_outframe_pool = True
-
     def initialise(self):
         self.config['count'] = ConfigInt(min_value=1)
         self.repeat_count = 0

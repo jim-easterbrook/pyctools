@@ -41,6 +41,7 @@ from pyctools.core.frame import Frame
 
 class ImageFileReader(Component):
     inputs = []
+    with_outframe_pool = False
 
     def initialise(self):
         self.config['path'] = ConfigPath()

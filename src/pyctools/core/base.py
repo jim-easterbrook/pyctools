@@ -147,11 +147,11 @@ class Component(ConfigMixin):
     :py:attr:`~Component.inputs`. This allows each component to run in
     its own thread.
 
-    To help with load balancing, components can have a limited size
+    To help with load balancing, components usually have a limited size
     :py:class:`ObjectPool` of output :py:class:`~.frame.Frame` objects.
-    To use this your class must set
-    :py:attr:`~Component.with_outframe_pool` to ``True``. The base class
-    creates an output frame pool for each of your
+    To disable this your class should set
+    :py:attr:`~Component.with_outframe_pool` to ``False``. The base
+    class creates an output frame pool for each of your
     :py:attr:`~Component.outputs`.
 
     A :py:class:`logging.Logger` object is created for every
@@ -179,7 +179,7 @@ class Component(ConfigMixin):
     :param dict config: Initial configuration values.
 
     """
-    with_outframe_pool = False
+    with_outframe_pool = True
     inputs = ['input']
     outputs = ['output']
     event_loop = ThreadEventLoop
@@ -433,8 +433,6 @@ class Transformer(Component):
     the component's actual work.
 
     """
-    with_outframe_pool = True
-
     def process_frame(self):
         """Get the input and output frame, then call
         :py:meth:`transform`.

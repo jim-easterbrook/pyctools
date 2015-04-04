@@ -92,6 +92,7 @@ class FilterGenerator(Component):
 
     """
     inputs = []
+    with_outframe_pool = False
 
     def initialise(self):
         self.config['xup'] = ConfigInt(min_value=1)

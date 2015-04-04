@@ -40,8 +40,6 @@ from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Component
 
 class SimpleDeinterlace(Component):
-    with_outframe_pool = True
-
     def initialise(self):
         self.config['mode'] = ConfigEnum(('insertzero', 'repeatline'))
         self.config['inverse'] = ConfigEnum(('off', 'on'))

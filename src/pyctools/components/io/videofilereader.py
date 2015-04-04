@@ -54,7 +54,6 @@ from pyctools.core.types import pt_float
 
 class VideoFileReader(Component):
     inputs = []
-    with_outframe_pool = True
 
     def initialise(self):
         self.frame_no = 0

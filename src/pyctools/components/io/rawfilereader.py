@@ -64,7 +64,6 @@ from pyctools.core.types import pt_float
 class RawFileReader(Component):
     inputs = []
     outputs = ['output_Y_RGB', 'output_UV']
-    with_outframe_pool = True
 
     def initialise(self):
         self.config['path'] = ConfigPath()

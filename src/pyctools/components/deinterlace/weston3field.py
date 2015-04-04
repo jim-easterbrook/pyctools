@@ -38,7 +38,6 @@ from pyctools.core.base import Component
 from pyctools.core.types import pt_float
 
 class Weston3Field(Component):
-    with_outframe_pool = True
     coef_lf = {
         0: numpy.array([32768, 0, 32768],
                        dtype=pt_float).reshape(-1, 1, 1) / pt_float(2**16),

@@ -50,7 +50,6 @@ class RGBtoYUV(Component):
          [-0.117188, -0.394228,  0.511415],
          [ 0.511415, -0.464522, -0.046894]], dtype=pt_float)
     outputs = ['output_Y', 'output_UV']
-    with_outframe_pool = True
 
     def initialise(self):
         self.config['matrix'] = ConfigEnum(('auto', '601', '709'), dynamic=True)

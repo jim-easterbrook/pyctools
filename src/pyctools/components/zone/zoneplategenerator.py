@@ -100,7 +100,6 @@ from .zoneplategeneratorcore import zone_frame
 
 class ZonePlateGenerator(Component):
     inputs = []
-    with_outframe_pool = True
 
     def initialise(self):
         self.config['k0'] = ConfigFloat(

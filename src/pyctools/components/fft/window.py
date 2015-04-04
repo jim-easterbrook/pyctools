@@ -73,6 +73,7 @@ from pyctools.core.frame import Frame
 
 class WindowBase(Component):
     inputs = []
+    with_outframe_pool = False
 
     def initialise(self):
         self.config['xtile'] = ConfigInt(min_value=1, dynamic=True)

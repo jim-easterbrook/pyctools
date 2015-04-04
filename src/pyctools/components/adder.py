@@ -26,7 +26,6 @@ from pyctools.core.base import Component
 
 class Adder(Component):
     inputs = ['input0', 'input1']
-    with_outframe_pool = True
 
     def process_frame(self):
         in_frame1 = self.input_buffer['input0'].get()
