@@ -46,7 +46,7 @@ class ImageFileReader(Component):
     def initialise(self):
         self.config['path'] = ConfigPath()
 
-    def on_connect(self, output_name):
+    def on_start(self):
         # read file
         self.update_config()
         path = self.config['path']
