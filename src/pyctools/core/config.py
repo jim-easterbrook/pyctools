@@ -146,6 +146,7 @@ class ConfigPath(ConfigLeafNode):
     def validate(self, value):
         if not isinstance(value, six.string_types):
             return False
+        value = os.path.abspath(value)
         if self.exists:
             return os.path.isfile(value)
         return os.path.isdir(os.path.dirname(value))
