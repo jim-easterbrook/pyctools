@@ -52,6 +52,7 @@ class ImageFileReader(Component):
         path = self.config['path']
         out_frame = Frame()
         image = PIL.Image.open(path)
+        image.load()
         # send output frame
         out_frame.data = image
         out_frame.type = image.mode
