@@ -75,6 +75,7 @@ __docformat__ = 'restructuredtext en'
 import collections
 import copy
 import os.path
+import six
 
 class ConfigLeafNode(object):
     """Base class for configuration nodes.
@@ -143,7 +144,7 @@ class ConfigPath(ConfigLeafNode):
         super(ConfigPath, self).__init__(**kw)
 
     def validate(self, value):
-        if not isinstance(value, basestring):
+        if not isinstance(value, six.string_types):
             return False
         if self.exists:
             return os.path.isfile(value)
@@ -203,7 +204,7 @@ class ConfigStr(ConfigLeafNode):
             self.default = self.value
 
     def validate(self, value):
-        return isinstance(value, basestring)
+        return isinstance(value, six.string_types)
 
 
 class ConfigEnum(ConfigLeafNode):

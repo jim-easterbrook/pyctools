@@ -21,6 +21,7 @@
 __docformat__ = 'restructuredtext en'
 
 import logging
+import six
 
 from .config import ConfigGrandParent
 
@@ -103,7 +104,7 @@ class Compound(object):
         for source in self._compound_linkages:
             src, outbox = source
             targets = self._compound_linkages[source]
-            if isinstance(targets[0], basestring):
+            if isinstance(targets[0], six.string_types):
                 # not a list of pairs, so make it into one
                 targets = zip(targets[0::2], targets[1::2])
             for dest, inbox in targets:
