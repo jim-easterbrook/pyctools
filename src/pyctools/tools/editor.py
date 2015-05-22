@@ -529,9 +529,6 @@ class CompoundIcon(BasicComponentIcon):
                         if src == 'self' or dest == 'self':
                             continue
                         x = pos[src][0] + 150
-                        if isinstance(self.obj._compound_children[src],
-                                      pyctools.components.plumbing.busbar.Busbar):
-                            x -= 50
                         if pos[dest][0] < x:
                             pos[dest][0] = x
                             no_move = False
@@ -605,64 +602,6 @@ class CompoundIcon(BasicComponentIcon):
                         ), self)
 
 
-class BusbarIcon(BasicComponentIcon):
-    width = 50
-    def connect(self, outbox, dest, inbox):
-        super(BusbarIcon, self).connect(outbox, dest, inbox)
-        for name in self.obj.outputs:
-            if name in self.outputs:
-                continue
-            self.outputs[name] = OutputIcon(name, parent=self)
-            y = 0
-            while not self.out_pos_free(name, y):
-                y += 20
-            self.outputs[name].setPos(self.width, y)
-        self.adjust_size()
-
-    def in_pos(self, name, link_pos):
-        if link_pos:
-            y = self.mapFromScene(link_pos).y()
-            self.inputs[name].setPos(0, y)
-            self.adjust_size()
-        return self.inputs[name].connect_pos()
-
-    def out_pos(self, name, link_pos):
-        if link_pos:
-            y = self.mapFromScene(link_pos).y()
-            while not self.out_pos_free(name, y):
-                y += 20
-            self.outputs[name].setPos(self.width, y)
-            self.adjust_size()
-        return self.outputs[name].connect_pos()
-
-    def out_pos_free(self, ignore, y):
-        for name, output in self.outputs.items():
-            if name != ignore and abs(output.pos().y() - y) < 10:
-                return False
-        return True
-
-    def draw_icon(self):
-        super(BusbarIcon, self).draw_icon()
-        self.adjust_size()
-
-    def adjust_size(self):
-        y0 = 0
-        y1 = 100
-        for conn in self.inputs.values():
-            y = self.mapFromScene(conn.connect_pos()).y()
-            y0 = min(y0, y)
-            y1 = max(y1, y)
-        for conn in self.outputs.values():
-            y = self.mapFromScene(conn.connect_pos()).y()
-            y0 = min(y0, y)
-            y1 = max(y1, y)
-        y0 -= 20
-        y1 += 20
-        self.setPolygon(QtGui.QPolygonF(QtGui.QPolygon(
-            [0, y0, -5, y0, self.width // 2, y0 - 10, self.width + 5,
-             y0, self.width, y0, self.width, y1, self.width + 5, y1,
-             self.width // 2, y1 + 10, -5, y1, 0, y1, 0, y0])))
-
 class NetworkArea(QtGui.QGraphicsScene):
     min_size = QtCore.QRectF(0, 0, 800, 600)
 
@@ -724,9 +663,7 @@ class NetworkArea(QtGui.QGraphicsScene):
     def new_component(self, name, klass, position, parent=None, obj=None):
         if not obj:
             obj = klass()
-        if isinstance(obj, pyctools.components.plumbing.busbar.Busbar):
-            component = BusbarIcon(name, klass, obj, parent=parent)
-        elif isinstance(obj, Compound):
+        if isinstance(obj, Compound):
             component = CompoundIcon(name, klass, obj, parent=parent)
         else:
             component = ComponentIcon(name, klass, obj, parent=parent)
