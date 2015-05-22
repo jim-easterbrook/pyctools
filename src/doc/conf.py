@@ -1,7 +1,22 @@
 # -*- coding: utf-8 -*-
 #
-# All configuration values have a default; values that are commented out
-# serve to show the default.
+# Pyctools - a picture processing algorithm development kit.
+# http://github.com/jim-easterbrook/pyctools
+# Copyright (C) 2014-15  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#
+# This program is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
 
 import sys, os
 import site
@@ -12,11 +27,13 @@ import types
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 site.addsitedir(os.path.abspath('..'))
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #needs_sphinx = '1.0'
+needs_sphinx = '1.3'
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
@@ -34,9 +51,6 @@ intersphinx_mapping = {
     }
 
 keep_warnings = True
-needs_sphinx = '1.2'
-add_function_parentheses = False
-add_module_names = False
 
 # Add any paths that contain templates here, relative to this directory.
 #templates_path = ['templates']
@@ -58,7 +72,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Pyctools'
-copyright = u'2014, Jim Easterbrook'
+copyright = u'2014-15, Jim Easterbrook'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -138,10 +152,12 @@ exclude_patterns = []
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 #add_function_parentheses = True
+add_function_parentheses = False
 
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
 #add_module_names = True
+add_module_names = False
 
 # If true, sectionauthor and moduleauthor directives will be shown in the
 # output. They are ignored by default.
@@ -158,7 +174,10 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+if on_rtd:
+    html_theme = 'default'
+else:
+    html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
