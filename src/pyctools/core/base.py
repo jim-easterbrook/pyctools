@@ -166,13 +166,14 @@ class Component(ConfigMixin):
     pairs to a component's constructor. These values are applied after
     calling :py:meth:`initialise`.
 
-    :cvar bool with_outframe_pool: Whether to use an outframe pool.
+    :cvar bool ~Component.with_outframe_pool: Whether to use an outframe
+        pool.
 
-    :cvar list inputs: The component's inputs.
+    :cvar list ~Component.inputs: The component's inputs.
 
-    :cvar list outputs: The component's outputs.
+    :cvar list ~Component.outputs: The component's outputs.
 
-    :cvar class event_loop: The type of event loop to use.
+    :cvar class ~Component.event_loop: The type of event loop to use.
 
     :ivar logger: :py:class:`logging.Logger` object for the component.
 
