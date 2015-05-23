@@ -163,6 +163,7 @@ Documentation
 ^^^^^^^^^^^^^
 
 Pyctools documentation is available `online <https://pythonhosted.org/pyctools.core/>`_ but it's sometimes useful to have a local copy.
+A local copy may be more up to date and should include documentation of all your installed components, not just the core Pyctools ones.
 The documentation is built using a package called Sphinx, available from PyPI::
 
   sudo pip install Sphinx

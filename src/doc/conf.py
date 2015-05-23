@@ -18,8 +18,11 @@
 # along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
 
-import sys, os
+from collections import defaultdict
+import os
+import pkgutil
 import site
+import sys
 import types
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -90,7 +93,43 @@ with open('../../setup.py') as f:
 release = version
 version = '.'.join(version.split('.')[0:2])
 
-# search src for modules to document and write stub files
+# search src for modules to document
+modules = defaultdict(list)
+cython_modules = defaultdict(list)
+for subpackage in ('components', 'core', 'tools'):
+    for root, dirs, files in os.walk(
+                            os.path.join('..', 'pyctools', subpackage)):
+        package = '.'.join(root.split(os.sep)[1:])
+        for name in files:
+            if name.startswith('_'):
+                continue
+            base, ext = os.path.splitext(name)
+            mod_name = package + '.' + base
+            if ext == '.py':
+                modules[subpackage].append(mod_name)
+            elif ext == '.pyx':
+                cython_modules[subpackage].append(mod_name)
+
+# search for installed components not already listed
+try:
+    import pyctools.components
+except ImportError:
+    pass
+else:
+    for module_loader, mod_name, ispkg in pkgutil.walk_packages(
+            path=pyctools.components.__path__,
+            prefix='pyctools.components.'):
+        # import module
+        try:
+            mod = __import__(mod_name, globals(), locals(), ['*'])
+        except ImportError:
+            continue
+        if not hasattr(mod, '__all__') or not mod.__all__:
+            continue
+        if mod_name not in modules['components']:
+            modules['components'].append(mod_name)
+
+# write stub files
 def update_file(path, new_contents):
     if os.path.exists(path):
         old_contents = open(path).read()
@@ -100,20 +139,7 @@ def update_file(path, new_contents):
         f.write(new_contents)
 
 for subpackage in ('components', 'core', 'tools'):
-    modules = []
-    cython_modules = []
-    for root, dirs, files in os.walk(
-                            os.path.join('..', 'pyctools', subpackage)):
-        package = '.'.join(root.split(os.sep)[1:])
-        for name in files:
-            if name.startswith('_'):
-                continue
-            base, ext = os.path.splitext(name)
-            if ext == '.py':
-                modules.append(package + '.' + base)
-            elif ext == '.pyx':
-                cython_modules.append(package + '.' + base)
-    modules.sort()
+    modules[subpackage].sort()
     dir_name = os.path.join('api', subpackage)
     if not os.path.isdir(dir_name):
         os.makedirs(dir_name)
@@ -121,13 +147,13 @@ for subpackage in ('components', 'core', 'tools'):
                ('=' * len(subpackage)) + '\n\n' +
                '.. autosummary::\n' +
                '   :toctree:\n\n')
-    for mod in modules:
+    for mod in modules[subpackage]:
         idx_str += '   ' + mod + '\n'
     update_file(os.path.join(dir_name, 'index.rst'), idx_str)
-    for mod in modules + cython_modules:
+    for mod in modules[subpackage] + cython_modules[subpackage]:
         title = '.'.join(mod.split('.')[1:])
         mod_str = ''
-        if mod in cython_modules:
+        if mod in cython_modules[subpackage]:
             mod_str += ':orphan: True\n\n'
         mod_str += title + '\n' + ('=' * len(title)) + '\n\n'
         mod_str += '.. automodule:: ' + mod + '\n'
