@@ -124,13 +124,29 @@ class Compound(object):
                         outbox, getattr(self._compound_children[dest], inbox))
 
     def connect(self, output_name, input_method):
+        """Connect an output to any callable object.
+
+        :param str output_name: the output to connect. Must be one of
+            the ``'self'`` outputs in the ``linkages`` parameter.
+
+        :param callable input_method: the thread-safe callable to invoke
+            when :py:meth:`send` is called.
+
+        """
         src, outbox = self._compound_outputs[output_name]
         self._compound_children[src].connect(outbox, input_method)
 
     def bind(self, source, dest, destmeth):
+        """Guild compatible version of :py:meth:`connect`.
+
+        This allows Pyctools compound components to be used in `Guild
+        <https://github.com/sparkslabs/guild>`_ pipelines.
+
+        """
         self.connect(source, getattr(dest, destmeth))
 
     def get_config(self):
+        """See :py:meth:`pyctools.core.config.ConfigMixin.get_config`."""
         config = ConfigGrandParent()
         for name, child in self._compound_children.items():
             child_config = child.get_config()
@@ -138,24 +154,35 @@ class Compound(object):
         return config
 
     def set_config(self, config):
+        """See :py:meth:`pyctools.core.config.ConfigMixin.set_config`."""
         for name, child_config in config.value.items():
             self._compound_children[name].set_config(child_config)
 
     def go(self):
+        """Guild compatible version of :py:meth:`start`."""
         self.start()
         return self
 
     def start(self):
+        """Start the component running."""
         for name, child in self._compound_children.items():
             self.logger.debug('start %s (%s)', name, child.__class__.__name__)
             child.start()
 
     def stop(self):
+        """Thread-safe method to stop the component."""
         for name, child in self._compound_children.items():
             self.logger.debug('stop %s (%s)', name, child.__class__.__name__)
             child.stop()
 
     def join(self, end_comps=False):
+        """Wait for the compound component's children to stop running.
+
+        :param bool end_comps: only wait for the components that end a
+            pipeline. This is useful for complex graphs where it is
+            normal for some components not to finish.
+
+        """
         for name, child in self._compound_children.items():
             if end_comps and not child.is_pipe_end():
                 continue
