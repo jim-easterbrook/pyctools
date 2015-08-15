@@ -18,11 +18,16 @@
 
 """Read 'raw' still image file (CR2, etc.).
 
-===========  ===  ====
+===================  =====  ====
 Config
-===========  ===  ====
-``path``     str  Path name of file to be read.
-===========  ===  ====
+===================  =====  ====
+``path``             str    Path name of file to be read.
+``16bit``            str    Get greater precision than normal 8-bit range. Can be ``'off'`` or ``'on'``.
+``brightness``       float  Set the gain.
+``gamma``            str    Choose a gamma curve. Can be ``'linear'``, ``'bt709'``, ``'srgb'`` or ``'adobe_rgb'``.
+``interpolation``    str    Choose a demosaicing method. Can be ``'linear'``, ``'vng'``, ``'ppg'``, ``'ahd'`` or ``'dcb'``.
+``noise_threshold``  float  Set a denoising threshold. Typically 100 to 1000.
+===================  =====  ====
 
 """
 
@@ -54,6 +59,7 @@ class RawImageFileReader(Component):
             'linear', 'bt709', 'srgb', 'adobe_rgb'))
         self.config['interpolation'] = ConfigEnum((
             'linear', 'vng', 'ppg', 'ahd', 'dcb'))
+        self.config['noise_threshold'] = ConfigFloat(value=0, decimals=0)
 
     def on_start(self):
         # read file
@@ -77,6 +83,9 @@ class RawImageFileReader(Component):
                 'dcb'    : interpolation.dcb,
                 }[self.config['interpolation']]
             raw.options.bps = (8, 16)[bit16]
+            noise_threshold = self.config['noise_threshold']
+            if noise_threshold != 0:
+                raw.options.noise_threshold = noise_threshold
             raw.options.white_balance = WhiteBalance(camera=True, auto=False)
             data = buffer(raw.to_buffer())
             if bit16:
