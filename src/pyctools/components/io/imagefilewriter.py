@@ -29,12 +29,14 @@ class ImageFileWriter(Transformer):
             return True
         self.update_config()
         path = self.config['path']
+        # save image
         image = in_frame.as_PIL()
         image.save(path)
+        # save metadata
         md = Metadata().copy(in_frame.metadata)
         audit = md.get('audit')
         audit += '%s = data\n' % path
         md.set('audit', audit)
-        md.to_file(path)
+        md.to_file(path, sidecar_only=False)
         self.done = True
         return True
