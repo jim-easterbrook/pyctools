@@ -29,6 +29,8 @@
 __all__ = ['Frame', 'Metadata']
 __docformat__ = 'restructuredtext en'
 
+import os
+
 try:
     import pgi
     pgi.install_as_gi()
@@ -222,44 +224,43 @@ class Metadata(object):
             break
         return self
 
-    def to_file(self, path, sidecar_only=True):
-        """Write metadata to an XMP sidecar file.
+    def to_file(self, path):
+        """Write metadata to an image, video or XMP sidecar file.
 
         :param str path: The image/video file path name.
 
-        :param bool sidecar_only: Should metadata also be written to the
-            image/video file (if possible).
-
         """
         xmp_path = path + '.xmp'
-        # create empty XMP file
-        with open(xmp_path, 'w') as of:
-            of.write('<x:xmpmeta x:xmptk="XMP Core 4.4.0-Exiv2" ')
-            of.write('xmlns:x="adobe:ns:meta/">\n</x:xmpmeta>')
-        files = [xmp_path]
-        if not sidecar_only:
-            files.append(path)
-        for name in files:
-            # open file
+        # remove any existing XMP file
+        if os.path.exists(xmp_path):
+            os.unlink(xmp_path)
+        # attempt to open image/video file for metadata
+        md_path = path
+        md = GExiv2.Metadata()
+        try:
+            md.open_path(md_path)
+        except GObject.Error:
+            # file type does not support metadata so use XMP sidecar
+            md_path = xmp_path
+            # create empty XMP file
+            with open(md_path, 'w') as of:
+                of.write('<x:xmpmeta x:xmptk="XMP Core 4.4.0-Exiv2" ')
+                of.write('xmlns:x="adobe:ns:meta/">\n</x:xmpmeta>')
             md = GExiv2.Metadata()
-            try:
-                md.open_path(name)
-            except GLib.Error:
-                # file type does not support metadata
-                continue
-            # add our namespace
-            md.register_xmp_namespace(
-                'https://github.com/jim-easterbrook/pyctools', 'pyctools')
-            # copy metadata
-            for tag, value in self.data.items():
-                if md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
-                    md.set_tag_multiple(tag, value)
-                else:
-                    md.set_tag_string(tag, value)
-            if self.comment is not None:
-                md.set_comment(self.comment)
-            # save file
-            md.save_file(name)
+            md.open_path(md_path)
+        # add our namespace
+        md.register_xmp_namespace(
+            'https://github.com/jim-easterbrook/pyctools', 'pyctools')
+        # copy metadata
+        for tag, value in self.data.items():
+            if md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
+                md.set_tag_multiple(tag, value)
+            else:
+                md.set_tag_string(tag, value)
+        if self.comment is not None:
+            md.set_comment(self.comment)
+        # save file
+        md.save_file(md_path)
 
     def copy(self, other):
         """Copy metadata from another :py:class:`Metadata` object.

@@ -37,6 +37,6 @@ class ImageFileWriter(Transformer):
         audit = md.get('audit')
         audit += '%s = data\n' % path
         md.set('audit', audit)
-        md.to_file(path, sidecar_only=False)
+        md.to_file(path)
         self.done = True
         return True
