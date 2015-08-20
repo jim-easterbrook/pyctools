@@ -32,6 +32,13 @@ import types
 site.addsitedir(os.path.abspath('..'))
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
+# cludge to allow documentation to be compiled without installing some
+# dependencies
+import mock
+
+for mod_name in ('gi', 'gi.repository'):
+    sys.modules[mod_name] = mock.Mock()
+
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
