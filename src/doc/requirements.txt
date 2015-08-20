@@ -1,3 +1,4 @@
 Cython>=0.20
 numpy>=1.9
 Pillow>=2.8
+rawkit>=0.4
