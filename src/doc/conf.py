@@ -34,10 +34,16 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 # cludge to allow documentation to be compiled without installing some
 # dependencies
-import mock
+from mock import Mock as MagicMock
 
-for mod_name in ('gi', 'gi.repository'):
-    sys.modules[mod_name] = mock.Mock()
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+            return Mock()
+
+for mod_name in ('cv2', 'gi', 'gi.repository', 'OpenGL',
+                 'scipy', 'scipy.special'):
+    sys.modules[mod_name] = Mock()
 
 # -- General configuration -----------------------------------------------------
 

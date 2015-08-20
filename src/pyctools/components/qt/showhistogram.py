@@ -38,12 +38,10 @@ __docformat__ = 'restructuredtext en'
 import math
 
 import numpy
-from PyQt4 import QtGui
-from PyQt4.QtCore import Qt
 
 from pyctools.core.config import ConfigEnum, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import QtEventLoop
+from pyctools.core.qt import Qt, QtEventLoop, QtGui
 
 class ShowHistogram(Transformer, QtGui.QWidget):
     event_loop = QtEventLoop

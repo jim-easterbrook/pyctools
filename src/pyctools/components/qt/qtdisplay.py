@@ -53,12 +53,10 @@ import time
 
 import numpy
 from OpenGL import GL
-from PyQt4 import QtGui, QtCore, QtOpenGL
-from PyQt4.QtCore import Qt
 
 from pyctools.core.config import ConfigInt, ConfigEnum, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import QtEventLoop
+from pyctools.core.qt import Qt, QtCore, QtEventLoop, QtGui, QtOpenGL
 
 class BufferSwapper(QtCore.QObject):
     done_swap = QtCore.pyqtSignal(float)

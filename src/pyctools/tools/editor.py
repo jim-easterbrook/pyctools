@@ -58,12 +58,10 @@ import pkgutil
 import sys
 import types
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt
-
 import pyctools.components
 from pyctools.core.compound import Compound
 from pyctools.core.config import *
+from pyctools.core.qt import Qt, QtCore, QtGui
 
 logger = logging.getLogger('pyctools-editor')
 

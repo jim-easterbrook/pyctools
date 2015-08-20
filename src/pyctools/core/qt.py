@@ -28,7 +28,28 @@
 __all__ = ['QtEventLoop', 'QtThreadEventLoop']
 __docformat__ = 'restructuredtext en'
 
-from PyQt4 import QtCore
+import sys
+
+if 'sphinx' in sys.modules:
+    # 'mock' modules to allow building documentation without installing PyQt
+    class QMockObject(object):
+        def __init__(self, *args, **kwargs):
+            super(QMockObject, self).__init__()
+        @classmethod
+        def __getattr__(cls, name):
+                return QMockObject()
+        def __call__(self, *args, **kwargs):
+            return None
+        def pyqtSlot(self, *args, **kwargs):
+            return QMockObject()
+        QWidget = object
+    Qt = QMockObject()
+    QtCore = QMockObject()
+    QtGui = QMockObject()
+    QtOpenGL = QMockObject()
+else:
+    from PyQt4 import QtCore, QtGui, QtOpenGL
+    from PyQt4.QtCore import Qt
 
 # create unique event type
 _queue_event = QtCore.QEvent.registerEventType()
