@@ -37,22 +37,6 @@ The ``pip`` command should be used to install packages from PyPI.
 You can test which version of Python is installed on your system with ``python --version``.
 Any version from 2.7 onwards is suitable, but note that OpenCV has not yet released a version with Python 3 support.
 
-`Guild <https://github.com/sparkslabs/guild>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-This currently needs to be downloaded from GitHub and installed with ``setup.py``.
-You can download a ZIP archive from GitHub, but I prefer to use ``git`` to clone the repos::
-
-  git clone https://github.com/sparkslabs/guild.git
-  cd guild
-  python setup.py build
-  sudo python setup.py install
-
-If you don't have root access on your machine (e.g. a corporate workstation), or want to install for yourself only, you can do a local installation with the ``--user`` option.
-Replace the last line with::
-
-  python setup.py install --user
-
 `NumPy <http://www.numpy.org/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -99,6 +83,7 @@ You need to install the Python bindings as well as the core library.
 
 `FFmpeg <https://www.ffmpeg.org/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 FFmpeg is possibly an optional dependency.
 If it is not installed then the video file reading and writing components will not be usable.
 I think these would be considered essential by most users!
@@ -107,11 +92,19 @@ The ``ffmpeg -h`` command will show if FFmpeg is already installed.
 
 FFmpeg should be installable with your system's package manager.
 
+`rawkit <https://rawkit.readthedocs.org/>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :py:mod:`pyctools.components.io.rawimagefilereader` component uses ``rawkit`` to read raw image files such as the CR2 format produced by Canon cameras.
+If you need to process raw images you can install ``rawkit`` using ``pip``::
+
+  sudo pip install rawkit
+
 `PyQt4 <http://www.riverbankcomputing.com/software/pyqt/intro>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 PyQt4 is an optional dependency.
-If it is not installed then the Pyctools visual editor will not be usable.
+If it is not installed then the :py:mod:`Pyctools visual editor <pyctools.tools.editor>` will not be usable.
 
 If PyQt4 is already installed the ``python -c 'import PyQt4'`` command will run without error.
 
@@ -121,7 +114,7 @@ PyQt4 should be installable with your system's package manager.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 PyOpenGL is an optional dependency.
-If it is not installed then the Qt display component will not be usable.
+If it is not installed then the :py:mod:`pyctools.components.qt.qtdisplay` component will not be usable.
 
 If PyOpenGL is already installed the ``python -c 'import PyOpenGL'`` command will run without error.
 
@@ -162,11 +155,12 @@ As before, a "local" installation can be done instead of a system-wide installat
 Documentation
 ^^^^^^^^^^^^^
 
-Pyctools documentation is available `online <https://pythonhosted.org/pyctools.core/>`_ but it's sometimes useful to have a local copy.
+Pyctools documentation is available `online <http://pyctools.readthedocs.org/>`_ but it's sometimes useful to have a local copy.
 A local copy may be more up to date and should include documentation of all your installed components, not just the core Pyctools ones.
-The documentation is built using a package called Sphinx, available from PyPI::
+The documentation is built using a package called `Sphinx <http://sphinx-doc.org/>`_, available from PyPI.
+You will also need the `mock <https://github.com/testing-cabal/mock>`_ package::
 
-  sudo pip install Sphinx
+  sudo pip install Sphinx mock
 
 Having installed Sphinx you can use ``setup.py`` to build the documentation::
 

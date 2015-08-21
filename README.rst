@@ -10,23 +10,30 @@ It works with stills or video, and utilises popular libraries such as `Python Im
 
 Example projects using pyctools include `pyctools-pal <https://github.com/jim-easterbrook/pyctools-pal>`_ (a simulation of the `Transform PAL decoder <http://www.jim-easterbrook.me.uk/pal/>`_) and `pyctools-demo <https://github.com/jim-easterbrook/pyctools-demo>`_ (demonstrations of some simple processing).
 
+Documentation
+-------------
+
+The core Pyctools library and components are documented on `ReadTheDocs.org <http://pyctools.readthedocs.org/>`_.
+If you install additional components you should build a local copy of the documentation to include the extra components.
+
 Requirements
 ------------
 
 * `Python <https://www.python.org/>`_ version 2.7 or 3.x.
-* `Guild <https://github.com/sparkslabs/guild>`_ for communicating components.
 * `NumPy <http://www.numpy.org/>`_ for its powerful multi-dimensional array object.
 * `Python Imaging Library <http://www.pythonware.com/products/pil/>`_ for image file reading and writing. (The `pillow <http://python-pillow.github.io/>`_ fork of PIL is recommended.)
 * `Cython <http://cython.org/>`_ to build fast extensions for Python.
 * `gexiv2 <https://wiki.gnome.org/Projects/gexiv2>`_ to handle metadata.
 * `OpenCV <http://opencv.org/>`_ python bindings (optional) for advanced image processing.
 * `FFmpeg <https://www.ffmpeg.org/>`_ (optional) to read and write video files.
-* `PyQt4 <http://www.riverbankcomputing.com/software/pyqt/intro>`_ and `PyOpenGL <http://pyopengl.sourceforge.net/>`_ (optional) graphic toolkit used by the Pyctools visual editor and the Qt display component.
+* `rawkit <https://rawkit.readthedocs.org/>`_ (optional) to read raw image files.
+* `PyQt4 <http://www.riverbankcomputing.com/software/pyqt/intro>`_ and `PyOpenGL <http://pyopengl.sourceforge.net/>`_ (optional) graphic toolkit used by the Pyctools visual editor and the Qt display components.
+* `Sphinx <http://sphinx-doc.org/>`_ and `mock <https://github.com/testing-cabal/mock>`_ (optional) to build local documentation.
 
 Installation
 ------------
 
-Please see `the documentation <https://pythonhosted.org/pyctools.core/manual/installation.html>`_ for full details of how to install Pyctools and its requirements.
+Please see `the documentation <http://pyctools.readthedocs.org/en/latest/manual/installation.html>`_ for full details of how to install Pyctools and its requirements.
 
 Licence
 -------
