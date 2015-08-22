@@ -48,6 +48,7 @@ __all__ = ['QtDisplay']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque
+from contextlib import contextmanager
 import threading
 import time
 
@@ -58,127 +59,116 @@ from pyctools.core.config import ConfigInt, ConfigEnum, ConfigStr
 from pyctools.core.base import Transformer
 from pyctools.core.qt import Qt, QtCore, QtEventLoop, QtGui, QtOpenGL
 
-class BufferSwapper(QtCore.QObject):
-    done_swap = QtCore.pyqtSignal(float)
+# single context lock to serialise OpenGL operations across multiple
+# windows
+ctx_lock = threading.RLock()
 
-    def __init__(self, widget, ctx_lock, **kwds):
-        super(BufferSwapper, self).__init__(**kwds)
+@contextmanager
+def context():
+    ctx_lock.acquire()
+    yield
+    ctx_lock.release()
+
+class RenderingThread(QtCore.QObject):
+    next_frame_event = QtCore.QEvent.registerEventType()
+
+    def __init__(self, widget, **kwds):
+        super(RenderingThread, self).__init__(**kwds)
         self.widget = widget
-        self.ctx_lock = ctx_lock
 
     @QtCore.pyqtSlot()
-    def swap(self):
-        self.ctx_lock.acquire()
+    def run(self):
         self.widget.makeCurrent()
+        self.widget.glInit()
+        self.next_frame()
+
+    def next_frame(self):
+        self.widget.paintGL()
+        # swapBuffers blocks until frame interval
         self.widget.swapBuffers()
         now = time.time()
-        self.widget.doneCurrent()
-        self.ctx_lock.release()
-        self.done_swap.emit(now)
+        self.widget.done_swap(now)
+        # schedule next frame, after processing other events
+        QtCore.QCoreApplication.postEvent(
+            self, QtCore.QEvent(self.next_frame_event), Qt.LowEventPriority)
+
+    def event(self, event):
+        if event.type() == self.next_frame_event:
+            event.accept()
+            self.next_frame()
+            return True
+        return super(RenderingThread, self).event(event)
+
+    @QtCore.pyqtSlot(object)
+    def resize(self, event):
+        super(GLDisplay, self.widget).resizeEvent(event)
 
 
 class GLDisplay(QtOpenGL.QGLWidget):
-    do_swap = QtCore.pyqtSignal()
+    resize_event = QtCore.pyqtSignal(object)
 
-    def __init__(self, logger, **kwds):
-        super(GLDisplay, self).__init__(**kwds)
+    def __init__(self, logger, fmt, **kwds):
+        super(GLDisplay, self).__init__(fmt, **kwds)
         self.logger = logger
         self.in_queue = deque()
         self.black_image = numpy.zeros((1, 1, 1), dtype=numpy.uint8)
         self.show_black = True
         self.paused = False
         self.setAutoBufferSwap(False)
-        # if user has set display sync to "always on" or similar, we
-        # might not want to increase swap interval any further
-        fmt = self.format()
-        fmt.setSwapInterval(0)
-        self.setFormat(fmt)
-        display_freq = self.measure_display_rate()
-        if display_freq > 500:
-            # unfeasibly fast => not synchronised
-            fmt.setSwapInterval(1)
-            self.setFormat(fmt)
-            display_freq = self.measure_display_rate()
-            self.sync_swap_interval = 1
-        else:
-            self.sync_swap_interval = 0
-        if display_freq > 500:
-            self.logger.warning('Unable to synchronise to video frame rate')
-            display_freq = 60
-            self.sync_swap_interval = -1
-        self.sync_swap = self.sync_swap_interval >= 0
-        self._display_period = 1.0 / display_freq
+        self._display_period = 0.0
+        self._display_clock = 0.0
+        self._frame_count = -10
         self.frame_period = 1.0 / 25.0
-        # create separate thread to swap buffers
-        self.ctx_lock = threading.RLock()
-        self.swapper_thread = QtCore.QThread()
-        self.swapper = BufferSwapper(self, self.ctx_lock)
-        self.swapper.moveToThread(self.swapper_thread)
-        self.do_swap.connect(self.swapper.swap)
-        self.swapper.done_swap.connect(self.done_swap)
-
-    def measure_display_rate(self):
-        self.makeCurrent()
-        for n in range(3):
-            self.swapBuffers()
-        start = time.time()
-        for n in range(10):
-            self.swapBuffers()
-        display_freq = 10.0 / (time.time() - start)
-        self.doneCurrent()
-        self.logger.info('Display frequency: %.2fHz', display_freq)
-        return display_freq
+        # create separate rendering thread
+        self.render_thread = QtCore.QThread()
+        self.render = RenderingThread(self)
+        self.render.moveToThread(self.render_thread)
+        self.render_thread.started.connect(self.render.run)
+        self.resize_event.connect(self.render.resize)
 
     def startup(self):
-        self.swapper_thread.start()
-        self.makeCurrent()
-        for n in range(3):
-            self.swapBuffers()
-        now = time.time()
-        self._next_frame_due = now
-        self._display_clock = now
-        self._frame_count = -2
-        self.done_swap(now)
+        self.doneCurrent()
+        self.render_thread.start()
 
     def shutdown(self):
-        self.swapper.blockSignals(True)
-        self.swapper_thread.quit()
-        self.swapper_thread.wait()
-
-    def set_sync(self, sync):
-        sync = sync and self.sync_swap_interval >= 0
-        if self.sync_swap != sync:
-            self.sync_swap = sync
-            if self.sync_swap_interval > 0:
-                self.ctx_lock.acquire()
-                self.makeCurrent()
-                fmt = self.format()
-                if self.sync_swap:
-                    fmt.setSwapInterval(self.sync_swap_interval)
-                else:
-                    fmt.setSwapInterval(0)
-                self.setFormat(fmt)
-                self.ctx_lock.release()
+        self.render_thread.quit()
+        self.render_thread.wait()
 
     @QtCore.pyqtSlot(float)
     def done_swap(self, now):
+        # called by rendering thread after each buffer swap
+        if self._frame_count < 0:
+            # initialising
+            self._frame_count += 1
+            self._display_period = now - self._display_clock
+            self._display_clock = now
+            self._next_frame_due = self._display_clock + self._display_period
+            self._block_start = self._next_frame_due
+            self.show_black = True
+            return
         margin = self._display_period / 2.0
         # adjust display clock
         while self._display_clock < now - margin:
             self._display_clock += self._display_period
-        if self.sync_swap:
-            error = self._display_clock - now
-            self._display_clock -= error / 100.0
-            self._display_period -= error / 10000.0
+        error = self._display_clock - now
+        self._display_clock -= error / 100.0
+        self._display_period -= error / 1000.0
         # adjust frame clock
-        while self._next_frame_due < self._display_clock - margin:
-            self._next_frame_due += self._display_period
-        if self.sync_swap:
+        if self.sync:
+            while self._next_frame_due < self._display_clock - margin:
+                self._next_frame_due += self._display_period
             error = self._next_frame_due - self._display_clock
             while error > margin:
                 error -= self._display_period
             if abs(error) < self.frame_period * self._display_period / 4.0:
                 self._next_frame_due -= error
+        else:
+            while self._next_frame_due < self._display_clock - margin:
+                self._next_frame_due += self.frame_period
+                if len(self.in_queue) > 1:
+                    # drop a frame to keep up
+                    self.in_queue.popleft()
+                    self._frame_count += 1
         next_slot = self._display_clock + self._display_period
         if self.paused:
             self.show_black = False
@@ -189,10 +179,6 @@ class GLDisplay(QtOpenGL.QGLWidget):
         elif not self.repeat:
             # show blank frame immediately
             self.show_black = True
-        # refresh displayed image
-        self.updateGL()
-        self.doneCurrent()
-        self.do_swap.emit()
 
     def next_frame(self):
         in_frame, self.numpy_image = self.in_queue.popleft()
@@ -214,44 +200,37 @@ class GLDisplay(QtOpenGL.QGLWidget):
             self.next_frame()
             self.show_black = False
 
-    def glInit(self):
-        self.ctx_lock.acquire()
-        super(GLDisplay, self).glInit()
-        self.ctx_lock.release()
-
     def initializeGL(self):
-        GL.glClear(GL.GL_COLOR_BUFFER_BIT)
-        GL.glDisable(GL.GL_DEPTH_TEST)
-        GL.glEnable(GL.GL_TEXTURE_2D)
-        texture = GL.glGenTextures(1)
-        GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
-        GL.glBindTexture(GL.GL_TEXTURE_2D, texture)
-        GL.glTexParameterf(
-            GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
-        GL.glTexParameterf(
-            GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
+        with context():
+            GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+            GL.glDisable(GL.GL_DEPTH_TEST)
+            GL.glEnable(GL.GL_TEXTURE_2D)
+            texture = GL.glGenTextures(1)
+            GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
+            GL.glBindTexture(GL.GL_TEXTURE_2D, texture)
+            GL.glTexParameterf(
+                GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
+            GL.glTexParameterf(
+                GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
 
     def resizeEvent(self, event):
-        self.ctx_lock.acquire()
-        super(GLDisplay, self).resizeEvent(event)
-        self.ctx_lock.release()
+        if self.render_thread.isRunning():
+            self.resize_event.emit(event)
+        else:
+            super(GLDisplay, self).resizeEvent(event)
 
     def resizeGL(self, w, h):
-        GL.glViewport(0, 0, w, h)
-        GL.glMatrixMode(GL.GL_PROJECTION)
-        GL.glLoadIdentity()
-        GL.glOrtho(0, 1, 0, 1, -1, 1)
-        GL.glMatrixMode(GL.GL_MODELVIEW)
-        GL.glLoadIdentity()
+        with context():
+            GL.glViewport(0, 0, w, h)
+            GL.glMatrixMode(GL.GL_PROJECTION)
+            GL.glLoadIdentity()
+            GL.glOrtho(0, 1, 0, 1, -1, 1)
+            GL.glMatrixMode(GL.GL_MODELVIEW)
+            GL.glLoadIdentity()
 
     def paintEvent(self, event):
         # ignore paint events as widget is redrawn every frame period anyway
         return
-
-    def glDraw(self):
-        self.ctx_lock.acquire()
-        super(GLDisplay, self).glDraw()
-        self.ctx_lock.release()
 
     def paintGL(self):
         if self.show_black:
@@ -259,24 +238,25 @@ class GLDisplay(QtOpenGL.QGLWidget):
         else:
             image = self.numpy_image
         ylen, xlen, bpc = image.shape
-        if bpc == 3:
-            GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
-                            0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, image)
-        elif bpc == 1:
-            GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
-                            0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, image)
-        else:
-            return
-        GL.glBegin(GL.GL_QUADS)
-        GL.glTexCoord2i(0, 0)
-        GL.glVertex2i(0, 1)
-        GL.glTexCoord2i(0, 1)
-        GL.glVertex2i(0, 0)
-        GL.glTexCoord2i(1, 1)
-        GL.glVertex2i(1, 0)
-        GL.glTexCoord2i(1, 0)
-        GL.glVertex2i(1, 1)
-        GL.glEnd()
+        with context():
+            if bpc == 3:
+                GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
+                                0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, image)
+            elif bpc == 1:
+                GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
+                                0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, image)
+            else:
+                return
+            GL.glBegin(GL.GL_QUADS)
+            GL.glTexCoord2i(0, 0)
+            GL.glVertex2i(0, 1)
+            GL.glTexCoord2i(0, 1)
+            GL.glVertex2i(0, 0)
+            GL.glTexCoord2i(1, 1)
+            GL.glVertex2i(1, 0)
+            GL.glTexCoord2i(1, 0)
+            GL.glVertex2i(1, 1)
+            GL.glEnd()
 
 
 class QtDisplay(Transformer, QtGui.QWidget):
@@ -286,7 +266,11 @@ class QtDisplay(Transformer, QtGui.QWidget):
         super(QtDisplay, self).__init__(**config)
         self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
         self.setLayout(QtGui.QGridLayout())
-        self.display = GLDisplay(self.logger)
+        fmt = QtOpenGL.QGLFormat()
+        fmt.setProfile(QtOpenGL.QGLFormat.CompatibilityProfile)
+        fmt.setDoubleBuffer(True)
+        fmt.setSwapInterval(1)
+        self.display = GLDisplay(self.logger, fmt)
         self.layout().addWidget(self.display, 0, 0, 1, 4)
         # control buttons
         self.pause_button = QtGui.QPushButton('pause')
@@ -342,7 +326,7 @@ class QtDisplay(Transformer, QtGui.QWidget):
         self.display.frame_period = 1.0 / float(self.config['framerate'])
         self.display.show_stats = self.config['stats'] == 'on'
         self.display.repeat = self.config['repeat'] == 'on'
-        self.display.set_sync(self.config['sync'] == 'on')
+        self.display.sync = self.config['sync'] == 'on'
 
     def transform(self, in_frame, out_frame):
         numpy_image = in_frame.as_numpy(dtype=numpy.uint8)
