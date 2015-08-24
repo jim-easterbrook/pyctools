@@ -57,7 +57,7 @@ from OpenGL import GL
 
 from pyctools.core.config import ConfigInt, ConfigEnum, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import Qt, QtCore, QtEventLoop, QtGui, QtOpenGL
+from pyctools.core.qt import Qt, QtCore, QtEventLoop, QtGui, QtOpenGL, QtWidgets
 
 # single context lock to serialise OpenGL operations across multiple
 # windows
@@ -75,18 +75,19 @@ class RenderingThread(QtCore.QObject):
     def __init__(self, widget, **kwds):
         super(RenderingThread, self).__init__(**kwds)
         self.widget = widget
-
-    @QtCore.pyqtSlot()
-    def run(self):
-        self.widget.makeCurrent()
-        self.widget.glInit()
-        self.next_frame()
+        self.running = False
 
     def next_frame(self):
+        self.widget.makeCurrent()
         self.widget.paintGL()
-        # swapBuffers blocks until frame interval
+        # swapBuffers should block until frame interval
         self.widget.swapBuffers()
         now = time.time()
+        self.clock += 1.0 / 75.0
+        while now < self.clock:
+            # swapBuffers didn't block, so do our own free running at 75Hz
+            time.sleep(self.clock - now)
+            now = time.time()
         self.widget.done_swap(now)
         # schedule next frame, after processing other events
         QtCore.QCoreApplication.postEvent(
@@ -101,7 +102,14 @@ class RenderingThread(QtCore.QObject):
 
     @QtCore.pyqtSlot(object)
     def resize(self, event):
+        if not self.running:
+            self.widget.makeCurrent()
+            self.widget.glInit()
+            self.clock = time.time()
         super(GLDisplay, self.widget).resizeEvent(event)
+        if not self.running:
+            self.running = True
+            self.next_frame()
 
 
 class GLDisplay(QtOpenGL.QGLWidget):
@@ -123,11 +131,12 @@ class GLDisplay(QtOpenGL.QGLWidget):
         self.render_thread = QtCore.QThread()
         self.render = RenderingThread(self)
         self.render.moveToThread(self.render_thread)
-        self.render_thread.started.connect(self.render.run)
         self.resize_event.connect(self.render.resize)
 
     def startup(self):
         self.doneCurrent()
+        if QtCore.QT_VERSION_STR.split('.')[0] == '5':
+            self.context().moveToThread(self.render_thread)
         self.render_thread.start()
 
     def shutdown(self):
@@ -239,6 +248,7 @@ class GLDisplay(QtOpenGL.QGLWidget):
             image = self.numpy_image
         ylen, xlen, bpc = image.shape
         with context():
+            GL.glClear(GL.GL_COLOR_BUFFER_BIT)
             if bpc == 3:
                 GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
                                 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, image)
@@ -259,13 +269,13 @@ class GLDisplay(QtOpenGL.QGLWidget):
             GL.glEnd()
 
 
-class QtDisplay(Transformer, QtGui.QWidget):
+class QtDisplay(Transformer, QtWidgets.QWidget):
     event_loop = QtEventLoop
 
     def __init__(self, **config):
         super(QtDisplay, self).__init__(**config)
         self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
-        self.setLayout(QtGui.QGridLayout())
+        self.setLayout(QtWidgets.QGridLayout())
         fmt = QtOpenGL.QGLFormat()
         fmt.setProfile(QtOpenGL.QGLFormat.CompatibilityProfile)
         fmt.setDoubleBuffer(True)
@@ -273,11 +283,11 @@ class QtDisplay(Transformer, QtGui.QWidget):
         self.display = GLDisplay(self.logger, fmt)
         self.layout().addWidget(self.display, 0, 0, 1, 4)
         # control buttons
-        self.pause_button = QtGui.QPushButton('pause')
+        self.pause_button = QtWidgets.QPushButton('pause')
         self.pause_button.setShortcut(Qt.Key_Space)
         self.pause_button.clicked.connect(self.pause)
         self.layout().addWidget(self.pause_button, 1, 0)
-        self.step_button = QtGui.QPushButton('step')
+        self.step_button = QtWidgets.QPushButton('step')
         self.step_button.setShortcut(QtGui.QKeySequence.MoveToNextChar)
         self.step_button.clicked.connect(self.step)
         self.layout().addWidget(self.step_button, 1, 1)

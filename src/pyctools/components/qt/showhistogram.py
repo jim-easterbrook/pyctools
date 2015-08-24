@@ -41,29 +41,29 @@ import numpy
 
 from pyctools.core.config import ConfigEnum, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import Qt, QtEventLoop, QtGui
+from pyctools.core.qt import Qt, QtEventLoop, QtGui, QtWidgets
 
-class ShowHistogram(Transformer, QtGui.QWidget):
+class ShowHistogram(Transformer, QtWidgets.QWidget):
     event_loop = QtEventLoop
 
     def __init__(self, **config):
         super(ShowHistogram, self).__init__(**config)
         self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
-        self.setLayout(QtGui.QFormLayout())
+        self.setLayout(QtWidgets.QFormLayout())
         # main histogram display
-        self.display = QtGui.QLabel()
+        self.display = QtWidgets.QLabel()
         self.display.setPixmap(QtGui.QPixmap(256, 100))
         self.display.pixmap().fill(Qt.white)
         self.layout().addRow(self.display)
         # positive clip count
-        self.pos_clips = QtGui.QLabel()
+        self.pos_clips = QtWidgets.QLabel()
         self.layout().addRow('Positive clip count', self.pos_clips)
-        self.pos_clip_percent = QtGui.QLabel()
+        self.pos_clip_percent = QtWidgets.QLabel()
         self.layout().addRow('%', self.pos_clip_percent)
         # negative clip count
-        self.neg_clips = QtGui.QLabel()
+        self.neg_clips = QtWidgets.QLabel()
         self.layout().addRow('Negative clip count', self.neg_clips)
-        self.neg_clip_percent = QtGui.QLabel()
+        self.neg_clip_percent = QtWidgets.QLabel()
         self.layout().addRow('%', self.neg_clip_percent)
 
     def initialise(self):

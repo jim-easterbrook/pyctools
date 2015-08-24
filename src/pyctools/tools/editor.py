@@ -61,7 +61,7 @@ import types
 import pyctools.components
 from pyctools.core.compound import Compound
 from pyctools.core.config import *
-from pyctools.core.qt import Qt, QtCore, QtGui
+from pyctools.core.qt import Qt, QtCore, QtGui, QtWidgets
 
 logger = logging.getLogger('pyctools-editor')
 
@@ -69,7 +69,7 @@ _COMP_MIMETYPE = 'application/x-pyctools-component'
 _INPUT_MIMETYPE = 'application/x-pyctools-component-input'
 _OUTPUT_MIMETYPE = 'application/x-pyctools-component-output'
 
-class ConfigPathWidget(QtGui.QPushButton):
+class ConfigPathWidget(QtWidgets.QPushButton):
     def __init__(self, config, **kwds):
         super(ConfigPathWidget, self).__init__(**kwds)
         self.config = config
@@ -83,11 +83,13 @@ class ConfigPathWidget(QtGui.QPushButton):
         else:
             directory = ''
         if self.config.exists:
-            value = str(QtGui.QFileDialog.getOpenFileName(
-                self, 'Choose file', directory))
+            value = QtWidgets.QFileDialog.getOpenFileName(
+                self, 'Choose file', directory)
         else:
-            value = str(QtGui.QFileDialog.getSaveFileName(
-                self, 'Choose file', directory))
+            value = QtWidgets.QFileDialog.getSaveFileName(
+                self, 'Choose file', directory)
+        if QtCore.QT_VERSION_STR.split('.')[0] == '5':
+            value = value[0]
         if value:
             self.config.set(value)
             self.show_value(value)
@@ -110,7 +112,7 @@ class ConfigPathWidget(QtGui.QPushButton):
             value = '/'.join(parts)
         self.setText(value)
 
-class ConfigIntWidget(QtGui.QSpinBox):
+class ConfigIntWidget(QtWidgets.QSpinBox):
     def __init__(self, config, **kwds):
         super(ConfigIntWidget, self).__init__(**kwds)
         self.config = config
@@ -125,7 +127,7 @@ class ConfigIntWidget(QtGui.QSpinBox):
         self.setValue(self.config.get())
         self.valueChanged.connect(self.config.set)
 
-class ConfigFloatWidget(QtGui.QDoubleSpinBox):
+class ConfigFloatWidget(QtWidgets.QDoubleSpinBox):
     def __init__(self, config, **kwds):
         super(ConfigFloatWidget, self).__init__(**kwds)
         self.config = config
@@ -142,7 +144,7 @@ class ConfigFloatWidget(QtGui.QDoubleSpinBox):
         self.setValue(self.config.get())
         self.valueChanged.connect(self.config.set)
 
-class ConfigStrWidget(QtGui.QLineEdit):
+class ConfigStrWidget(QtWidgets.QLineEdit):
     def __init__(self, config, **kwds):
         super(ConfigStrWidget, self).__init__(**kwds)
         self.config = config
@@ -155,7 +157,7 @@ class ConfigStrWidget(QtGui.QLineEdit):
     def set_value(self):
         self.config.set(str(self.text()))
 
-class ConfigEnumWidget(QtGui.QComboBox):
+class ConfigEnumWidget(QtWidgets.QComboBox):
     def __init__(self, config, **kwds):
         super(ConfigEnumWidget, self).__init__(**kwds)
         self.config = config
@@ -170,7 +172,7 @@ class ConfigEnumWidget(QtGui.QComboBox):
     def new_value(self, idx):
         value = str(self.itemText(idx))
         if value == '<new>':
-            value, OK = QtGui.QInputDialog.getText(
+            value, OK = QtWidgets.QInputDialog.getText(
                 self, 'New option', 'Please enter a new option text')
             if not OK:
                 return
@@ -181,17 +183,17 @@ class ConfigEnumWidget(QtGui.QComboBox):
             self.blockSignals(blocked)
         self.config.set(value)
 
-class ConfigParentWidget(QtGui.QWidget):
+class ConfigParentWidget(QtWidgets.QWidget):
     def __init__(self, config, **kwds):
         super(ConfigParentWidget, self).__init__(**kwds)
         self.config = config
-        self.setLayout(QtGui.QFormLayout())
+        self.setLayout(QtWidgets.QFormLayout())
         for name in sorted(self.config.value):
             child = self.config.value[name]
             widget = config_widget[type(child)](child)
             self.layout().addRow(name, widget)
 
-class ConfigGrandParentWidget(QtGui.QTabWidget):
+class ConfigGrandParentWidget(QtWidgets.QTabWidget):
     def __init__(self, config, **kwds):
         super(ConfigGrandParentWidget, self).__init__(**kwds)
         self.config = config
@@ -210,25 +212,25 @@ config_widget = {
     ConfigStr         : ConfigStrWidget,
     }
 
-class ConfigDialog(QtGui.QDialog):
+class ConfigDialog(QtWidgets.QDialog):
     def __init__(self, parent, **kwds):
         super(ConfigDialog, self).__init__(flags=Qt.WindowStaysOnTopHint, **kwds)
         self.setWindowTitle('%s configuration' % parent.name)
         self.component = parent
         self.config = self.component.obj.get_config()
-        self.setLayout(QtGui.QGridLayout())
+        self.setLayout(QtWidgets.QGridLayout())
         self.layout().setColumnStretch(0, 1)
         # central area
         main_area = config_widget[type(self.config)](self.config)
         self.layout().addWidget(main_area, 0, 0, 1, 4)
         # buttons
-        cancel_button = QtGui.QPushButton('Cancel')
+        cancel_button = QtWidgets.QPushButton('Cancel')
         cancel_button.clicked.connect(self.close)
         self.layout().addWidget(cancel_button, 1, 1)
-        apply_button = QtGui.QPushButton('Apply')
+        apply_button = QtWidgets.QPushButton('Apply')
         apply_button.clicked.connect(self.apply_changes)
         self.layout().addWidget(apply_button, 1, 2)
-        close_button = QtGui.QPushButton('Close')
+        close_button = QtWidgets.QPushButton('Close')
         close_button.clicked.connect(self.apply_and_close)
         self.layout().addWidget(close_button, 1, 3)
 
@@ -239,10 +241,10 @@ class ConfigDialog(QtGui.QDialog):
     def apply_changes(self):
         self.component.obj.set_config(self.config)
 
-class ComponentLink(QtGui.QGraphicsLineItem):
+class ComponentLink(QtWidgets.QGraphicsLineItem):
     def __init__(self, source, outbox, dest, inbox, **kwds):
         super(ComponentLink, self).__init__(**kwds)
-        self.setFlags(QtGui.QGraphicsItem.ItemIsSelectable)
+        self.setFlags(QtWidgets.QGraphicsItem.ItemIsSelectable)
         self.source = source
         self.outbox = outbox
         self.dest = dest
@@ -250,10 +252,10 @@ class ComponentLink(QtGui.QGraphicsLineItem):
         self.renew()
 
     def itemChange(self, change, value):
-        if change == QtGui.QGraphicsItem.ItemSceneHasChanged:
+        if change == QtWidgets.QGraphicsItem.ItemSceneHasChanged:
             if self.scene():
                 self.redraw()
-        elif change == QtGui.QGraphicsItem.ItemSelectedHasChanged:
+        elif change == QtWidgets.QGraphicsItem.ItemSelectedHasChanged:
             pen = self.pen()
             if isinstance(value, QtCore.QVariant):
                 value = value.toBool()
@@ -273,7 +275,7 @@ class ComponentLink(QtGui.QGraphicsLineItem):
         source_pos = self.source.out_pos(self.outbox, dest_pos)
         self.setLine(QtCore.QLineF(source_pos, dest_pos))
 
-class IOIcon(QtGui.QGraphicsRectItem):
+class IOIcon(QtWidgets.QGraphicsRectItem):
     def __init__(self, name, **kwds):
         super(IOIcon, self).__init__(**kwds)
         self.name = name
@@ -284,9 +286,12 @@ class IOIcon(QtGui.QGraphicsRectItem):
         self.setPen(pen)
         self.setRect(-3, -8, 13, 17)
         # draw a smaller visible triangle
-        self.triangle = QtGui.QGraphicsPolygonItem(
-            QtGui.QPolygonF(QtGui.QPolygon([0, -5, 6, 0, 0, 5, 0, -5])), self)
-        self.label = QtGui.QGraphicsSimpleTextItem(
+        self.triangle = QtWidgets.QGraphicsPolygonItem(
+            QtGui.QPolygonF([QtCore.QPointF(0, -5),
+                             QtCore.QPointF(6, 0),
+                             QtCore.QPointF(0, 5),
+                             QtCore.QPointF(0, -5)]), self)
+        self.label = QtWidgets.QGraphicsSimpleTextItem(
             name, parent=self.parentItem())
         font = self.label.font()
         font.setPointSizeF(font.pointSize() * 0.75)
@@ -298,7 +303,7 @@ class IOIcon(QtGui.QGraphicsRectItem):
     def mouseMoveEvent(self, event):
         start_pos = event.buttonDownScreenPos(Qt.LeftButton)
         if (QtCore.QLineF(event.screenPos(), start_pos).length() <
-                                        QtGui.QApplication.startDragDistance()):
+                                        QtWidgets.QApplication.startDragDistance()):
             return
         start_pos = event.buttonDownScenePos(Qt.LeftButton)
         drag = QtGui.QDrag(event.widget())
@@ -314,7 +319,7 @@ class IOIcon(QtGui.QGraphicsRectItem):
         if not event.mimeData().hasFormat(self.link_mime_type):
             return super(IOIcon, self).dropEvent(event)
         start_pos = cPickle.loads(event.mimeData().data(self.link_mime_type).data())
-        link_from = self.scene().itemAt(start_pos)
+        link_from = self.scene().itemAt(start_pos, self.transform())
         while link_from and not isinstance(link_from, IOIcon):
             link_from = link_from.parentItem()
         if isinstance(link_from, OutputIcon):
@@ -360,13 +365,13 @@ class OutputIcon(IOIcon):
         pos.setX(pos.x() + 6)
         return pos
 
-class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
+class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
     width = 100
     def __init__(self, name, klass, obj, **kwds):
         super(BasicComponentIcon, self).__init__(**kwds)
-        self.setFlags(QtGui.QGraphicsItem.ItemIsMovable |
-                      QtGui.QGraphicsItem.ItemIsSelectable |
-                      QtGui.QGraphicsItem.ItemSendsGeometryChanges)
+        self.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable |
+                      QtWidgets.QGraphicsItem.ItemIsSelectable |
+                      QtWidgets.QGraphicsItem.ItemSendsGeometryChanges)
         self.name = name
         self.klass = klass
         self.obj = obj
@@ -381,13 +386,13 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
 
     def draw_icon(self):
         # name label
-        self.name_label = QtGui.QGraphicsSimpleTextItem(self.name, self)
+        self.name_label = QtWidgets.QGraphicsSimpleTextItem(self.name, self)
         font = self.name_label.font()
         font.setBold(True)
         self.name_label.setFont(font)
         self.name_label.setPos(8, 8)
         # type label
-        text = QtGui.QGraphicsSimpleTextItem(
+        text = QtWidgets.QGraphicsSimpleTextItem(
             self.klass.__name__ + '()', self)
         font = text.font()
         font.setPointSizeF(font.pointSize() * 0.8)
@@ -431,7 +436,7 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
         self.obj.set_config(config)
 
     def contextMenuEvent(self, event):
-        menu = QtGui.QMenu()
+        menu = QtWidgets.QMenu()
         actions = {}
         for label, method in self.context_menu_actions:
             actions[menu.addAction(label)] = method
@@ -456,13 +461,13 @@ class BasicComponentIcon(QtGui.QGraphicsPolygonItem):
         self.config_dialog.activateWindow()
 
     def itemChange(self, change, value):
-        if change == QtGui.QGraphicsItem.ItemPositionChange:
+        if change == QtWidgets.QGraphicsItem.ItemPositionChange:
             if isinstance(value, QtCore.QVariant):
                 value = value.toPointF()
             value.setX(value.x() + 25 - ((value.x() + 25) % 50))
             value.setY(value.y() + 25 - ((value.y() + 25) % 50))
             return value
-        if change == QtGui.QGraphicsItem.ItemPositionHasChanged and self.scene():
+        if change == QtWidgets.QGraphicsItem.ItemPositionHasChanged and self.scene():
             for link in self.scene().matching_items(ComponentLink):
                 if link.source == self or link.dest == self:
                     link.redraw()
@@ -473,8 +478,11 @@ class ComponentIcon(BasicComponentIcon):
     def draw_icon(self):
         super(ComponentIcon, self).draw_icon()
         height = 100 + (max(2, len(self.inputs), len(self.outputs)) * 20)
-        self.setPolygon(QtGui.QPolygonF(QtGui.QPolygon(
-            [0, 0, self.width, 0, self.width, height, 0, height, 0, 0])))
+        self.setPolygon(QtGui.QPolygonF([QtCore.QPointF(0, 0),
+                                         QtCore.QPointF(self.width, 0),
+                                         QtCore.QPointF(self.width, height),
+                                         QtCore.QPointF(0, height),
+                                         QtCore.QPointF(0, 0)]))
 
 class CompoundIcon(BasicComponentIcon):
     def __init__(self, name, klass, obj, **kwds):
@@ -567,9 +575,12 @@ class CompoundIcon(BasicComponentIcon):
             self.height = 100 + (
                 20 * max(2, len(self.obj.inputs), len(self.obj.outputs)))
         # draw boundary
-        self.setPolygon(QtGui.QPolygonF(QtGui.QPolygon(
-            [0, 0, self.width, 0, self.width, self.height, 0, self.height, 0, 0])))
-        surround = QtGui.QGraphicsRectItem(
+        self.setPolygon(QtGui.QPolygonF([QtCore.QPointF(0, 0),
+                                         QtCore.QPointF(self.width, 0),
+                                         QtCore.QPointF(self.width, self.height),
+                                         QtCore.QPointF(0, self.height),
+                                         QtCore.QPointF(0, 0)]))
+        surround = QtWidgets.QGraphicsRectItem(
             -3, -3, self.width + 6, self.height + 6, self)
         pen = surround.pen()
         pen.setStyle(Qt.DashDotLine)
@@ -595,12 +606,12 @@ class CompoundIcon(BasicComponentIcon):
                         source_pos = self.child_comps[src].out_pos(outbox, None)
                         dest_pos = self.child_comps[dest].in_pos(inbox, source_pos)
                         source_pos = self.child_comps[src].out_pos(outbox, dest_pos)
-                    line = QtGui.QGraphicsLineItem(QtCore.QLineF(
+                    line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(
                         self.mapFromScene(source_pos), self.mapFromScene(dest_pos)
                         ), self)
 
 
-class NetworkArea(QtGui.QGraphicsScene):
+class NetworkArea(QtWidgets.QGraphicsScene):
     min_size = QtCore.QRectF(0, 0, 800, 600)
 
     def __init__(self, **kwds):
@@ -642,9 +653,9 @@ class NetworkArea(QtGui.QGraphicsScene):
     def update_scene_rect(self, no_shrink=False):
         rect = self.itemsBoundingRect()
         rect.adjust(-150, -150, 150, 150)
-        rect = rect.unite(self.min_size)
+        rect = rect.united(self.min_size)
         if no_shrink:
-            rect = rect.unite(self.sceneRect())
+            rect = rect.united(self.sceneRect())
         self.setSceneRect(rect)
 
     def add_component(self, klass, position):
@@ -681,7 +692,7 @@ class NetworkArea(QtGui.QGraphicsScene):
 
     def get_unique_name(self, base_name):
         while True:
-            name, OK = QtGui.QInputDialog.getText(
+            name, OK = QtWidgets.QInputDialog.getText(
                 self.views()[0], 'Component name',
                 'Please enter a unique component name', text=base_name)
             if not OK:
@@ -859,7 +870,7 @@ class ComponentItemModel(QtGui.QStandardItemModel):
                        cPickle.dumps(data, cPickle.HIGHEST_PROTOCOL))
         return result
 
-class ComponentList(QtGui.QTreeView):
+class ComponentList(QtWidgets.QTreeView):
     def __init__(self, **kwds):
         super(ComponentList, self).__init__(**kwds)
         self.setModel(ComponentItemModel(self))
@@ -921,7 +932,7 @@ class ComponentList(QtGui.QTreeView):
                 else:
                     node.setData(item)
 
-class MainWindow(QtGui.QMainWindow):
+class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, script=None, **kwds):
         super(MainWindow, self).__init__(**kwds)
         self.setWindowTitle("Pyctools graph editor")
@@ -931,19 +942,19 @@ class MainWindow(QtGui.QMainWindow):
         file_menu.addAction('Load script', self.load_script, 'Ctrl+O')
         file_menu.addAction('Save script', self.save_script, 'Ctrl+S')
         file_menu.addSeparator()
-        quit_action = QtGui.QAction('Quit', self)
+        quit_action = QtWidgets.QAction('Quit', self)
         quit_action.setShortcuts(['Ctrl+Q', 'Ctrl+W'])
         quit_action.triggered.connect(
-            QtGui.QApplication.instance().closeAllWindows)
+            QtWidgets.QApplication.instance().closeAllWindows)
         file_menu.addAction(quit_action)
         ## zoom menu
         zoom_menu = self.menuBar().addMenu('Zoom')
         zoom_menu.addAction('Zoom in', self.zoom_in, 'Ctrl++')
         zoom_menu.addAction('Zoom out', self.zoom_out, 'Ctrl+-')
         zoom_menu.addSeparator()
-        self.zoom_group = QtGui.QActionGroup(self)
+        self.zoom_group = QtWidgets.QActionGroup(self)
         for zoom in (25, 35, 50, 70, 100, 141, 200):
-            action = QtGui.QAction('%d%%' % zoom, self)
+            action = QtWidgets.QAction('%d%%' % zoom, self)
             action.setCheckable(True)
             if zoom == 100:
                 action.setChecked(True)
@@ -952,29 +963,29 @@ class MainWindow(QtGui.QMainWindow):
             self.zoom_group.addAction(action)
         self.zoom_group.triggered.connect(self.set_zoom)
         ## main application area
-        self.setCentralWidget(QtGui.QWidget())
-        grid = QtGui.QGridLayout()
+        self.setCentralWidget(QtWidgets.QWidget())
+        grid = QtWidgets.QGridLayout()
         grid.setColumnStretch(0, 1)
         self.centralWidget().setLayout(grid)
         # component list and network drawing area
-        splitter = QtGui.QSplitter(self)
+        splitter = QtWidgets.QSplitter(self)
         splitter.setChildrenCollapsible(False)
         self.component_list = ComponentList(parent=self)
         splitter.addWidget(self.component_list)
         self.network_area = NetworkArea(parent=self)
-        self.view = QtGui.QGraphicsView(self.network_area)
+        self.view = QtWidgets.QGraphicsView(self.network_area)
         self.view.setAcceptDrops(True)
-        self.view.setDragMode(QtGui.QGraphicsView.RubberBandDrag)
+        self.view.setDragMode(QtWidgets.QGraphicsView.RubberBandDrag)
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         splitter.addWidget(self.view)
         splitter.setStretchFactor(1, 1)
         grid.addWidget(splitter, 0, 0, 1, 5)
         # buttons
-        run_button = QtGui.QPushButton('run graph')
+        run_button = QtWidgets.QPushButton('run graph')
         run_button.clicked.connect(self.network_area.run_graph)
         grid.addWidget(run_button, 1, 3)
-        stop_button = QtGui.QPushButton('stop graph')
+        stop_button = QtWidgets.QPushButton('stop graph')
         stop_button.clicked.connect(self.network_area.stop_graph)
         grid.addWidget(stop_button, 1, 4)
         # load initial script
@@ -984,15 +995,19 @@ class MainWindow(QtGui.QMainWindow):
             self.network_area.load_script(script)
 
     def load_script(self):
-        file_name = str(QtGui.QFileDialog.getOpenFileName(
-            self, 'Load file', self.script_file, 'Python scripts (*.py)'))
+        file_name = QtWidgets.QFileDialog.getOpenFileName(
+            self, 'Load file', self.script_file, 'Python scripts (*.py)')
+        if QtCore.QT_VERSION_STR.split('.')[0] == '5':
+            file_name = file_name[0]
         if file_name:
             self.set_window_title(file_name)
             self.network_area.load_script(file_name)
 
     def save_script(self):
-        file_name = str(QtGui.QFileDialog.getSaveFileName(
-            self, 'Save file', self.script_file, 'Python scripts (*.py)'))
+        file_name = QtWidgets.QFileDialog.getSaveFileName(
+            self, 'Save file', self.script_file, 'Python scripts (*.py)')
+        if QtCore.QT_VERSION_STR.split('.')[0] == '5':
+            file_name = file_name[0]
         if file_name:
             self.set_window_title(file_name)
             self.network_area.save_script(
@@ -1032,8 +1047,8 @@ class MainWindow(QtGui.QMainWindow):
 def main():
     # let PyQt handle its options (need at least one argument after options)
     sys.argv.append('xxx')
-    QtGui.QApplication.setAttribute(Qt.AA_X11InitThreads)
-    app = QtGui.QApplication(sys.argv)
+    QtWidgets.QApplication.setAttribute(Qt.AA_X11InitThreads)
+    app = QtWidgets.QApplication(sys.argv)
     del sys.argv[-1]
     # get command args
     parser = argparse.ArgumentParser(description=__doc__)
