@@ -818,10 +818,9 @@ class Network(object):
 if __name__ == '__main__':
 """ % (components, linkages))
             if with_qt:
-                of.write('    from PyQt4 import QtGui\n' +
-                         '    from PyQt4.QtCore import Qt\n' +
-                         '    QtGui.QApplication.setAttribute(Qt.AA_X11InitThreads)\n' +
-                         '    app = QtGui.QApplication([])\n')
+                of.write('    from pyctools.core.qt import Qt, QtWidgets\n' +
+                         '    QtWidgets.QApplication.setAttribute(Qt.AA_X11InitThreads)\n' +
+                         '    app = QtWidgets.QApplication([])\n')
             of.write("""
     comp = Network().make()
     cnf = comp.get_config()
