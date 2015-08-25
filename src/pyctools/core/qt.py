@@ -28,7 +28,7 @@
 __all__ = ['QtEventLoop', 'QtThreadEventLoop']
 __docformat__ = 'restructuredtext en'
 
-use_qt5 = True
+use_qt5 = False
 
 if use_qt5:
     try:
