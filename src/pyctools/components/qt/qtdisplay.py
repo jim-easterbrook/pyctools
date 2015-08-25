@@ -80,7 +80,7 @@ class RenderingThread(QtCore.QObject):
     def next_frame(self):
         self.widget.makeCurrent()
         self.widget.paintGL()
-        # swapBuffers should block until frame interval
+        # swapBuffers should block until frame interval, depending on hardware
         self.widget.swapBuffers()
         now = time.time()
         self.clock += 1.0 / 75.0
@@ -102,6 +102,7 @@ class RenderingThread(QtCore.QObject):
 
     @QtCore.pyqtSlot(object)
     def resize(self, event):
+        # resize event is always sent when window first becomes visible
         if not self.running:
             self.widget.makeCurrent()
             self.widget.glInit()
@@ -124,9 +125,9 @@ class GLDisplay(QtOpenGL.QGLWidget):
         self.paused = False
         self.setAutoBufferSwap(False)
         self._display_period = 0.0
-        self._display_clock = 0.0
         self._frame_count = -10
         self.frame_period = 1.0 / 25.0
+        self._clock_history = deque(maxlen=100)
         # create separate rendering thread
         self.render_thread = QtCore.QThread()
         self.render = RenderingThread(self)
@@ -149,39 +150,44 @@ class GLDisplay(QtOpenGL.QGLWidget):
         if self._frame_count < 0:
             # initialising
             self._frame_count += 1
-            self._display_period = now - self._display_clock
-            self._display_clock = now
-            self._next_frame_due = self._display_clock + self._display_period
-            self._block_start = self._next_frame_due
+            if self._clock_history:
+                self._display_period = now - self._clock_history[0]
+                self._next_frame_due = now + self._display_period
+                self._block_start = self._next_frame_due
+            self._clock_history.clear()
+            self._clock_history.append(now)
             self.show_black = True
             return
-        margin = self._display_period / 2.0
-        # adjust display clock
-        while self._display_clock < now - margin:
-            self._display_clock += self._display_period
-        error = self._display_clock - now
-        self._display_clock -= error / 100.0
-        self._display_period -= error / 1000.0
+        self._clock_history.append(now)
+        # compute frame period
+        period = ((now - self._clock_history[0]) /
+                  float(len(self._clock_history) - 1))
+        self._display_period += (period - self._display_period) / float(
+            len(self._clock_history) - 1)
+        # clock is earliest of now and extrapolated times
+        display_clock = min(
+            now, self._clock_history[-2] + self._display_period)
+        if len(self._clock_history) >= 3:
+            display_clock = min(
+                display_clock,
+                self._clock_history[-3] + (self._display_period * 2))
         # adjust frame clock
-        if self.sync:
-            while self._next_frame_due < self._display_clock - margin:
-                self._next_frame_due += self._display_period
-            error = self._next_frame_due - self._display_clock
-            while error > margin:
-                error -= self._display_period
-            if abs(error) < self.frame_period * self._display_period / 4.0:
-                self._next_frame_due -= error
-        else:
-            while self._next_frame_due < self._display_clock - margin:
-                self._next_frame_due += self.frame_period
-                if len(self.in_queue) > 1:
-                    # drop a frame to keep up
-                    self.in_queue.popleft()
-                    self._frame_count += 1
-        next_slot = self._display_clock + self._display_period
+        while self._next_frame_due < display_clock:
+            self._next_frame_due += self.frame_period
+            if not (self.paused or self.sync or len(self.in_queue) <= 1):
+                # drop a frame to keep up
+                self.in_queue.popleft()
+                self._frame_count += 1
         if self.paused:
             self.show_black = False
-        elif self.in_queue and self._next_frame_due <= next_slot + margin:
+        elif (self.in_queue and
+              self._next_frame_due <= display_clock + self._display_period):
+            if self.sync:
+                # lock frame clock to display clock
+                error = (display_clock + (self._display_period / 2.0) -
+                         self._next_frame_due)
+                if abs(error) < self._display_period * 0.25:
+                    self._next_frame_due += error / 8.0
             # show frame immmediately
             self.next_frame()
             self.show_black = False
