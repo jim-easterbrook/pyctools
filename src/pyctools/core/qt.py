@@ -42,7 +42,7 @@ if not use_qt5:
         import sip
         sip.setapi('QString', 2)
         sip.setapi('QVariant', 2)
-        from PyQt4 import QtCore, QtGui, QtOpenGL
+        from xPyQt4 import QtCore, QtGui, QtOpenGL
         QtWidgets = QtGui
         from PyQt4.QtCore import Qt
     except ImportError:
@@ -65,6 +65,7 @@ if not use_qt5:
         QtCore = QMockObject()
         QtGui = QMockObject()
         QtOpenGL = QMockObject()
+        QtCore.QT_VERSION_STR = '0.0.0'
 
 QT_VERSION = map(int, QtCore.QT_VERSION_STR.split('.'))
 
