@@ -49,7 +49,8 @@ class QtMock(mock.Mock):
     QGraphicsRectItem = mock.Mock
     QGraphicsPolygonItem = mock.Mock
 
-for mod_name in ('PyQt4', 'PyQt4.QtCore', 'PyQt4.QtGui', 'PyQt4.QtOpenGL'):
+for mod_name in ('PyQt4', 'PyQt4.QtCore', 'PyQt4.QtGui', 'PyQt4.QtOpenGL',
+                 'PyQt4.QtWidgets'):
     sys.modules[mod_name] = QtMock()
 
 # -- General configuration -----------------------------------------------------
