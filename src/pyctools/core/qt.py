@@ -38,34 +38,12 @@ if use_qt5:
         use_qt5 = False
 
 if not use_qt5:
-    try:
-        import sip
-        sip.setapi('QString', 2)
-        sip.setapi('QVariant', 2)
-        from xPyQt4 import QtCore, QtGui, QtOpenGL
-        QtWidgets = QtGui
-        from PyQt4.QtCore import Qt
-    except ImportError:
-        # 'mock' modules to allow building documentation without installing PyQt
-        class QMockObject(object):
-            def __init__(self, *args, **kwargs):
-                super(QMockObject, self).__init__()
-            @classmethod
-            def __getattr__(cls, name):
-                    return QMockObject()
-            def __call__(self, *args, **kwargs):
-                return None
-            def pyqtSlot(self, *args, **kwargs):
-                return QMockObject()
-            class QWidget(object):
-                pass
-            class QObject(object):
-                pass
-        Qt = QMockObject()
-        QtCore = QMockObject()
-        QtGui = QMockObject()
-        QtOpenGL = QMockObject()
-        QtCore.QT_VERSION_STR = '0.0.0'
+    import sip
+    sip.setapi('QString', 2)
+    sip.setapi('QVariant', 2)
+    from PyQt4 import QtCore, QtGui, QtOpenGL
+    QtWidgets = QtGui
+    from PyQt4.QtCore import Qt
 
 QT_VERSION = map(int, QtCore.QT_VERSION_STR.split('.'))
 

@@ -34,16 +34,23 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 # cludge to allow documentation to be compiled without installing some
 # dependencies
-from mock import Mock as MagicMock
 
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-            return Mock()
+import mock
 
-for mod_name in ('cv2', 'gi', 'gi.repository', 'OpenGL',
-                 'scipy', 'scipy.special'):
-    sys.modules[mod_name] = Mock()
+for mod_name in ('cv2', 'pgi', 'gi', 'gi.repository', 'OpenGL',
+                 'scipy', 'scipy.special', 'sip'):
+    sys.modules[mod_name] = mock.Mock()
+
+# Qt stuff needs a bit more work as it's used as base classes
+class QtMock(mock.Mock):
+    QT_VERSION_STR = '0.0.0'
+    QObject = mock.Mock
+    QWidget = mock.Mock
+    QGraphicsRectItem = mock.Mock
+    QGraphicsPolygonItem = mock.Mock
+
+for mod_name in ('PyQt4', 'PyQt4.QtCore', 'PyQt4.QtGui', 'PyQt4.QtOpenGL'):
+    sys.modules[mod_name] = QtMock()
 
 # -- General configuration -----------------------------------------------------
 
