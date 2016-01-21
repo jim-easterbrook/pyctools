@@ -116,7 +116,7 @@ PyQt4 should be installable with your system's package manager.
 PyOpenGL is an optional dependency.
 If it is not installed then the :py:mod:`pyctools.components.qt.qtdisplay` component will not be usable.
 
-If PyOpenGL is already installed the ``python -c 'import PyOpenGL'`` command will run without error.
+If PyOpenGL is already installed the ``python -c 'import OpenGL'`` command will run without error.
 
 PyOpenGL should be installable with your system's package manager.
 It may be called ``python-opengl`` or similar.
