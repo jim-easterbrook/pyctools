@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-15  Jim Easterbrook  jim@jim-easterbrook.me.uk
+   Copyright (C) 2014-16  Jim Easterbrook  jim@jim-easterbrook.me.uk
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -35,7 +35,7 @@ The ``pip`` command should be used to install packages from PyPI.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can test which version of Python is installed on your system with ``python --version``.
-Any version from 2.7 onwards is suitable, but note that OpenCV has not yet released a version with Python 3 support.
+Any version from 2.7 onwards is suitable, but Python 3 is preferred.
 
 `NumPy <http://www.numpy.org/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -75,6 +75,7 @@ You may also need to install GObject and its introspection bindings.
 
 OpenCV is an optional dependency.
 If it is not installed then some Pyctools components will not be usable.
+Version 2 or 3 can be used, but only version 3 has bindings for Python 3.
 
 If OpenCV is already installed the ``python -c 'import cv2'`` command will run without error.
 
@@ -100,15 +101,16 @@ If you need to process raw images you can install ``rawkit`` using ``pip``::
 
   sudo pip install rawkit
 
-`PyQt4 <http://www.riverbankcomputing.com/software/pyqt/intro>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+`PyQt <http://www.riverbankcomputing.com/software/pyqt/intro>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-PyQt4 is an optional dependency.
+PyQt is an optional dependency.
 If it is not installed then the :py:mod:`Pyctools visual editor <pyctools.tools.editor>` will not be usable.
+PyQt4 or PyQt5 can be used, but PyQt5 is preferred.
 
-If PyQt4 is already installed the ``python -c 'import PyQt4'`` command will run without error.
+If PyQt is already installed the ``python -c 'import PyQt5'`` (or ``python -c 'import PyQt4'``) command will run without error.
 
-PyQt4 should be installable with your system's package manager.
+PyQt should be installable with your system's package manager.
 
 `PyOpenGL <http://pyopengl.sourceforge.net/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
