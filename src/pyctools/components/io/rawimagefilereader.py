@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -87,12 +87,12 @@ class RawImageFileReader(Component):
             if noise_threshold != 0:
                 raw.options.noise_threshold = noise_threshold
             raw.options.white_balance = WhiteBalance(camera=True, auto=False)
-            data = buffer(raw.to_buffer())
+            data = raw.to_buffer()
             if bit16:
-                image = numpy.fromstring(data, dtype=numpy.uint16)
+                image = numpy.frombuffer(data, dtype=numpy.uint16)
                 image = image.astype(pt_float) / pt_float(256.0)
             else:
-                image = numpy.fromstring(data, dtype=numpy.uint8)
+                image = numpy.frombuffer(data, dtype=numpy.uint8)
             image = image.reshape((raw.metadata.height, raw.metadata.width, 3))
         out_frame = Frame()
         # send output frame
