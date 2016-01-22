@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015  Pyctools contributors
+#  Copyright (C) 2015-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -55,33 +55,57 @@ class GammaCorrect(Transformer):
         gamma, toe = {
             'linear'    : (1.0, 1.0),
             'bt709'     : (0.45004500450045004, 4.5),
-            'srgb'      : (0.4166666666666667, 12.92),
+            'srgb'      : (1.0 / 2.4, 12.92),
             'adobe_rgb' : (0.4547069271758437, 0.0),
             }[self.config['gamma']]
         # threshold for switch from linear to exponential
-        if gamma == 1.0:
-            threshold = 1.0
-        elif toe > 0.0:
-            threshold = math.exp(math.log(toe) / (gamma - 1.0))
-        else:
+        if gamma == 1.0 or toe <= 0.0:
             threshold = 0.0
-            toe = 0.0
+            a = 0.0
+        else:
+            # first approximate value, ignoring extra scaling factor a
+            threshold = (toe / gamma) ** (1.0 / (gamma - 1.0))
+            # refine using Newton-Raphson method
+            last_err = 1.0
+            while True:
+                f_p = (((1.0 - gamma) * (threshold ** gamma)) +
+                       ((gamma / toe) * (threshold ** (gamma - 1.0))) - 1.0)
+                df_p = (((1.0 - gamma) * gamma * (threshold ** (gamma - 1.0))) +
+                        ((gamma / toe) * (gamma - 1.0) *
+                         (threshold ** (gamma - 2.0))))
+                err = f_p / df_p
+                if abs(err) >= last_err:
+                    break
+                last_err = abs(err)
+                threshold -= err
+            a = (1.0 - gamma) * (threshold ** gamma)
+            a = a / (1.0 - a)
         # get data
         data = in_frame.as_numpy()
-        # convert range to 0..1
-        if self.config['range'] == 'studio':
-            data = (data - pt_float(16.0)) / pt_float(219.0)
+        if gamma == 1.0:
+            # nothing to do
+            out_frame.data = data
         else:
-            data = data / pt_float(255.0)
-        # apply gamma function
-        exp_data = numpy.fmax(data, pt_float(0.0)) ** pt_float(gamma)
-        toe_data = data * pt_float(toe)
-        data = numpy.where(data > pt_float(threshold), exp_data, toe_data)
-        # convert back to input range
-        if self.config['range'] == 'studio':
-            out_frame.data = (data * pt_float(219.0)) + pt_float(16.0)
-        else:
-            out_frame.data = data * pt_float(255.0)
+            # convert range to 0..1
+            if self.config['range'] == 'studio':
+                data = (data - pt_float(16.0)) / pt_float(219.0)
+            else:
+                data = data / pt_float(255.0)
+            # apply gamma function
+            exp_data = numpy.fmax(data, pt_float(0.0)) ** pt_float(gamma)
+            if a != 0.0:
+                exp_data = (pt_float(1.0 + a) * exp_data) - pt_float(a)
+            if threshold <= 0.0:
+                data = exp_data
+            else:
+                toe_data = data * pt_float(toe)
+                data = numpy.where(
+                    data > pt_float(threshold), exp_data, toe_data)
+            # convert back to input range
+            if self.config['range'] == 'studio':
+                out_frame.data = (data * pt_float(219.0)) + pt_float(16.0)
+            else:
+                out_frame.data = data * pt_float(255.0)
         # add audit
         audit = out_frame.metadata.get('audit')
         audit += 'data = GammaCorrect(data, {}, {})\n'.format(gamma, toe)
