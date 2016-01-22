@@ -29,6 +29,7 @@ Config
 ===================  =====  ====
 ``range``            str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
 ``gamma``            str    Choose a gamma curve. Can be ``'linear'``, ``'bt709'``, ``'srgb'`` or ``'adobe_rgb'``.
+``inverse``          str    Can be set to ``off`` or ``on``.
 ===================  =====  ====
 
 """
@@ -49,6 +50,7 @@ class GammaCorrect(Transformer):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
         self.config['gamma'] = ConfigEnum((
             'linear', 'bt709', 'srgb', 'adobe_rgb'))
+        self.config['inverse'] = ConfigEnum(('off', 'on'))
 
     def transform(self, in_frame, out_frame):
         self.update_config()
@@ -58,6 +60,7 @@ class GammaCorrect(Transformer):
             'srgb'      : (1.0 / 2.4, 12.92),
             'adobe_rgb' : (0.4547069271758437, 0.0),
             }[self.config['gamma']]
+        inverse = self.config['inverse'] == 'on'
         # threshold for switch from linear to exponential
         if gamma == 1.0 or toe <= 0.0:
             threshold = 0.0
@@ -80,6 +83,8 @@ class GammaCorrect(Transformer):
                 threshold -= err
             a = (1.0 - gamma) * (threshold ** gamma)
             a = a / (1.0 - a)
+        if inverse:
+            threshold = threshold * toe
         # get data
         data = in_frame.as_numpy()
         if gamma == 1.0:
@@ -92,13 +97,23 @@ class GammaCorrect(Transformer):
             else:
                 data = data / pt_float(255.0)
             # apply gamma function
-            exp_data = numpy.fmax(data, pt_float(0.0)) ** pt_float(gamma)
-            if a != 0.0:
-                exp_data = (pt_float(1.0 + a) * exp_data) - pt_float(a)
+            if inverse:
+                if a != 0.0:
+                    exp_data = (data + pt_float(a)) / pt_float(1.0 + a)
+                else:
+                    exp_data = data
+                exp_data = numpy.fmax(exp_data, pt_float(0.0)) ** pt_float(1.0 / gamma)
+            else:
+                exp_data = numpy.fmax(data, pt_float(0.0)) ** pt_float(gamma)
+                if a != 0.0:
+                    exp_data = (pt_float(1.0 + a) * exp_data) - pt_float(a)
             if threshold <= 0.0:
                 data = exp_data
             else:
-                toe_data = data * pt_float(toe)
+                if inverse:
+                    toe_data = data / pt_float(toe)
+                else:
+                    toe_data = data * pt_float(toe)
                 data = numpy.where(
                     data > pt_float(threshold), exp_data, toe_data)
             # convert back to input range
@@ -108,6 +123,7 @@ class GammaCorrect(Transformer):
                 out_frame.data = data * pt_float(255.0)
         # add audit
         audit = out_frame.metadata.get('audit')
-        audit += 'data = GammaCorrect(data, {}, {})\n'.format(gamma, toe)
+        audit += 'data = {}GammaCorrect(data, {}, {})\n'.format(
+            ('', 'Inverse ')[inverse], gamma, toe)
         out_frame.metadata.set('audit', audit)
         return True
