@@ -21,16 +21,19 @@
 Convert linear intensity values to 'gamma corrected' form suitable for
 display or storage in standard video or image files.
 
-The ``range`` config item specifies the input video range. It can be
-either ``'studio'`` (16..235) or ``'computer'`` (0..255).
+In ``inverse`` mode gamma corrected data is converted to linear
+intensity.
 
-===================  =====  ====
+The ``range`` config item specifies the input and output video ranges.
+It can be either ``'studio'`` (16..235) or ``'computer'`` (0..255).
+
+===========  ===  ====
 Config
-===================  =====  ====
-``range``            str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
-``gamma``            str    Choose a gamma curve. Can be ``'linear'``, ``'bt709'``, ``'srgb'`` or ``'adobe_rgb'``.
-``inverse``          str    Can be set to ``off`` or ``on``.
-===================  =====  ====
+===========  ===  ====
+``range``    str  Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
+``gamma``    str  Choose a gamma curve. Can be ``'linear'``, ``'bt709'``, ``'srgb'`` or ``'adobe_rgb'``.
+``inverse``  str  Can be set to ``off`` or ``on``.
+===========  ===  ====
 
 """
 
