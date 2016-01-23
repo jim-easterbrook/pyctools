@@ -25,9 +25,9 @@ correction is applied.
 The ``range`` config item specifies the input and output video ranges.
 It can be either ``'studio'`` (16..235) or ``'computer'`` (0..255).
 
-The ``r1`` and ``r2`` parameters set how the correction varies with
-radius and radius ** 2. The first affects the whole picture, the second
-has more effect at edges.
+The ``r1``, ``r2`` and ``r3`` parameters set how the correction varies
+with radius, radius ** 2 and radius ** 3. The first affects the whole
+picture, the higher powers have more effect at the edges.
 
 ===========  =====  ====
 Config
@@ -35,6 +35,7 @@ Config
 ``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
 ``r1``       float  Amount of radius correction
 ``r2``       float  Amount of radius^2 correction
+``r3``       float  Amount of radius^3 correction
 ===========  =====  ====
 
 """
@@ -53,8 +54,9 @@ from pyctools.core.types import pt_float
 class VignetteCorrector(Transformer):
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
-        self.config['r1'] = ConfigFloat()
-        self.config['r2'] = ConfigFloat()
+        self.config['r1'] = ConfigFloat(decimals=2)
+        self.config['r2'] = ConfigFloat(decimals=2)
+        self.config['r3'] = ConfigFloat(decimals=2)
         self.gain = None
 
     def transform(self, in_frame, out_frame):
@@ -65,6 +67,7 @@ class VignetteCorrector(Transformer):
         # generate correction function
         r1 = self.config['r1']
         r2 = self.config['r2']
+        r3 = self.config['r3']
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
             self.gain = numpy.empty((h, w, 1), dtype=pt_float)
@@ -76,7 +79,8 @@ class VignetteCorrector(Transformer):
                 for x in range(w):
                     x2 = (float(x) - xc) ** 2
                     r = math.sqrt(x2 + y2) / r0
-                    self.gain[y, x, 0] = 1.0 + (r1 * r) + (r2 * (r ** 2))
+                    self.gain[y, x, 0] = (
+                        1.0 + (r1 * r) + (r2 * (r ** 2)) + (r3 * (r ** 3)))
         # subtract black level
         if self.config['range'] == 'studio':
             data -= pt_float(16.0)
@@ -88,6 +92,6 @@ class VignetteCorrector(Transformer):
         out_frame.data = data
         # add audit
         audit = out_frame.metadata.get('audit')
-        audit += 'data = VignetteCorrector(data, {}, {})\n'.format(r1, r2)
+        audit += 'data = VignetteCorrector(data, {}, {}, {})\n'.format(r1, r2, r3)
         out_frame.metadata.set('audit', audit)
         return True
