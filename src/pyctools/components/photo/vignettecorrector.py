@@ -70,17 +70,16 @@ class VignetteCorrector(Transformer):
         r3 = self.config['r3']
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
-            self.gain = numpy.empty((h, w, 1), dtype=pt_float)
             xc = float(w - 1) / 2.0
             yc = float(h - 1) / 2.0
             r0 = math.sqrt((xc ** 2) + (yc ** 2))
-            for y in range(h):
-                y2 = (float(y) - yc) ** 2
-                for x in range(w):
-                    x2 = (float(x) - xc) ** 2
-                    r = math.sqrt(x2 + y2) / r0
-                    self.gain[y, x, 0] = (
-                        1.0 + (r1 * r) + (r2 * (r ** 2)) + (r3 * (r ** 3)))
+            index = numpy.mgrid[0:h, 0:w].astype(pt_float)
+            y = (index[0] - pt_float(yc)) / pt_float(r0)
+            x = (index[1] - pt_float(xc)) / pt_float(r0)
+            r = numpy.sqrt((x ** 2) + (y ** 2))
+            self.gain = ((r * pt_float(r1)) + ((r ** 2) * pt_float(r2)) +
+                         ((r ** 3) * pt_float(r3)) + pt_float(1.0))
+            self.gain = numpy.expand_dims(self.gain, axis=2)
         # subtract black level
         if self.config['range'] == 'studio':
             data -= pt_float(16.0)
