@@ -63,7 +63,7 @@ class VignetteCorrector(Transformer):
         if self.update_config():
             self.gain = None
         # get data
-        data = in_frame.as_numpy(dtype=pt_float)
+        data = in_frame.as_numpy(dtype=pt_float).copy()
         # generate correction function
         r1 = self.config['r1']
         r2 = self.config['r2']
