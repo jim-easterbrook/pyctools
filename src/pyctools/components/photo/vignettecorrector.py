@@ -54,9 +54,9 @@ from pyctools.core.types import pt_float
 class VignetteCorrector(Transformer):
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
-        self.config['r1'] = ConfigFloat(decimals=2)
-        self.config['r2'] = ConfigFloat(decimals=2)
-        self.config['r3'] = ConfigFloat(decimals=2)
+        self.config['r1'] = ConfigFloat(decimals=4)
+        self.config['r2'] = ConfigFloat(decimals=4)
+        self.config['r3'] = ConfigFloat(decimals=4)
         self.gain = None
 
     def transform(self, in_frame, out_frame):
