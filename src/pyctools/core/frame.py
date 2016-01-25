@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -92,11 +92,11 @@ class Frame(object):
                 'Cannot get size of "%s"' % self.data.__class__.__name__)
         return h, w
 
-    def as_numpy(self, dtype=None):
+    def as_numpy(self, dtype=None, copy=False):
         """Get image data in :py:class:`numpy:numpy.ndarray` form.
 
         Note that if the image data is already in the correct format
-        this is a null operation.
+        this can be a null operation.
 
         When converting to limited range types (``numpy.uint8``,
         ``numpy.uint16``) the data is clipped (limited) to the range.
@@ -105,6 +105,10 @@ class Frame(object):
             :py:class:`~numpy:numpy.dtype` the data should be in, e.g.
             ``numpy.float32``. If ``dtype`` is ``None`` then no
             conversion will be done.
+
+        :keyword bool copy: Forces a copy of the data to be made, even
+            if it is already an :py:class:`numpy:numpy.ndarray` with the
+            requested dtype.
 
         :return: The image data as :py:class:`numpy:numpy.ndarray`.
 
@@ -126,6 +130,7 @@ class Frame(object):
                 result = numpy.array(data, dtype=dtype)
             else:
                 result = numpy.array(data, dtype=pt_float)
+            copy = False
         else:
             raise RuntimeError(
                 'Cannot convert "%s" to numpy' % self.data.__class__.__name__)
@@ -135,6 +140,9 @@ class Frame(object):
             elif dtype == numpy.uint16:
                 result = result.clip(0, 2**16 - 1)
             result = result.astype(dtype)
+            copy = False
+        if copy:
+            result = result.copy()
         return result
 
     def as_PIL(self):
