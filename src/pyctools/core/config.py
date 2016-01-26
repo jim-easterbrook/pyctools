@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -189,7 +189,7 @@ class ConfigFloat(ConfigLeafNode):
             self.default = self.value
 
     def validate(self, value):
-        return isinstance(value, float) and self.clip(value) == value
+        return isinstance(value, (float, int)) and self.clip(value) == value
 
 
 class ConfigStr(ConfigLeafNode):
