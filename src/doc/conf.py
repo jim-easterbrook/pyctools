@@ -50,7 +50,8 @@ class QtMock(mock.Mock):
     QGraphicsPolygonItem = mock.Mock
 
 for mod_name in ('PyQt4', 'PyQt4.QtCore', 'PyQt4.QtGui', 'PyQt4.QtOpenGL',
-                 'PyQt4.QtWidgets'):
+                 'PyQt4.QtWidgets', 'PyQt5', 'PyQt5.QtCore', 'PyQt5.QtGui',
+                 'PyQt5.QtOpenGL', 'PyQt5.QtWidgets'):
     sys.modules[mod_name] = QtMock()
 
 # -- General configuration -----------------------------------------------------
@@ -71,7 +72,7 @@ autodoc_default_flags = ['members', 'undoc-members', 'show-inheritance']
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-    'PIL': ('http://pillow.readthedocs.org/', None),
+    'PIL': ('http://pillow.readthedocs.org/en/latest/', None),
     }
 
 keep_warnings = True
