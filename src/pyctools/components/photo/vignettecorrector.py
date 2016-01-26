@@ -38,9 +38,16 @@ Config
 ``r3``       float  Amount of radius^3 correction
 ===========  =====  ====
 
+The AnalyseVignette component measures the average luminance of 50
+circular bands of an input grey image, then calculates the optimum
+``r1``, ``r2`` and ``r3`` parameters to correct it. This is easier to
+use than trying to set the parameters manually.
+
 """
 
-__all__ = ['VignetteCorrector']
+from __future__ import print_function
+
+__all__ = ['VignetteCorrector', 'AnalyseVignette']
 __docformat__ = 'restructuredtext en'
 
 import math
@@ -93,4 +100,48 @@ class VignetteCorrector(Transformer):
         audit = out_frame.metadata.get('audit')
         audit += 'data = VignetteCorrector(data, {}, {}, {})\n'.format(r1, r2, r3)
         out_frame.metadata.set('audit', audit)
+        return True
+
+
+class AnalyseVignette(Transformer):
+    def initialise(self):
+        self.config['range'] = ConfigEnum(('studio', 'computer'))
+
+    def transform(self, in_frame, out_frame):
+        self.update_config()
+        # get data
+        data = in_frame.as_numpy(dtype=pt_float, copy=True)
+        # subtract black level
+        if self.config['range'] == 'studio':
+            data -= pt_float(16.0)
+        # compute normalised radius
+        h, w = data.shape[:2]
+        xc = float(w - 1) / 2.0
+        yc = float(h - 1) / 2.0
+        r0 = math.sqrt((xc ** 2) + (yc ** 2))
+        index = numpy.mgrid[0:h, 0:w].astype(pt_float)
+        y = (index[0] - pt_float(yc)) / pt_float(r0)
+        x = (index[1] - pt_float(xc)) / pt_float(r0)
+        r = numpy.sqrt((x ** 2) + (y ** 2))
+        # calculate mean of each radial band
+        bands = 50
+        x = []
+        mean = []
+        for i in range(bands):
+            x.append(float(i) / float(bands - 1))
+            lo = (float(i) - 0.5) / float(bands - 1)
+            hi = (float(i) + 0.5) / float(bands - 1)
+            mask = numpy.logical_or(r < lo, r >= hi)
+            mean.append(numpy.ma.array(data, mask=mask).mean())
+        # calculate required gain for each radial band
+        norm_factor = mean[0]
+        y = []
+        for i, value in enumerate(mean):
+            y.append(norm_factor / mean[i])
+        # fit a polynomial to the required gain
+        fit = numpy.polyfit(x, y, 3)
+        # print out parameters
+        for i in range(1, 4):
+            k = fit[-(i+1)] / fit[-1]
+            print('r{} = {}'.format(i, k))
         return True
