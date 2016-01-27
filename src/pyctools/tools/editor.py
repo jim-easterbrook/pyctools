@@ -61,7 +61,7 @@ import types
 import pyctools.components
 from pyctools.core.compound import Compound
 from pyctools.core.config import *
-from pyctools.core.qt import Qt, QtCore, QtGui, QtWidgets
+from pyctools.core.qt import qt_version_info, Qt, QtCore, QtGui, QtWidgets
 
 logger = logging.getLogger('pyctools-editor')
 
@@ -88,7 +88,7 @@ class ConfigPathWidget(QtWidgets.QPushButton):
         else:
             value = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Choose file', directory)
-        if QtCore.QT_VERSION_STR.split('.')[0] == '5':
+        if qt_version_info >= (5,):
             value = value[0]
         if value:
             self.config.set(value)
@@ -996,7 +996,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def load_script(self):
         file_name = QtWidgets.QFileDialog.getOpenFileName(
             self, 'Load file', self.script_file, 'Python scripts (*.py)')
-        if QtCore.QT_VERSION_STR.split('.')[0] == '5':
+        if qt_version_info >= (5,):
             file_name = file_name[0]
         if file_name:
             self.set_window_title(file_name)
@@ -1005,7 +1005,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def save_script(self):
         file_name = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Save file', self.script_file, 'Python scripts (*.py)')
-        if QtCore.QT_VERSION_STR.split('.')[0] == '5':
+        if qt_version_info >= (5,):
             file_name = file_name[0]
         if file_name:
             self.set_window_title(file_name)

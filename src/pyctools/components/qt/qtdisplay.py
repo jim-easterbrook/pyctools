@@ -57,7 +57,8 @@ from OpenGL import GL
 
 from pyctools.core.config import ConfigInt, ConfigEnum, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import Qt, QtCore, QtEventLoop, QtGui, QtOpenGL, QtWidgets
+from pyctools.core.qt import (
+    qt_version_info, Qt, QtCore, QtEventLoop, QtGui, QtOpenGL, QtWidgets)
 
 # single context lock to serialise OpenGL operations across multiple
 # windows
@@ -136,7 +137,7 @@ class GLDisplay(QtOpenGL.QGLWidget):
 
     def startup(self):
         self.doneCurrent()
-        if QtCore.QT_VERSION_STR.split('.')[0] == '5':
+        if qt_version_info >= (5,):
             self.context().moveToThread(self.render_thread)
         self.render_thread.start()
 

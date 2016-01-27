@@ -28,6 +28,8 @@
 __all__ = ['QtEventLoop', 'QtThreadEventLoop']
 __docformat__ = 'restructuredtext en'
 
+from collections import namedtuple
+
 use_qt5 = True
 
 if use_qt5:
@@ -45,7 +47,9 @@ if not use_qt5:
     QtWidgets = QtGui
     from PyQt4.QtCore import Qt
 
-QT_VERSION = map(int, QtCore.QT_VERSION_STR.split('.'))
+qt_version_info = namedtuple(
+    'qt_version_info', ('major', 'minor', 'micro'))._make(
+        map(int, QtCore.QT_VERSION_STR.split('.')))
 
 # create unique event type
 _queue_event = QtCore.QEvent.registerEventType()
