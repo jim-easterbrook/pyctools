@@ -19,29 +19,32 @@
 """Quantisation.
 
 Round data to integer values, using error feedback (see
-http://www.bbc.co.uk/rd/publications/rdreport_1987_12) to reduce
+http://www.bbc.co.uk/rd/publications/rdreport_1987_12) to reduce the
 visibility of quantisation effects.
+
+Note that if the input image is already quantised this component will
+have no effect. Hence it is recommended always to be used before any
+component that truncates the data, such as :py:mod:`ImageFileWriter
+<pyctools.components.io.imagefilewriter>`.
 
 """
 
 __all__ = ['ErrorFeedbackQuantise']
 __docformat__ = 'restructuredtext en'
 
-import math
-
 import numpy
 
-from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Transformer
-from pyctools.core.types import pt_float
 
 class ErrorFeedbackQuantise(Transformer):
     def transform(self, in_frame, out_frame):
         self.update_config()
         # get data
         data = in_frame.as_numpy()
-        if data.dtype != numpy.uint8:
-            h, w, c = data.shape
+        h, w, c = data.shape
+        if data.dtype == numpy.uint8:
+            pass
+        elif w >= h:
             # seed error feedback with random numbers in range [-0.5, 0.5)
             residue = numpy.random.random((h, c)) - 0.5
             for x in range(w):
@@ -50,6 +53,17 @@ class ErrorFeedbackQuantise(Transformer):
                 # quantise
                 q_data = numpy.floor(c_data + 0.5)
                 data[::, x, ::] = q_data
+                # compute new residue
+                residue = c_data - q_data
+        else:
+            # seed error feedback with random numbers in range [-0.5, 0.5)
+            residue = numpy.random.random((w, c)) - 0.5
+            for y in range(h):
+                # add residue
+                c_data = data[y, ::, ::] + residue
+                # quantise
+                q_data = numpy.floor(c_data + 0.5)
+                data[y, ::, ::] = q_data
                 # compute new residue
                 residue = c_data - q_data
         out_frame.data = data
