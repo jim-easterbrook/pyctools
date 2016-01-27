@@ -2,7 +2,7 @@
 #
 # Pyctools - a picture processing algorithm development kit.
 # http://github.com/jim-easterbrook/pyctools
-# Copyright (C) 2014-15  Jim Easterbrook  jim@jim-easterbrook.me.uk
+# Copyright (C) 2014-16  Pyctools contributors
 #
 # This program is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -97,7 +97,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Pyctools'
-copyright = u'2014-15, Jim Easterbrook'
+copyright = u'2014-16, Pyctools contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -141,6 +141,8 @@ else:
     for module_loader, mod_name, ispkg in pkgutil.walk_packages(
             path=pyctools.components.__path__,
             prefix='pyctools.components.'):
+        if mod_name.endswith('__'):
+            continue
         # import module
         try:
             mod = __import__(mod_name, globals(), locals(), ['*'])
