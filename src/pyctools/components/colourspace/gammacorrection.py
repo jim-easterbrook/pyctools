@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015-16  Pyctools contributors
+#  Copyright (C) 2016  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -40,13 +40,12 @@ Config
 __all__ = ['GammaCorrect']
 __docformat__ = 'restructuredtext en'
 
-import math
-
 import numpy
 
 from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
+from .gammacorrectioncore import gamma_frame, inverse_gamma_frame
 
 class GammaCorrect(Transformer):
     def initialise(self):
@@ -91,47 +90,33 @@ class GammaCorrect(Transformer):
                 self.threshold -= err
             self.a = (1.0 - self.gamma) * (self.threshold ** self.gamma)
             self.a = self.a / (1.0 - self.a)
-        if self.inverse:
-            self.threshold = self.threshold * self.toe
 
     def transform(self, in_frame, out_frame):
         if self.update_config():
             self.adjust_params()
-        gamma = self.gamma
-        toe = self.toe
-        a = self.a
-        if self.inverse:
-            gamma = 1.0 / gamma
-            toe = 1.0 / toe
         # get data
-        data = in_frame.as_numpy(dtype=pt_float)
-        if gamma == 1.0:
-            # nothing to do
-            out_frame.data = data
-        else:
-            # convert range to 0..1
+        if self.gamma != 1.0:
+            data = in_frame.as_numpy(dtype=pt_float, copy=True)
+            # convert range to 0..1 (and copy data)
             if self.config['range'] == 'studio':
-                data = (data - pt_float(16.0)) / pt_float(219.0)
+                data -= pt_float(16.0)
+                data /= pt_float(219.0)
             else:
-                data = data / pt_float(255.0)
+                data /= pt_float(255.0)
             # apply gamma function
-            exp_data = data
-            if self.inverse and a != 0.0:
-                exp_data = (exp_data + pt_float(a)) / pt_float(1.0 + a)
-            exp_data = numpy.fmax(exp_data, pt_float(0.0)) ** pt_float(gamma)
-            if (not self.inverse) and a != 0.0:
-                exp_data = (pt_float(1.0 + a) * exp_data) - pt_float(a)
-            if self.threshold <= 0.0:
-                data = exp_data
+            if self.inverse:
+                inverse_gamma_frame(
+                    data, self.gamma, self.toe, self.threshold, self.a)
             else:
-                toe_data = data * pt_float(toe)
-                data = numpy.where(
-                    data > pt_float(self.threshold), exp_data, toe_data)
+                gamma_frame(
+                    data, self.gamma, self.toe, self.threshold, self.a)
             # convert back to input range
             if self.config['range'] == 'studio':
-                out_frame.data = (data * pt_float(219.0)) + pt_float(16.0)
+                data *= pt_float(219.0)
+                data += pt_float(16.0)
             else:
-                out_frame.data = data * pt_float(255.0)
+                data *= pt_float(255.0)
+            out_frame.data = data
         # add audit
         audit = out_frame.metadata.get('audit')
         audit += 'data = {}GammaCorrect(data, {}, {})\n'.format(
