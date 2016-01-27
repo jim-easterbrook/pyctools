@@ -18,30 +18,10 @@
 
 """Vignette correction.
 
-Adjust the brightness of images with a radially varying gain function.
-This should be applied to 'linear intensity' image data before gamma
-correction is applied.
+.. autosummary::
 
-The ``range`` config item specifies the input and output video ranges.
-It can be either ``'studio'`` (16..235) or ``'computer'`` (0..255).
-
-The ``r1``, ``r2`` and ``r3`` parameters set how the correction varies
-with radius, radius ** 2 and radius ** 3. The first affects the whole
-picture, the higher powers have more effect at the edges.
-
-===========  =====  ====
-Config
-===========  =====  ====
-``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
-``r1``       float  Amount of radius correction
-``r2``       float  Amount of radius^2 correction
-``r3``       float  Amount of radius^3 correction
-===========  =====  ====
-
-The AnalyseVignette component measures the average luminance of 50
-circular bands of an input grey image, then calculates the optimum
-``r1``, ``r2`` and ``r3`` parameters to correct it. This is easier to
-use than trying to set the parameters manually.
+   VignetteCorrector
+   AnalyseVignette
 
 """
 
@@ -54,16 +34,43 @@ import math
 
 import numpy
 
-from pyctools.core.config import ConfigEnum, ConfigFloat
+from pyctools.core.config import ConfigEnum, ConfigFloat, ConfigInt
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
 
 class VignetteCorrector(Transformer):
+    """Vignette corrector.
+
+    Adjust the brightness of images with a radially varying gain
+    function. This should be applied to 'linear intensity' image data
+    before gamma correction is applied.
+
+    The ``range`` config item specifies the input and output video
+    ranges. It can be either ``'studio'`` (16..235) or ``'computer'``
+    (0..255).
+
+    The ``r1`` ... ``r4`` parameters set how the correction varies with
+    radius^n. The first affects the whole picture, the higher powers
+    have more effect at the edges.
+
+    ===========  =====  ====
+    Config
+    ===========  =====  ====
+    ``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
+    ``r1``       float  Amount of radius correction
+    ``r2``       float  Amount of radius^2 correction
+    ``r3``       float  Amount of radius^3 correction
+    ``r4``       float  Amount of radius^4 correction
+    ===========  =====  ====
+
+    """
+
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
         self.config['r1'] = ConfigFloat(decimals=4)
         self.config['r2'] = ConfigFloat(decimals=4)
         self.config['r3'] = ConfigFloat(decimals=4)
+        self.config['r4'] = ConfigFloat(decimals=4)
         self.gain = None
 
     def transform(self, in_frame, out_frame):
@@ -75,6 +82,7 @@ class VignetteCorrector(Transformer):
         r1 = self.config['r1']
         r2 = self.config['r2']
         r3 = self.config['r3']
+        r4 = self.config['r4']
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
             xc = float(w - 1) / 2.0
@@ -85,7 +93,8 @@ class VignetteCorrector(Transformer):
             x = (index[1] - pt_float(xc)) / pt_float(r0)
             r = numpy.sqrt((x ** 2) + (y ** 2))
             self.gain = ((r * pt_float(r1)) + ((r ** 2) * pt_float(r2)) +
-                         ((r ** 3) * pt_float(r3)) + pt_float(1.0))
+                         ((r ** 3) * pt_float(r3)) + ((r ** 4) * pt_float(r4)) +
+                         pt_float(1.0))
             self.gain = numpy.expand_dims(self.gain, axis=2)
         # subtract black level
         if self.config['range'] == 'studio':
@@ -98,14 +107,36 @@ class VignetteCorrector(Transformer):
         out_frame.data = data
         # add audit
         audit = out_frame.metadata.get('audit')
-        audit += 'data = VignetteCorrector(data, {}, {}, {})\n'.format(r1, r2, r3)
+        audit += 'data = VignetteCorrector(data, {}, {}, {}, {})\n'.format(
+            r1, r2, r3, r4)
         out_frame.metadata.set('audit', audit)
         return True
 
 
 class AnalyseVignette(Transformer):
+    """Vignette analysis.
+
+    Measures the average luminance of 50 circular bands of an input grey
+    image, then calculates the optimum ``r1`` ... ``rn`` parameters to
+    correct it. This is easier to use than trying to set the parameters
+    manually.
+
+    The ``order`` parameter can be used to adjust the number of
+    coefficients produced. It is probably a good idea to use the
+    smallest number that gives acceptable results.
+
+    ===========  =====  ====
+    Config
+    ===========  =====  ====
+    ``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
+    ``order``    int    Number of ``r`` parameters to generate.
+    ===========  =====  ====
+
+    """
+
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
+        self.config['order'] = ConfigInt(value=3, min_value=1)
 
     def transform(self, in_frame, out_frame):
         self.update_config()
@@ -139,9 +170,10 @@ class AnalyseVignette(Transformer):
         for i, value in enumerate(mean):
             y.append(norm_factor / mean[i])
         # fit a polynomial to the required gain
-        fit = numpy.polyfit(x, y, 3)
+        order = self.config['order']
+        fit = numpy.polyfit(x, y, order)
         # print out parameters
-        for i in range(1, 4):
-            k = fit[-(i+1)] / fit[-1]
-            print('r{} = {}'.format(i, k))
+        for i in range(order):
+            k = fit[-(i+2)] / fit[-1]
+            print('r{} = {}'.format(i+1, k))
         return True
