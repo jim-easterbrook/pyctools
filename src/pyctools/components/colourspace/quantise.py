@@ -40,7 +40,7 @@ class ErrorFeedbackQuantise(Transformer):
     def transform(self, in_frame, out_frame):
         self.update_config()
         # get data
-        data = in_frame.as_numpy()
+        data = in_frame.as_numpy(copy=True)
         h, w, c = data.shape
         if data.dtype == numpy.uint8:
             pass
