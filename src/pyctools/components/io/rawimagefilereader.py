@@ -24,9 +24,9 @@ Config
 ``path``             str    Path name of file to be read.
 ``16bit``            str    Get greater precision than normal 8-bit range. Can be ``'off'`` or ``'on'``.
 ``brightness``       float  Set the gain.
-``gamma``            str    Set gamma curve. Can be ``'linear'``, ``'bt709'``, ``'srgb'`` or ``'adobe_rgb'``.
+``gamma``            str    Set gamma curve. Possible values: {}.
 ``colourspace``      str    Set colour space. Possible values: {}.
-``interpolation``    str    Set demosaicing method. Can be ``'linear'``, ``'vng'``, ``'ppg'``, ``'ahd'`` or ``'dcb'``.
+``interpolation``    str    Set demosaicing method. Possible values: {}.
 ``noise_threshold``  float  Set denoising threshold. Typically 100 to 1000.
 ===================  =====  ====
 
@@ -49,7 +49,9 @@ from pyctools.core.frame import Frame
 from pyctools.core.types import pt_float
 
 __doc__ = __doc__.format(
-    ', '.join(["``'" + x + "'``" for x in colorspaces._fields]))
+    ', '.join(["``'" + x + "'``" for x in gamma_curves._fields]),
+    ', '.join(["``'" + x + "'``" for x in colorspaces._fields]),
+    ', '.join(["``'" + x + "'``" for x in interpolation._fields]))
 
 class RawImageFileReader(Component):
     inputs = []
@@ -59,12 +61,10 @@ class RawImageFileReader(Component):
         self.config['path'] = ConfigPath()
         self.config['16bit'] = ConfigEnum(('off', 'on'))
         self.config['brightness'] = ConfigFloat(value=1.0, decimals=2)
-        self.config['gamma'] = ConfigEnum((
-            'linear', 'bt709', 'srgb', 'adobe_rgb'))
-        self.config['colourspace'] = ConfigEnum(
-            colorspaces._fields, value='srgb')
-        self.config['interpolation'] = ConfigEnum((
-            'linear', 'vng', 'ppg', 'ahd', 'dcb'))
+        self.config['gamma'] = ConfigEnum(gamma_curves._fields)
+        self.config['colourspace'] = ConfigEnum(colorspaces._fields,
+                                                value='srgb')
+        self.config['interpolation'] = ConfigEnum(interpolation._fields)
         self.config['noise_threshold'] = ConfigFloat(value=0, decimals=0)
 
     def on_start(self):
@@ -75,21 +75,11 @@ class RawImageFileReader(Component):
         with Raw(filename=path) as raw:
             raw.options.auto_brightness = False
             raw.options.brightness = self.config['brightness']
-            raw.options.gamma = {
-                'linear'    : gamma_curves.linear,
-                'bt709'     : gamma_curves.bt709,
-                'srgb'      : gamma_curves.srgb,
-                'adobe_rgb' : gamma_curves.adobe_rgb,
-                }[self.config['gamma']]
+            raw.options.gamma = getattr(gamma_curves, self.config['gamma'])
             raw.options.colorspace = getattr(
                 colorspaces, self.config['colourspace'])
-            raw.options.interpolation = {
-                'linear' : interpolation.linear,
-                'vng'    : interpolation.vng,
-                'ppg'    : interpolation.ppg,
-                'ahd'    : interpolation.ahd,
-                'dcb'    : interpolation.dcb,
-                }[self.config['interpolation']]
+            raw.options.interpolation = getattr(
+                interpolation, self.config['interpolation'])
             raw.options.bps = (8, 16)[bit16]
             noise_threshold = self.config['noise_threshold']
             if noise_threshold != 0:
