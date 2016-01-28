@@ -24,6 +24,10 @@ display or storage in standard video or image files.
 In ``inverse`` mode gamma corrected data is converted to linear
 intensity.
 
+The ``'hybrid_log'`` gamma option is an implementation of a proposal
+from BBC R&D for HDR imaging. See
+http://www.bbc.co.uk/rd/publications/whitepaper309 for more information.
+
 The ``range`` config item specifies the input and output video ranges.
 It can be either ``'studio'`` (16..235) or ``'computer'`` (0..255).
 
@@ -45,13 +49,13 @@ import numpy
 from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
-from .gammacorrectioncore import gamma_frame, inverse_gamma_frame
+from .gammacorrectioncore import gamma_frame, hybrid_gamma_frame, inverse_gamma_frame
 
 class GammaCorrect(Transformer):
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
         self.config['gamma'] = ConfigEnum((
-            'linear', 'bt709', 'srgb', 'adobe_rgb'))
+            'linear', 'bt709', 'srgb', 'adobe_rgb', 'hybrid_log'))
         self.config['inverse'] = ConfigEnum(('off', 'on'))
 
     def on_start(self):
@@ -64,6 +68,7 @@ class GammaCorrect(Transformer):
             'bt709'     : (0.45004500450045004, 4.5),
             'srgb'      : (1.0 / 2.4, 12.92),
             'adobe_rgb' : (0.4547069271758437, 0.0),
+            'hybrid_log': (1.0 / 2.0, 0.0),
             }[self.config['gamma']]
         self.inverse = self.config['inverse'] == 'on'
         # threshold for switch from linear to exponential
@@ -107,6 +112,8 @@ class GammaCorrect(Transformer):
             if self.inverse:
                 inverse_gamma_frame(
                     data, self.gamma, self.toe, self.threshold, self.a)
+            elif self.config['gamma'] == 'hybrid_log':
+                hybrid_gamma_frame(data)
             else:
                 gamma_frame(
                     data, self.gamma, self.toe, self.threshold, self.a)

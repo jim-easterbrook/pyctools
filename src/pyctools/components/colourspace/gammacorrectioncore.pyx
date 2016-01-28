@@ -21,12 +21,12 @@
 """
 
 from cython.parallel import prange
-import numpy as np
+
+from libc.math cimport log, sqrt
 
 cimport cython
 cimport numpy
 
-##DTYPE = np.float32
 ctypedef numpy.float32_t DTYPE_t
 
 @cython.boundscheck(False)
@@ -105,4 +105,36 @@ def inverse_gamma_frame(numpy.ndarray[DTYPE_t, ndim=3] frame,
                     else:
                         v = (v + a) / (1.0 + a)
                         v = v ** gamma
+                    frame[y, x, c] = v
+
+@cython.boundscheck(False)
+def hybrid_gamma_frame(numpy.ndarray[DTYPE_t, ndim=3] frame):
+    """Hybrid log-gamma correct a single 3-D :py:class:`numpy.ndarray`.
+
+    The input should be normalised to the range black = 0, white = 1.
+
+    :param numpy.ndarray frame: Input/output image.
+
+    """
+    cdef:
+        int xlen, ylen, comps
+        int x, y, c
+        DTYPE_t v, ka, kb, kc
+    xlen = frame.shape[1]
+    ylen = frame.shape[0]
+    comps = frame.shape[2]
+    with nogil:
+        ka = 0.17883277
+        kb = 0.28466892
+        kc = 0.55991073
+        for y in prange(ylen, schedule='static'):
+            for x in range(xlen):
+                for c in range(comps):
+                    v = frame[y, x, c]
+                    if v <= 0.0:
+                        v = 0.0
+                    elif v <= 1.0:
+                        v = 0.5 * sqrt(v)
+                    else:
+                        v = (ka * log(v - kb)) + kc
                     frame[y, x, c] = v
