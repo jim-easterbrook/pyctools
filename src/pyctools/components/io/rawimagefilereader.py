@@ -24,9 +24,10 @@ Config
 ``path``             str    Path name of file to be read.
 ``16bit``            str    Get greater precision than normal 8-bit range. Can be ``'off'`` or ``'on'``.
 ``brightness``       float  Set the gain.
-``gamma``            str    Choose a gamma curve. Can be ``'linear'``, ``'bt709'``, ``'srgb'`` or ``'adobe_rgb'``.
-``interpolation``    str    Choose a demosaicing method. Can be ``'linear'``, ``'vng'``, ``'ppg'``, ``'ahd'`` or ``'dcb'``.
-``noise_threshold``  float  Set a denoising threshold. Typically 100 to 1000.
+``gamma``            str    Set gamma curve. Can be ``'linear'``, ``'bt709'``, ``'srgb'`` or ``'adobe_rgb'``.
+``colourspace``      str    Set colour space. Possible values: {}.
+``interpolation``    str    Set demosaicing method. Can be ``'linear'``, ``'vng'``, ``'ppg'``, ``'ahd'`` or ``'dcb'``.
+``noise_threshold``  float  Set denoising threshold. Typically 100 to 1000.
 ===================  =====  ====
 
 """
@@ -40,12 +41,15 @@ import time
 
 import numpy
 from rawkit.raw import Raw
-from rawkit.options import gamma_curves, interpolation, WhiteBalance
+from rawkit.options import colorspaces, gamma_curves, interpolation, WhiteBalance
 
 from pyctools.core.config import ConfigPath, ConfigEnum, ConfigFloat
 from pyctools.core.base import Component
 from pyctools.core.frame import Frame
 from pyctools.core.types import pt_float
+
+__doc__ = __doc__.format(
+    ', '.join(["``'" + x + "'``" for x in colorspaces._fields]))
 
 class RawImageFileReader(Component):
     inputs = []
@@ -57,6 +61,8 @@ class RawImageFileReader(Component):
         self.config['brightness'] = ConfigFloat(value=1.0, decimals=2)
         self.config['gamma'] = ConfigEnum((
             'linear', 'bt709', 'srgb', 'adobe_rgb'))
+        self.config['colourspace'] = ConfigEnum(
+            colorspaces._fields, value='srgb')
         self.config['interpolation'] = ConfigEnum((
             'linear', 'vng', 'ppg', 'ahd', 'dcb'))
         self.config['noise_threshold'] = ConfigFloat(value=0, decimals=0)
@@ -75,6 +81,8 @@ class RawImageFileReader(Component):
                 'srgb'      : gamma_curves.srgb,
                 'adobe_rgb' : gamma_curves.adobe_rgb,
                 }[self.config['gamma']]
+            raw.options.colorspace = getattr(
+                colorspaces, self.config['colourspace'])
             raw.options.interpolation = {
                 'linear' : interpolation.linear,
                 'vng'    : interpolation.vng,
