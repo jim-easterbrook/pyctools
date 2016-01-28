@@ -16,7 +16,11 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Read 'raw' still image file (CR2, etc.).
+"""Read 'raw' still image file (CR2, NEF, etc.).
+
+See the `rawkit documentation
+<https://rawkit.readthedocs.org/en/latest/api/rawkit.html>`_ for more
+detail on the configuration options.
 
 ===================  =====  ====
 Config
@@ -28,6 +32,10 @@ Config
 ``colourspace``      str    Set colour space. Possible values: {}.
 ``interpolation``    str    Set demosaicing method. Possible values: {}.
 ``noise_threshold``  float  Set denoising threshold. Typically 100 to 1000.
+``wb_auto``          str    Automatic white balance. Can be ``'off'`` or ``'on'``.
+``wb_camera``        str    Use camera defined white balance. Can be ``'off'`` or ``'on'``.
+``wb_greybox``       str    4 comma separated integers that define a grey area of the image.
+``wb_rgbg``          str    4 comma separated floats that set the gain of each channel.
 ===================  =====  ====
 
 """
@@ -43,7 +51,7 @@ import numpy
 from rawkit.raw import Raw
 from rawkit.options import colorspaces, gamma_curves, interpolation, WhiteBalance
 
-from pyctools.core.config import ConfigPath, ConfigEnum, ConfigFloat
+from pyctools.core.config import ConfigPath, ConfigEnum, ConfigFloat, ConfigStr
 from pyctools.core.base import Component
 from pyctools.core.frame import Frame
 from pyctools.core.types import pt_float
@@ -66,6 +74,10 @@ class RawImageFileReader(Component):
                                                 value='srgb')
         self.config['interpolation'] = ConfigEnum(interpolation._fields)
         self.config['noise_threshold'] = ConfigFloat(value=0, decimals=0)
+        self.config['wb_auto'] = ConfigEnum(('off', 'on'), value='off')
+        self.config['wb_camera'] = ConfigEnum(('off', 'on'), value='on')
+        self.config['wb_greybox'] = ConfigStr()
+        self.config['wb_rgbg'] = ConfigStr()
 
     def on_start(self):
         # read file
@@ -84,7 +96,15 @@ class RawImageFileReader(Component):
             noise_threshold = self.config['noise_threshold']
             if noise_threshold != 0:
                 raw.options.noise_threshold = noise_threshold
-            raw.options.white_balance = WhiteBalance(camera=True, auto=False)
+            wb = {
+                'auto'   : self.config['wb_auto']   == 'on',
+                'camera' : self.config['wb_camera'] == 'on',
+                }
+            if self.config['wb_greybox']:
+                wb['greybox'] = eval('(' + self.config['wb_greybox'] + ')')
+            if self.config['wb_rgbg']:
+                wb['rgbg'] = eval('(' + self.config['wb_rgbg'] + ')')
+            raw.options.white_balance = WhiteBalance(**wb)
             data = raw.to_buffer()
             if bit16:
                 image = numpy.frombuffer(data, dtype=numpy.uint16)
