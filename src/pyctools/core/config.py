@@ -227,7 +227,9 @@ class ConfigEnum(ConfigLeafNode):
         self.parser_kw = {'metavar' : 'str'}
         if not self.extendable:
             self.parser_kw['choices'] = self.choices
-        super(ConfigEnum, self).__init__(value=choices[0], **kw)
+        if 'value' not in kw:
+            kw['value'] = choices[0]
+        super(ConfigEnum, self).__init__(**kw)
 
     def validate(self, value):
         if self.extendable and value not in self.choices:
