@@ -36,6 +36,8 @@ Config
 ``wb_camera``        str    Use camera defined white balance. Can be ``'off'`` or ``'on'``.
 ``wb_greybox``       str    4 comma separated integers that define a grey area of the image.
 ``wb_rgbg``          str    4 comma separated floats that set the gain of each channel.
+``red_scale``        float  Chromatic aberration correction red scale factor.
+``blue_scale``       float  Chromatic aberration correction blue scale factor.
 ===================  =====  ====
 
 """
@@ -78,6 +80,8 @@ class RawImageFileReader(Component):
         self.config['wb_camera'] = ConfigEnum(('off', 'on'), value='on')
         self.config['wb_greybox'] = ConfigStr()
         self.config['wb_rgbg'] = ConfigStr()
+        self.config['red_scale'] = ConfigFloat(value=1.0, decimals=4)
+        self.config['blue_scale'] = ConfigFloat(value=1.0, decimals=4)
 
     def on_start(self):
         # read file
@@ -87,6 +91,8 @@ class RawImageFileReader(Component):
         with Raw(filename=path) as raw:
             raw.options.auto_brightness = False
             raw.options.brightness = self.config['brightness']
+            raw.options.chromatic_aberration = (
+                self.config['red_scale'], self.config['blue_scale'])
             raw.options.gamma = getattr(gamma_curves, self.config['gamma'])
             raw.options.colorspace = getattr(
                 colorspaces, self.config['colourspace'])
