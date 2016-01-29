@@ -38,6 +38,7 @@ Config
 ``wb_rgbg``          str    4 comma separated floats that set the gain of each channel.
 ``red_scale``        float  Chromatic aberration correction red scale factor.
 ``blue_scale``       float  Chromatic aberration correction blue scale factor.
+``crop``             bool   Auto crop image to dimensions in metadata.
 ===================  =====  ====
 
 """
@@ -51,11 +52,13 @@ import time
 
 import numpy
 from rawkit.raw import Raw
-from rawkit.options import colorspaces, gamma_curves, interpolation, WhiteBalance
+from rawkit.options import (
+    colorspaces, gamma_curves, interpolation, WhiteBalance)
 
-from pyctools.core.config import ConfigPath, ConfigEnum, ConfigFloat, ConfigStr
+from pyctools.core.config import (
+    ConfigBool, ConfigEnum, ConfigFloat, ConfigPath, ConfigStr)
 from pyctools.core.base import Component
-from pyctools.core.frame import Frame
+from pyctools.core.frame import Frame, Metadata
 from pyctools.core.types import pt_float
 
 __doc__ = __doc__.format(
@@ -82,6 +85,7 @@ class RawImageFileReader(Component):
         self.config['wb_rgbg'] = ConfigStr()
         self.config['red_scale'] = ConfigFloat(value=1.0, decimals=4)
         self.config['blue_scale'] = ConfigFloat(value=1.0, decimals=4)
+        self.config['crop'] = ConfigBool()
 
     def on_start(self):
         # read file
@@ -93,6 +97,11 @@ class RawImageFileReader(Component):
             raw.options.brightness = self.config['brightness']
             raw.options.chromatic_aberration = (
                 self.config['red_scale'], self.config['blue_scale'])
+            if self.config['crop']:
+                w, h = Metadata().from_file(path).image_size()
+                x = (raw.metadata.width - w) // 2
+                y = (raw.metadata.height - h) // 2
+                raw.options.cropbox = x, y, w, h
             raw.options.gamma = getattr(gamma_curves, self.config['gamma'])
             raw.options.colorspace = getattr(
                 colorspaces, self.config['colourspace'])
