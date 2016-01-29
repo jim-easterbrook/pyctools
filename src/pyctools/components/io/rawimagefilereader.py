@@ -26,14 +26,14 @@ detail on the configuration options.
 Config
 ===================  =====  ====
 ``path``             str    Path name of file to be read.
-``16bit``            str    Get greater precision than normal 8-bit range. Can be ``'off'`` or ``'on'``.
+``16bit``            bool   Get greater precision than normal 8-bit range.
 ``brightness``       float  Set the gain.
 ``gamma``            str    Set gamma curve. Possible values: {}.
 ``colourspace``      str    Set colour space. Possible values: {}.
 ``interpolation``    str    Set demosaicing method. Possible values: {}.
 ``noise_threshold``  float  Set denoising threshold. Typically 100 to 1000.
-``wb_auto``          str    Automatic white balance. Can be ``'off'`` or ``'on'``.
-``wb_camera``        str    Use camera defined white balance. Can be ``'off'`` or ``'on'``.
+``wb_auto``          bool   Automatic white balance.
+``wb_camera``        bool   Use camera defined white balance.
 ``wb_greybox``       str    4 comma separated integers that define a grey area of the image.
 ``wb_rgbg``          str    4 comma separated floats that set the gain of each channel.
 ``red_scale``        float  Chromatic aberration correction red scale factor.
@@ -72,15 +72,15 @@ class RawImageFileReader(Component):
 
     def initialise(self):
         self.config['path'] = ConfigPath()
-        self.config['16bit'] = ConfigEnum(('off', 'on'))
+        self.config['16bit'] = ConfigBool()
         self.config['brightness'] = ConfigFloat(value=1.0, decimals=2)
         self.config['gamma'] = ConfigEnum(gamma_curves._fields)
         self.config['colourspace'] = ConfigEnum(colorspaces._fields,
                                                 value='srgb')
         self.config['interpolation'] = ConfigEnum(interpolation._fields)
         self.config['noise_threshold'] = ConfigFloat(value=0, decimals=0)
-        self.config['wb_auto'] = ConfigEnum(('off', 'on'), value='off')
-        self.config['wb_camera'] = ConfigEnum(('off', 'on'), value='on')
+        self.config['wb_auto'] = ConfigBool(value=False)
+        self.config['wb_camera'] = ConfigBool(value=True)
         self.config['wb_greybox'] = ConfigStr()
         self.config['wb_rgbg'] = ConfigStr()
         self.config['red_scale'] = ConfigFloat(value=1.0, decimals=4)
@@ -91,7 +91,6 @@ class RawImageFileReader(Component):
         # read file
         self.update_config()
         path = self.config['path']
-        bit16 = self.config['16bit'] != 'off'
         with Raw(filename=path) as raw:
             raw.options.auto_brightness = False
             raw.options.brightness = self.config['brightness']
@@ -107,13 +106,13 @@ class RawImageFileReader(Component):
                 colorspaces, self.config['colourspace'])
             raw.options.interpolation = getattr(
                 interpolation, self.config['interpolation'])
-            raw.options.bps = (8, 16)[bit16]
+            raw.options.bps = (8, 16)[self.config['16bit']]
             noise_threshold = self.config['noise_threshold']
             if noise_threshold != 0:
                 raw.options.noise_threshold = noise_threshold
             wb = {
-                'auto'   : self.config['wb_auto']   == 'on',
-                'camera' : self.config['wb_camera'] == 'on',
+                'auto'   : self.config['wb_auto'],
+                'camera' : self.config['wb_camera'],
                 }
             if self.config['wb_greybox']:
                 wb['greybox'] = eval('(' + self.config['wb_greybox'] + ')')
@@ -121,7 +120,7 @@ class RawImageFileReader(Component):
                 wb['rgbg'] = eval('(' + self.config['wb_rgbg'] + ')')
             raw.options.white_balance = WhiteBalance(**wb)
             data = raw.to_buffer()
-            if bit16:
+            if self.config['16bit']:
                 image = numpy.frombuffer(data, dtype=numpy.uint16)
                 image = image.astype(pt_float) / pt_float(256.0)
             else:
