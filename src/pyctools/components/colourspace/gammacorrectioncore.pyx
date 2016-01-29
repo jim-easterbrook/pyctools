@@ -130,7 +130,7 @@ def hybrid_gamma_frame(numpy.ndarray[DTYPE_t, ndim=3] frame):
         for y in prange(ylen, schedule='static'):
             for x in range(xlen):
                 for c in range(comps):
-                    v = frame[y, x, c]
+                    v = frame[y, x, c] * 6.0
                     if v <= 0.0:
                         v = 0.0
                     elif v <= 1.0:
