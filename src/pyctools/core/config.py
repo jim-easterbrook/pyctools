@@ -63,6 +63,7 @@ are applied together, some time after calling
    ConfigGrandParent
    ConfigInt
    ConfigFloat
+   ConfigBool
    ConfigStr
    ConfigPath
    ConfigEnum
@@ -190,6 +191,31 @@ class ConfigFloat(ConfigLeafNode):
 
     def validate(self, value):
         return isinstance(value, (float, int)) and self.clip(value) == value
+
+
+class ConfigBool(ConfigLeafNode):
+    """Boolean configuration node.
+
+    """
+    parser_kw = {'type' : bool, 'metavar' : 'b'}
+
+    def __init__(self, **kw):
+        super(ConfigBool, self).__init__(**kw)
+        if self.value is None:
+            self.value = False
+            self.default = self.value
+
+    def validate(self, value):
+        return isinstance(value, (bool, int)) or value in ('off', 'on')
+
+    def set(self, value):
+        super(ConfigBool, self).set(value)
+        if self.value == 'on':
+            self.value = True
+        elif self.value == 'off':
+            self.value = False
+        else:
+            self.value = bool(self.value)
 
 
 class ConfigStr(ConfigLeafNode):

@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -112,6 +112,13 @@ class ConfigPathWidget(QtWidgets.QPushButton):
             value = '/'.join(parts)
         self.setText(value)
 
+class ConfigBoolWidget(QtWidgets.QCheckBox):
+    def __init__(self, config, **kwds):
+        super(ConfigBoolWidget, self).__init__(**kwds)
+        self.config = config
+        self.setChecked(self.config.get())
+        self.stateChanged.connect(self.config.set)
+
 class ConfigIntWidget(QtWidgets.QSpinBox):
     def __init__(self, config, **kwds):
         super(ConfigIntWidget, self).__init__(**kwds)
@@ -206,6 +213,7 @@ config_widget = {
     ConfigEnum        : ConfigEnumWidget,
     ConfigFloat       : ConfigFloatWidget,
     ConfigGrandParent : ConfigGrandParentWidget,
+    ConfigBool        : ConfigBoolWidget,
     ConfigInt         : ConfigIntWidget,
     ConfigParent      : ConfigParentWidget,
     ConfigPath        : ConfigPathWidget,
