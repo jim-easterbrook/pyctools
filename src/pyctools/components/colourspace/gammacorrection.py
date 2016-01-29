@@ -35,7 +35,7 @@ It can be either ``'studio'`` (16..235) or ``'computer'`` (0..255).
 Config
 ===========  ===  ====
 ``range``    str  Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
-``gamma``    str  Choose a gamma curve. Can be ``'linear'``, ``'bt709'``, ``'srgb'`` or ``'adobe_rgb'``.
+``gamma``    str  Choose a gamma curve. Possible values: {}.
 ``inverse``  str  Can be set to ``off`` or ``on``.
 ===========  ===  ====
 
@@ -44,6 +44,8 @@ Config
 __all__ = ['GammaCorrect']
 __docformat__ = 'restructuredtext en'
 
+from collections import OrderedDict
+
 import numpy
 
 from pyctools.core.config import ConfigEnum
@@ -51,11 +53,20 @@ from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
 from .gammacorrectioncore import gamma_frame, hybrid_gamma_frame, inverse_gamma_frame
 
+gamma_toe = OrderedDict([
+    ('linear',     (1.0, 1.0)),
+    ('bt709',      (0.45, 4.5)),
+    ('srgb',       (1.0 / 2.4, 12.92)),
+    ('adobe_rgb',  (256.0 / 563.0, 0.0)),
+    ('hybrid_log', (1.0 / 2.0, 0.0)),
+    ])
+
+__doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in gamma_toe]))
+
 class GammaCorrect(Transformer):
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
-        self.config['gamma'] = ConfigEnum((
-            'linear', 'bt709', 'srgb', 'adobe_rgb', 'hybrid_log'))
+        self.config['gamma'] = ConfigEnum(list(gamma_toe.keys()))
         self.config['inverse'] = ConfigEnum(('off', 'on'))
 
     def on_start(self):
@@ -63,13 +74,7 @@ class GammaCorrect(Transformer):
         self.adjust_params()
 
     def adjust_params(self):
-        self.gamma, self.toe = {
-            'linear'    : (1.0, 1.0),
-            'bt709'     : (0.45004500450045004, 4.5),
-            'srgb'      : (1.0 / 2.4, 12.92),
-            'adobe_rgb' : (0.4547069271758437, 0.0),
-            'hybrid_log': (1.0 / 2.0, 0.0),
-            }[self.config['gamma']]
+        self.gamma, self.toe = gamma_toe[self.config['gamma']]
         self.inverse = self.config['inverse'] == 'on'
         # threshold for switch from linear to exponential
         if self.gamma == 1.0 or self.toe <= 0.0:
