@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+   Copyright (C) 2014-16  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -38,9 +38,9 @@ Reference
 .. toctree::
    :maxdepth: 2
 
-   api/tools/index
-   api/core/index
-   api/components/index
+   api/tools/pyctools.tools
+   api/core/pyctools.core
+   api/components/pyctools.components
 
 Indices and tables
 ==================
