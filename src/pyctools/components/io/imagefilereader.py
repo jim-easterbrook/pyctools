@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,51 +16,4 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Read still image file (jpg, png, ppm, etc.).
-
-===========  ===  ====
-Config
-===========  ===  ====
-``path``     str  Path name of file to be read.
-===========  ===  ====
-
-"""
-
-from __future__ import print_function
-
-__all__ = ['ImageFileReader']
-__docformat__ = 'restructuredtext en'
-
-import time
-
-import PIL.Image
-
-from pyctools.core.config import ConfigPath
-from pyctools.core.base import Component
-from pyctools.core.frame import Frame
-
-class ImageFileReader(Component):
-    inputs = []
-    with_outframe_pool = False
-
-    def initialise(self):
-        self.config['path'] = ConfigPath()
-
-    def on_start(self):
-        # read file
-        self.update_config()
-        path = self.config['path']
-        out_frame = Frame()
-        image = PIL.Image.open(path)
-        image.load()
-        # send output frame
-        out_frame.data = image
-        out_frame.type = image.mode
-        out_frame.frame_no = 0
-        out_frame.metadata.from_file(path)
-        audit = out_frame.metadata.get('audit')
-        audit += 'data = %s\n' % path
-        out_frame.metadata.set('audit', audit)
-        self.send('output', out_frame)
-        # shut down pipeline
-        self.stop()
+from .imagefilepil import ImageFileReaderPIL as ImageFileReader
