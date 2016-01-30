@@ -16,17 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Read/write still image file (jpg, png, ppm, etc.) using OpenCV.
-
-Using the OpenCV library allows Pyctools to use 16-bit depth images.
-
-.. autosummary::
-
-   ImageFileReaderCV
-   ImageFileWriterCV
-
-"""
-
 from __future__ import print_function
 
 __all__ = ['ImageFileReaderCV', 'ImageFileWriterCV']
@@ -47,6 +36,10 @@ class ImageFileReaderCV(Component):
     The file is read with minimum changes to the data, so a 16-bit depth
     file will result in a floating point image with data in the usual
     0..255 range.
+
+    If you have a file format that OpenCV doesn't recognise, try the
+    :py:class:`~pyctools.components.io.imagefilepil.ImageFileReaderPIL`
+    component instead.
 
     ========  ===  ====
     Config
@@ -114,6 +107,10 @@ class ImageFileWriterCV(Transformer):
     See the `OpenCV documentation
     <http://docs.opencv.org/2.4.11/modules/highgui/doc/reading_and_writing_images_and_video.html#imwrite>`_
     for more detail on the possible parameters.
+
+    If you need to write a file format that OpenCV can't do, try the
+    :py:class:`~pyctools.components.io.imagefilepil.ImageFileWriterPIL`
+    component instead.
 
     ============  ====  ====
     Config

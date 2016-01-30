@@ -28,6 +28,11 @@ from pyctools.core.frame import Frame, Metadata
 class ImageFileReaderPIL(Component):
     """Read a still image file using Python Imaging Library.
 
+    Reads an image file using :py:func:`PIL.Image.open`. This function
+    cannot handle 16-bit data, so you may prefer to use
+    :py:class:`~pyctools.components.io.imagefilecv.ImageFileReaderCV`
+    instead.
+
     ========  ===  ====
     Config
     ========  ===  ====
@@ -74,6 +79,10 @@ class ImageFileWriterPIL(Transformer):
     The ``options`` configuration should be a comma separated list of
     colon separated names and values, for example a JPEG file might have
     these options: ``'quality': 95, 'progressive': True``.
+
+    PIL cannot write 16-bit data, so you may prefer to use
+    :py:class:`~pyctools.components.io.imagefilecv.ImageFileWriterCV`
+    instead.
 
     ===========  ===  ====
     Config
