@@ -126,6 +126,8 @@ except ImportError:
 modules = []
 for module_loader, mod_name, ispkg in pkgutil.walk_packages(
         path=pyctools.__path__, prefix=pyctools.__name__ + '.'):
+    if mod_name.split('.')[-1].startswith('_'):
+        continue
     modules.append({
         'name'  : mod_name,
         'ispkg' : ispkg,
@@ -155,10 +157,10 @@ for package in [x for x in modules if x['ispkg']]:
         os.makedirs(dir_name)
     # visible index, include classes, exclude undocumented
     title = '.'.join(package['name'].split('.')[1:])
-    idx_str = (title + '\n' +
-               ('=' * len(title)) + '\n\n' +
-               '.. autosummary::\n' +
-               '   :nosignatures:\n\n')
+    idx_str = title + '\n' + ('=' * len(title)) + '\n\n'
+    idx_str += '.. automodule:: ' + package['name'] + '\n\n'
+    idx_str += ('.. autosummary::\n' +
+                '   :nosignatures:\n\n')
     for module in submodules(package):
         if module['ispkg']:
             idx_str += '   ' + module['name'] + '\n'
