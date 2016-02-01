@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -17,27 +17,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Arrange image in overlapping tiles.
-
-This can be used with the :py:mod:`FFT <.fft>` component if you need
-FFTs of overlapping tiles, so you can reconstruct an image later on
-without visible tile edges.
-
-The ``xoff`` and ``yoff`` configuration sets the distance from the
-edge of one tile to the same edge on the next. For complete overlap
-they are usually set to half the tile width & height.
-
-===========  ===  ====
-Config
-===========  ===  ====
-``xtile``    int  Horizontal tile size.
-``ytile``    int  Vertical tile size.
-``xoff``     int  Horizontal tile offset. Typically set to xtile / 2.
-``yoff``     int  Vertical tile offset. Typically set to ytile / 2.
-===========  ===  ====
-
-"""
-
 __all__ = ['Tile', 'UnTile']
 __docformat__ = 'restructuredtext en'
 
@@ -47,6 +26,30 @@ from pyctools.core.base import Transformer
 from pyctools.core.config import ConfigInt
 
 class Tile(Transformer):
+    """Arrange image in overlapping tiles.
+
+    This can be used with the
+    :py:class:`~pyctools.components.fft.fft.FFT` component if you need
+    FFTs of overlapping tiles, so you can reconstruct an image later on
+    without visible tile edges.
+
+    The ``xoff`` and ``yoff`` configuration sets the distance from the
+    edge of one tile to the same edge on the next. For complete overlap
+    they are usually set to half the tile width & height.
+
+    These parameters are added to the output frame's metadata for use by
+    :py:class:`UnTile`.
+
+    =========  ===  ====
+    Config
+    =========  ===  ====
+    ``xtile``  int  Horizontal tile size.
+    ``ytile``  int  Vertical tile size.
+    ``xoff``   int  Horizontal tile offset. Typically set to xtile // 2.
+    ``yoff``   int  Vertical tile offset. Typically set to ytile // 2.
+    =========  ===  ====
+
+    """
     def initialise(self):
         self.config['xtile'] = ConfigInt(min_value=1, dynamic=True)
         self.config['ytile'] = ConfigInt(min_value=1, dynamic=True)
@@ -104,6 +107,12 @@ class Tile(Transformer):
 
 
 class UnTile(Transformer):
+    """Rearrange overlapping tiles to form an image.
+
+    Inverse operation of the :py:class:`Tile` component. The tile size
+    and offset parameters are read from the input image's metadata.
+
+    """
     def transform(self, in_frame, out_frame):
         data = in_frame.as_numpy()
         tile_params = eval(out_frame.metadata.get('tile', '[]'))

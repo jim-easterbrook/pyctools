@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -17,33 +17,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Compute Fourier transform.
-
-The image can be divided into (non-overlapping) tiles of any size. It
-is padded out to an integer number of tiles in each direction. If you
-need overlapping tiles, preprocess your images with the :py:mod:`Tile
-<.tile>` component. If you want to window the data before computing
-the FFT, use the :py:mod:`Modulate
-<pyctools.components.modulate.modulate>` component with a window
-function from :py:mod:`.window`.
-
-Inputs can be real or complex. The output type is set by the
-``output`` config value.
-
-The :py:class:`VisualiseFFT` component can be used to convert the
-(complex) Fourier transform of a picture into a viewable image.
-
-===========  ===  ====
-Config
-===========  ===  ====
-``xtile``    int  Horizontal tile size. If zero a single tile the width of the picture is used.
-``ytile``    int  Vertical tile size. If zero a single tile the height of the picture is used.
-``inverse``  str  Can be set to ``off`` or ``on``.
-``output``   str  Can be set to ``complex`` or ``real``.
-===========  ===  ====
-
-"""
-
 __all__ = ['FFT', 'VisualiseFFT']
 __docformat__ = 'restructuredtext en'
 
@@ -55,6 +28,32 @@ from pyctools.core.base import Transformer
 from pyctools.core.types import pt_complex, pt_float
 
 class FFT(Transformer):
+    """Compute Fourier transform.
+
+    The image can be divided into (non-overlapping) tiles of any size.
+    It is padded out to an integer number of tiles in each direction. If
+    you need overlapping tiles, preprocess your images with the
+    :py:class:`Tile` component. If you want to window the data before
+    computing the FFT, use the :py:mod:`Modulate
+    <pyctools.components.modulate.modulate>` component with a window
+    function from :py:mod:`.window`.
+
+    Inputs can be real or complex. The output type is set by the
+    ``output`` config value.
+
+    The :py:class:`VisualiseFFT` component can be used to convert the
+    (complex) Fourier transform of a picture into a viewable image.
+
+    ===========  ===  ====
+    Config
+    ===========  ===  ====
+    ``xtile``    int  Horizontal tile size. If zero a single tile the width of the picture is used.
+    ``ytile``    int  Vertical tile size. If zero a single tile the height of the picture is used.
+    ``inverse``  str  Can be set to ``off`` or ``on``.
+    ``output``   str  Can be set to ``complex`` or ``real``.
+    ===========  ===  ====
+
+    """
     def initialise(self):
         self.config['xtile'] = ConfigInt(min_value=0, dynamic=True)
         self.config['ytile'] = ConfigInt(min_value=0, dynamic=True)
@@ -101,10 +100,10 @@ class FFT(Transformer):
 
 
 def VisualiseFFT():
-    """Convert FFT to a viewable image.
+    """Convert output of :py:class:`FFT` to a viewable image.
 
-    Computes the logarithmic magnitude of a FFT and scales to 0..255
-    range.
+    Computes the logarithmic magnitude of a complex FT and scales to
+    0..255 range.
 
     """
     return Arithmetic(
