@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -77,6 +77,8 @@ class Resize(Transformer):
 
     def get_filter(self):
         new_filter = self.input_buffer['filter'].peek()
+        if not new_filter:
+            return False
         if new_filter == self.filter_frame:
             return True
         filter_coefs = new_filter.as_numpy(dtype=numpy.float32)
