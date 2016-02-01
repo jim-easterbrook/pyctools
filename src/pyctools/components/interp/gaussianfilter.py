@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -15,51 +15,6 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
-
-"""Gaussian filter generator.
-
-Create `Gaussian filters
-<http://en.wikipedia.org/wiki/Gaussian_filter>`_ for use with the
-:py:class:`~.resize.Resize` component. This module defines a
-:py:class:`GaussianFilter` component and a
-:py:func:`GaussianFilterCore` function. You should use one or the
-other as follows.
-
-Connecting a :py:class:`GaussianFilter` component's ``output`` to a
-:py:class:`~.resize.Resize` component's ``filter`` input allows the
-filter to be updated (while the components are running) by changing
-the :py:class:`GaussianFilter` config::
-
-    filgen = GaussianFilter()
-    cfg = filgen.get_config()
-    cfg['xsigma'] = 1.5
-    filgen.set_config(cfg)
-    resize = Resize()
-    filgen.bind('output', resize, 'filter')
-    ...
-    start(..., filgen, resize, ...)
-    ...
-    cfg = filgen.get_config()
-    cfg['xsigma'] = 1.8
-    filgen.set_config(cfg)
-    ...
-
-The :py:func:`GaussianFilterCore` function can be used instead to
-make a non-reconfigurable resizer::
-
-    resize = Resize()
-    resize.filter(GaussianFilterCore(x_sigma=1.5))
-    ...
-    start(..., resize, ...)
-    ...
-
-2-dimensional filters can be produced, but it is usually more
-efficient to use two :py:class:`~.resize.Resize` components to process
-the two dimensions independently.
-
-"""
-
-from __future__ import print_function
 
 __all__ = ['GaussianFilter']
 __docformat__ = 'restructuredtext en'
@@ -76,7 +31,38 @@ from pyctools.core.base import Component
 from pyctools.core.frame import Frame
 
 class GaussianFilter(Component):
-    """Config:
+    """Gaussian filter generator component.
+
+    Create a `Gaussian filter
+    <http://en.wikipedia.org/wiki/Gaussian_filter>`_ for use with the
+    :py:class:`~.resize.Resize` component.
+
+    Connecting a :py:class:`GaussianFilter` component's ``output`` to a
+    :py:class:`~.resize.Resize` component's ``filter`` input allows the
+    filter to be updated (while the components are running) by changing
+    the :py:class:`GaussianFilter` config::
+
+        filgen = GaussianFilter(xsigma=1.5)
+        resize = Resize()
+        filgen.connect('output', resize.filter)
+        ...
+        start(..., filgen, resize, ...)
+        ...
+        cfg = filgen.get_config()
+        cfg['xsigma'] = 1.8
+        filgen.set_config(cfg)
+        ...
+
+    If you don't need to change the configuration after creating the
+    :py:class:`~.resize.Resize` component then it's simpler to use a
+    :py:class:`GaussianFilterCore` to create a fixed filter.
+
+    2-dimensional filters can be produced by setting both ``xsigma`` and
+    ``ysigma``, but it is usually more efficient to use two
+    :py:class:`~.resize.Resize` components to process the two dimensions
+    independently.
+
+    Config:
 
     ==========  =====  ====
     ``xsigma``  float  Horizontal standard deviation parameter.
@@ -106,7 +92,16 @@ class GaussianFilter(Component):
         self.send('output', GaussianFilterCore(x_sigma=x_sigma, y_sigma=y_sigma))
 
 def GaussianFilterCore(x_sigma=0.0, y_sigma=0.0):
-    """
+    """Gaussian filter generator core.
+
+    Alternative to the :py:class:`GaussianFilter` component that can be
+    used to make a non-reconfigurable resizer::
+
+        resize = Resize()
+        resize.filter(GaussianFilterCore(x_sigma=1.5))
+        ...
+        start(..., resize, ...)
+        ...
 
     :keyword float x_sigma: Horizontal standard deviation parameter.
 

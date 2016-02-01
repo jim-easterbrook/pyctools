@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -15,52 +15,6 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
-
-"""Interpolator filter generator.
-
-Create filters for use with the :py:class:`~.resize.Resize` component.
-This module defines a :py:class:`FilterGenerator` component and a
-:py:func:`FilterGeneratorCore` function. You should use one or the
-other as follows.
-
-Connecting a :py:class:`FilterGenerator` component's ``output`` to a
-:py:class:`~.resize.Resize` component's ``filter`` input allows the
-filter to be updated (while the components are running) by changing
-the :py:class:`FilterGenerator` config::
-
-    filgen = FilterGenerator(xup=2, xaperture=16)
-    resize = Resize(xup=2)
-    filgen.bind('output', resize, 'filter')
-    ...
-    start(..., filgen, resize, ...)
-    ...
-    cfg = filgen.get_config()
-    cfg['xaperture'] = 8
-    filgen.set_config(cfg)
-    ...
-
-The :py:func:`FilterGeneratorCore` function can be used instead to
-make a non-reconfigurable resizer::
-
-    resize = Resize(xup=2)
-    resize.filter(FilterGeneratorCore(x_up=2, x_aperture=16))
-    ...
-    start(..., resize, ...)
-    ...
-
-The filter is a Hamming windowed sinc function. Its cut frequency is
-set to the "Nyquist limit" (half the sampling frequency) for the input
-or output sampling frequency, whichever is the lower. This cut
-frequency can be adjusted with the ``xcut`` and ``ycut``
-configuration.
-
-2-dimensional filters can be produced, but it is usually more
-efficient to use two :py:class:`~.resize.Resize` components to process
-the two dimensions independently.
-
-"""
-
-from __future__ import print_function
 
 __all__ = ['FilterGenerator']
 __docformat__ = 'restructuredtext en'
@@ -77,7 +31,40 @@ from pyctools.core.base import Component
 from pyctools.core.frame import Frame
 
 class FilterGenerator(Component):
-    """Config:
+    """Classic filter generator component.
+
+    Create a filter from a Hamming windowed sinc function. The cut
+    frequency is set to the "Nyquist limit" (half the sampling
+    frequency) of the input or output sampling frequency, whichever is
+    the lower. This cut frequency can be adjusted with the ``xcut`` and
+    ``ycut`` configuration.
+
+    Connecting a :py:class:`FilterGenerator` component's ``output`` to a
+    :py:class:`~.resize.Resize` component's ``filter`` input allows the
+    filter to be updated (while the components are running) by changing
+    the :py:class:`FilterGenerator` config::
+
+        filgen = FilterGenerator(xup=2, xaperture=16)
+        resize = Resize(xup=2)
+        filgen.connect('output', resize.filter)
+        ...
+        start(..., filgen, resize, ...)
+        ...
+        cfg = filgen.get_config()
+        cfg['xaperture'] = 8
+        filgen.set_config(cfg)
+        ...
+
+    If you don't need to change the configuration after creating the
+    :py:class:`~.resize.Resize` component then it's simpler to use a
+    :py:class:`FilterGeneratorCore` to create a fixed filter.
+
+    2-dimensional filters can be produced by setting both ``xaperture``
+    and ``yaperture``, but it is usually more efficient to use two
+    :py:class:`~.resize.Resize` components to process the two dimensions
+    independently.
+
+    Config:
 
     =============  ===  ====
     ``xup``        int  Horizontal up-conversion factor.
@@ -128,7 +115,16 @@ class FilterGenerator(Component):
 
 def FilterGeneratorCore(x_up=1, x_down=1, x_ap=1, x_cut=100,
                         y_up=1, y_down=1, y_ap=1, y_cut=100):
-    """
+    """Classic filter generator core.
+
+    Alternative to the :py:class:`FilterGenerator` component that can be
+    used to make a non-reconfigurable resizer::
+
+        resize = Resize(xup=2)
+        resize.filter(FilterGeneratorCore(xup=2, xaperture=16))
+        ...
+        start(..., resize, ...)
+        ...
 
     :keyword int x_up: Horizontal up-conversion factor.
 

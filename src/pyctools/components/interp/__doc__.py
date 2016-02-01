@@ -16,4 +16,4 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Image resizing and suitable filter creation."""
+"""Image filtering & resizing and suitable filter creation."""
