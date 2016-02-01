@@ -16,23 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Interpolating image resizer.
-
-This module defines both a :py:class:`Resize` Pyctools component and a
-:py:func:`resize_frame` function. The latter can be used by other
-components (such as :py:mod:`YUVtoRGB
-<pyctools.components.colourspace.yuvtorgb>`) that need high speed
-image filtering or interpolation.
-
-Images can be resized by almost any amount. The resizing is controlled
-by integer "up" and "down" factors and is not constrained to simple
-ratios such as 2:1 or 5:4.
-
-To filter images without resizing leave the "up" and "down" factors at
-their default value of 1.
-
-"""
-
 __all__ = ['Resize']
 __docformat__ = 'restructuredtext en'
 
@@ -47,14 +30,25 @@ from pyctools.core.base import Transformer
 from .resizecore import resize_frame
 
 class Resize(Transformer):
-    """Resize (or just filter) an image using user supplied filter(s).
-    The filters are supplied in a
-    :py:class:`~pyctools.core.frame.Frame` object sent to the
-    :py:meth:`filter` input. If the frame data's 3rd dimension is
-    unity then the same filter is applied to each component of the
-    input. Alternatively the frame data's 3rd dimension should match
-    the input's, allowing a different filter to be applied to each
+    """Filter an image and/or resize with interpolation.
+
+    Resize (or just filter) an image using user supplied filter(s). The
+    filters are supplied in a :py:class:`~pyctools.core.frame.Frame`
+    object sent to the :py:meth:`filter` input. If the frame data's 3rd
+    dimension is unity then the same filter is applied to each component
+    of the input. Alternatively the frame data's 3rd dimension should
+    match the input's, allowing a different filter to be applied to each
     colour.
+
+    Images can be resized by almost any amount. The resizing is
+    controlled by integer "up" and "down" factors and is not constrained
+    to simple ratios such as 2:1 or 5:4.
+
+    To filter images without resizing leave the "up" and "down" factors
+    at their default value of 1.
+
+    The core method :py:meth:`resize_frame` is written in Cython,
+    allowing real-time image resizing on a typical computer.
 
     Config:
 

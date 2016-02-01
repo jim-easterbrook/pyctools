@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -15,10 +15,6 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
-
-"""Cython extension for interpolation components.
-
-"""
 
 from cython.parallel import prange
 import numpy as np
@@ -157,6 +153,11 @@ def resize_frame(numpy.ndarray[DTYPE_t, ndim=3] in_frame,
                  numpy.ndarray[DTYPE_t, ndim=3] norm_filter,
                  int x_up, int x_down, int y_up, int y_down):
     """Filter and resize a single 3-D :py:class:`numpy.ndarray`.
+
+    This is the core of the :py:class:`Resize` component but can also be
+    used by other components (such as :py:mod:`YUVtoRGB
+    <pyctools.components.colourspace.yuvtorgb>`) that need high speed
+    image filtering or interpolation.
 
     The filter should be "normalised" so that the coefficients in each
     phase sum to unity. This is typically done by multiplying the
