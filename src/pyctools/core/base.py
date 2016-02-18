@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -134,8 +134,8 @@ class ThreadEventLoop(threading.Thread):
 
 
 class Component(ConfigMixin):
-    """Base class for all Pyctools components, i.e. objects designed
-    to be used in processing pipelines (or graph networks).
+    """Base class for all Pyctools components, *ie* objects to be used
+    in processing pipelines / graph networks.
 
     By default every component has one input and one output. To help
     other software introspect the component the input and output names
@@ -173,9 +173,10 @@ class Component(ConfigMixin):
 
     :cvar list ~Component.outputs: The component's outputs.
 
-    :cvar class ~Component.event_loop: The type of event loop to use.
+    :cvar object ~Component.event_loop: The type of event loop to use.
+        Default is :py:class:`ThreadEventLoop`.
 
-    :ivar logger: :py:class:`logging.Logger` object for the component.
+    :ivar logging.Logger logger: logging object for the component.
 
     :param dict config: Initial configuration values.
 
@@ -187,7 +188,7 @@ class Component(ConfigMixin):
 
     def __init__(self, config={}, **kwds):
         super(Component, self).__init__()
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__name__)    #:
         # create event loop and adopt some of its methods
         component_event_loop = self.event_loop(self)
         self.start = component_event_loop.start
@@ -376,33 +377,29 @@ class Component(ConfigMixin):
         for output in self.outframe_pool.values():
             if not output.available():
                 return
-        # check input frames are available
+        # check input frames are available, and get current frame number
+        frame_no = 0
         for input in self.input_buffer.values():
             if not input.available():
                 return
-        # test for 'None' input, and get current frame number
-        frame_no = -1
-        for input in self.input_buffer.values():
             in_frame = input.peek()
-            if not in_frame:
+            if in_frame is None:
                 input.get()
                 self.stop()
                 return
             frame_no = max(frame_no, in_frame.frame_no)
-        # discard old frames that can never be used
-        OK = True
+        # check for complete set of matching frame numbers
         for input in self.input_buffer.values():
             in_frame = input.peek()
-            if in_frame.frame_no < 0:
-                # special case "static" inputs, only one required
-                while input.available() > 1:
-                    input.get()
-            elif in_frame.frame_no < frame_no:
+            # discard old frames that can never be used
+            while input.available() > 1 and in_frame.frame_no < frame_no:
                 input.get()
-                OK = False
-        if OK:
-            # now have a full set of correlated inputs to process
-            self.process_frame()
+                in_frame = input.peek()
+            # check for matching frame number
+            if in_frame.frame_no >= 0 and in_frame.frame_no != frame_no:
+                return
+        # now have a full set of correlated inputs to process
+        self.process_frame()
         # might be more on the queue, so run again (via event loop)
         self.new_frame()
 
@@ -427,11 +424,12 @@ class Component(ConfigMixin):
 
 
 class Transformer(Component):
-    """A Transformer is a Pyctools component that has one input and one
-    output. When an input :py:class:`~.frame.Frame` object is received,
-    and an output :py:class:`~.frame.Frame` object is available from a
-    pool, the :py:meth:`~Transformer.transform` method is called to do
-    the component's actual work.
+    """Base class for simple components with one input and one output.
+
+    When an input :py:class:`~.frame.Frame` object is received, and an
+    output :py:class:`~.frame.Frame` object is available from a pool,
+    the :py:meth:`~Transformer.transform` method is called to do the
+    component's actual work.
 
     """
     def process_frame(self):
@@ -446,7 +444,6 @@ class Transformer(Component):
             self.send('output', out_frame)
         else:
             self.stop()
-            return
 
     def transform(self, in_frame, out_frame):
         """Process an input :py:class:`~.frame.Frame`.
@@ -474,7 +471,7 @@ class Transformer(Component):
 
 
 class ObjectPool(object):
-    """Object "pool".
+    """Output object "pool".
 
     In a pipeline of processes it is useful to have some way of "load
     balancing", to prevent the first process in the pipeline doing all
@@ -482,7 +479,7 @@ class ObjectPool(object):
     is to use a limited size "pool" of objects. When the first process
     has used up all of the objects in the pool it has to wait for the
     next process in the pipeline to consume and release an object thus
-    ensuring it doesn't get too far ahead.
+    ensuring the first process doesn't get too far ahead.
 
     This object pool uses Python's :py:class:`weakref.ref` class to
     trigger the release of a new object when Python no longer holds a
@@ -528,9 +525,9 @@ class ObjectPool(object):
         self.notify()
 
     def available(self):
-        """Is an object available from the pool.
+        """Number of objects available from the pool.
 
-        :rtype: :py:class:`bool`
+        :rtype: :py:class:`int`
 
         """
         return len(self.obj_list)
