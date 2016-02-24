@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -17,22 +17,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Apply a user supplied colour matrix.
-
-Converts ``n``-component input to ``m``-component output with a
-user-supplied ``m x n`` matrix.
-
-The :py:meth:`~Matrix.matrix` input is used to update the matrix. No
-processing happens until a matrix is received, and a new matrix can be
-applied while the component is running.
-
-The matrix is supplied as a :py:class:`~pyctools.core.frame.Frame`
-object, allowing an audit trail to be included describing it. The
-frame's data must be an ``m x n`` :py:class:`numpy:numpy.ndarray`
-object. The frame's frame number must be less than zero.
-
-"""
-
 __all__ = ['Matrix']
 __docformat__ = 'restructuredtext en'
 
@@ -41,6 +25,22 @@ import numpy
 from pyctools.core.base import Transformer
 
 class Matrix(Transformer):
+    """Apply a user supplied colour matrix.
+
+    Converts ``n``-component input to ``m``-component output with a
+    user-supplied ``m x n`` matrix.
+
+    The ``matrix`` input is used to update the matrix. No processing
+    happens until a matrix is received, and a new matrix can be applied
+    while the component is running.
+
+    The matrix is supplied as a :py:class:`~pyctools.core.frame.Frame`
+    object, allowing an audit trail to be included describing it. The
+    frame's data must be an ``m x n`` :py:class:`numpy:numpy.ndarray`
+    object. The frame's frame number must be less than zero.
+
+    """
+
     inputs = ['input', 'matrix']
 
     def initialise(self):

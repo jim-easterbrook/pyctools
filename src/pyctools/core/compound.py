@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,8 +16,7 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Compound component."""
-
+__all__ = ['Compound']
 __docformat__ = 'restructuredtext en'
 
 import logging
@@ -26,11 +25,12 @@ import six
 from .config import ConfigGrandParent
 
 class Compound(object):
-    """Encapsulates several components into one. Closely modeled on
-    `Kamaelia's 'Graphline' component
+    """Encapsulate several components into one.
+
+    Closely modeled on `Kamaelia's 'Graphline' component
     <http://www.kamaelia.org/Components/pydoc/Kamaelia.Chassis.Graphline.html>`_.
     Components are linked within the compound and to the outside world
-    according to the `linkages` parameter.
+    according to the ``linkages`` parameter.
 
     For example, you could create an image resizer by connecting a
     :py:class:`~pyctools.components.interp.filtergenerator.FilterGenerator`
@@ -44,11 +44,10 @@ class Compound(object):
             yaperture = 1
             if y_up != 1 or y_down != 1:
                 yaperture = 16
-            filgen = FilterGenerator(config={
-                'xup' : x_up, 'xdown' : x_down, 'xaperture' : xaperture,
-                'yup' : y_up, 'ydown' : y_down, 'yaperture' : yaperture})
-            resize = Resize(config={
-                'xup' : x_up, 'xdown' : x_down, 'yup' : y_up, 'ydown' : y_down})
+            filgen = FilterGenerator(
+                xup=x_up, xdown=x_down, xaperture=xaperture,
+                yup=y_up, ydown=y_down, yaperture=yaperture)
+            resize = Resize(xup=x_up, xdown=x_down, yup=y_up, ydown=y_down)
             return Compound(
                 filgen = filgen,
                 resize = resize,
@@ -59,11 +58,10 @@ class Compound(object):
                     }
                 )
 
-    Note the use of ``'self'`` in the :py:obj:`linkages` parameter to
-    denote the compound object's own inputs and outputs. These are
-    connected directly to the child components with no runtime
-    overhead. There is no performance disadvantage from using compound
-    objects.
+    Note the use of ``'self'`` in the ``linkages`` parameter to denote
+    the compound object's own inputs and outputs. These are connected
+    directly to the child components with no runtime overhead. There is
+    no performance disadvantage from using compound objects.
 
     The child components' configuration objects are gathered into one
     :py:class:`~.config.ConfigGrandParent`. The child names are used
@@ -180,7 +178,7 @@ class Compound(object):
 
         :param bool end_comps: only wait for the components that end a
             pipeline. This is useful for complex graphs where it is
-            normal for some components not to finish.
+            normal for some components not to terminate.
 
         """
         for name, child in self._compound_children.items():

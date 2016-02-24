@@ -17,15 +17,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Pyctools "Frame" class.
-
-.. autosummary::
-
-   Frame
-   Metadata
-
-"""
-
 __all__ = ['Frame', 'Metadata']
 __docformat__ = 'restructuredtext en'
 

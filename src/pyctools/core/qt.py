@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015  Pyctools contributors
+#  Copyright (C) 2015-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -15,15 +15,6 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
-
-"""Qt event loops.
-
-.. autosummary::
-
-   QtEventLoop
-   QtThreadEventLoop
-
-"""
 
 __all__ = ['QtEventLoop', 'QtThreadEventLoop']
 __docformat__ = 'restructuredtext en'
@@ -94,8 +85,9 @@ class QtEventLoop(CoreEventLoop):
     """Event loop using the Qt "main thread" (or "GUI thread").
 
     Use this event loop if your component is a Qt widget or needs to run
-    in the main thread for any other reason. See the :py:mod:`QtDisplay
-    <pyctools.components.qt.qtdisplay>` component for an example.
+    in the main Qt thread for any other reason. See the
+    :py:mod:`~pyctools.components.qt.qtdisplay.QtDisplay` component for
+    an example.
 
     Pyctools event loops are described in more detail in the
     :py:class:`~.base.ThreadEventLoop` documentation.
