@@ -16,17 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Component base classes.
-
-.. autosummary::
-
-   Component
-   Transformer
-   ObjectPool
-   ThreadEventLoop
-
-"""
-
 __all__ = ['Component', 'Transformer', 'ObjectPool', 'ThreadEventLoop']
 __docformat__ = 'restructuredtext en'
 
@@ -62,25 +51,32 @@ class InputBuffer(object):
 class ThreadEventLoop(threading.Thread):
     """Event loop using :py:class:`threading.Thread`.
 
-    This is the standard Pyctools event loop. It runs as a Python
-    thread, allowing Pyctools components to run "concurrently".
+    This is the standard Pyctools event loop. It runs a component in a
+    Python thread, allowing Pyctools components to run "concurrently".
 
     The event loop provides four methods that the owning component
-    should "adopt" as its own: :py:meth:`~threading.Thread.start`,
-    :py:meth:`stop`, :py:meth:`running` &
-    :py:meth:`~threading.Thread.join`.
+    should "adopt" as its own: :py:meth:`start`, :py:meth:`stop`,
+    :py:meth:`running` & :py:meth:`join`.
 
     The owner component must provide four methods that the event loop
     calls in response to events: :py:meth:`~Component.start_event`,
     :py:meth:`~Component.stop_event`,
     :py:meth:`~Component.new_frame_event` &
     :py:meth:`~Component.new_config_event`. It must also provide a
-    :py:class:`logging.Logger` object.
+    :py:attr:`~Component.logger` object.
 
     :param Component owner: the Pyctools component that is using this
         instance of :py:class:`ThreadEventLoop`.
 
+    .. automethod:: start()
+
+    .. automethod:: join(timeout=None)
+
     """
+
+    # rename method from threading.Thread
+    running = threading.Thread.is_alive
+
     def __init__(self, owner, **kwds):
         super(ThreadEventLoop, self).__init__(**kwds)
         self.daemon = True
@@ -88,6 +84,16 @@ class ThreadEventLoop(threading.Thread):
         self.incoming = deque()
 
     def run(self):
+        """The actual event loop.
+
+        Calls the ``owner``'s :py:meth:`~Component.start_event` method,
+        then calls its :py:meth:`~Component.new_frame_event` and
+        :py:meth:`~Component.new_config_event` methods as required until
+        :py:meth:`stop` is called. Finally the ``owner``'s
+        :py:meth:`~Component.stop_event` method is called before the
+        thread terminates.
+
+        """
         self.owner.start_event()
         while True:
             while not self.incoming:
@@ -106,20 +112,12 @@ class ThreadEventLoop(threading.Thread):
         """Thread-safe method to stop the component."""
         self.incoming.append(None)
 
-    def running(self):
-        """Is the event loop running.
-
-        :rtype: bool
-
-        """
-        return self.is_alive()
-
     def new_frame(self):
         """Thread-safe method to alert the component to a new input or
         output frame.
 
-        Called by the component's input buffers when an input frame
-        arrives, and by its output frame pools when a new output frame
+        Called by the component's input buffer(s) when an input frame
+        arrives, and by its output frame pool(s) when a new output frame
         is available.
 
         """
@@ -154,11 +152,10 @@ class Component(ConfigMixin):
     class creates an output frame pool for each of your
     :py:attr:`~Component.outputs`.
 
-    A :py:class:`logging.Logger` object is created for every
-    component. Use this to report any errors or warnings from your
-    component, rather than using ``print`` statements. The component
-    may get used in situations where there is no console to print
-    messages to.
+    A :py:class:`logging.Logger` object is created for every component.
+    Use this to report any errors or warnings from your component,
+    rather than using :py:func:`print` statements. The component may get
+    used in situations where there is no console to print messages to.
 
     Every component also has configuration methods. See
     :py:class:`~.config.ConfigMixin` for more information. The
@@ -240,8 +237,8 @@ class Component(ConfigMixin):
         anything when the configuration is updated.
 
         The config isn't actually changed until
-        :py:meth:`~ConfigMixin.update_config` is called, so be sure to
-        do this in your method.
+        :py:meth:`~.config.ConfigMixin.update_config` is called, so be
+        sure to do this in your method.
 
         """
         pass
@@ -366,11 +363,12 @@ class Component(ConfigMixin):
 
         If an input frame has a negative frame number it is not
         correlated with other inputs, it is merely required to exist.
-        The derived class should use the input buffer's ``peek``
-        method to get the frame without removing it from the buffer.
-        See the :py:mod:`Matrix
-        <pyctools.components.colourspace.matrix>` component for an
-        example.
+        This allows frame objects to be used as control inputs when
+        processing video sequences. The derived class should use the
+        input buffer's ``peek`` method to get the frame without removing
+        it from the buffer. See the
+        :py:class:`~pyctools.components.colourspace.matrix.Matrix`
+        component for an example.
 
         """
         # check output frames are available
@@ -473,23 +471,27 @@ class Transformer(Component):
 class ObjectPool(object):
     """Output object "pool".
 
-    In a pipeline of processes it is useful to have some way of "load
-    balancing", to prevent the first process in the pipeline doing all
-    its work before the next process starts. A simple way to do this
-    is to use a limited size "pool" of objects. When the first process
+    In a pipeline of components it is useful to have some way of "load
+    balancing", to prevent the first component in the pipeline doing all
+    its work before the next component starts. A simple way to do this
+    is to use a limited size "pool" of objects. When the first component
     has used up all of the objects in the pool it has to wait for the
-    next process in the pipeline to consume and release an object thus
-    ensuring the first process doesn't get too far ahead.
+    next component in the pipeline to consume and release an object thus
+    ensuring the first component doesn't get too far ahead.
 
     This object pool uses Python's :py:class:`weakref.ref` class to
     trigger the release of a new object when Python no longer holds a
     reference to an old object, i.e. when it gets deleted.
 
+    Note that the ``factory`` and ``notify`` functions must both be
+    thread safe. They are usually called from the thread that deleted
+    the old object, not the :py:class:`ObjectPool` owner's thread.
+
     :param callable factory: The function to call to create new
         objects.
 
     :param callable notify: A function to call when a new object
-        is available.
+        is available, e.g. :py:meth:`ThreadEventLoop.new_frame`.
 
     """
     def __init__(self, factory, notify, **kwds):
@@ -525,7 +527,7 @@ class ObjectPool(object):
         self.notify()
 
     def available(self):
-        """Number of objects available from the pool.
+        """Number of objects currently available from the pool.
 
         :rtype: :py:class:`int`
 
