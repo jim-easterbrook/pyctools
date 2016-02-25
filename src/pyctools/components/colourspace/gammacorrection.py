@@ -16,35 +16,14 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Gamma correction.
-
-Convert linear intensity values to 'gamma corrected' form suitable for
-display or storage in standard video or image files.
-
-In ``inverse`` mode gamma corrected data is converted to linear
-intensity.
-
-The ``'hybrid_log'`` gamma option is an implementation of a proposal
-from BBC R&D for HDR imaging. See
-http://www.bbc.co.uk/rd/publications/whitepaper309 for more information.
-
-The ``range`` config item specifies the input and output video ranges.
-It can be either ``'studio'`` (16..235) or ``'computer'`` (0..255).
-
-===========  ===  ====
-Config
-===========  ===  ====
-``range``    str  Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
-``gamma``    str  Choose a gamma curve. Possible values: {}.
-``inverse``  str  Can be set to ``off`` or ``on``.
-===========  ===  ====
-
-"""
-
 __all__ = ['GammaCorrect']
 __docformat__ = 'restructuredtext en'
 
 from collections import OrderedDict
+
+import sys
+if 'sphinx' in sys.modules:
+    __all__ += ['gamma_frame', 'hybrid_gamma_frame', 'inverse_gamma_frame']
 
 import numpy
 
@@ -61,9 +40,37 @@ gamma_toe = OrderedDict([
     ('hybrid_log', (1.0 / 2.0, 0.0)),
     ])
 
-__doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in gamma_toe]))
-
 class GammaCorrect(Transformer):
+    """Gamma correction.
+
+    Convert linear intensity values to 'gamma corrected' form suitable
+    for display or storage in standard video or image files.
+
+    In ``inverse`` mode gamma corrected data is converted to linear
+    intensity.
+
+    The ``'hybrid_log'`` gamma option is an implementation of a proposal
+    from `BBC R&D <http://www.bbc.co.uk/rd>`_ for `HDR imaging
+    <https://en.wikipedia.org/wiki/High-dynamic-range_imaging>`_. See
+    http://www.bbc.co.uk/rd/publications/whitepaper309 for more
+    information.
+
+    The ``range`` config item specifies the input and output video
+    ranges. It can be either ``'studio'`` (16..235) or ``'computer'``
+    (0..255).
+
+    ===========  ===  ====
+    Config
+    ===========  ===  ====
+    ``range``    str  Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
+    ``gamma``    str  Choose a gamma curve. Possible values: {}.
+    ``inverse``  str  Can be set to ``off`` or ``on``.
+    ===========  ===  ====
+
+    """
+
+    __doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in gamma_toe]))
+
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
         self.config['gamma'] = ConfigEnum(list(gamma_toe.keys()))

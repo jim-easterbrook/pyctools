@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,34 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Do simple arithmetic.
-
-Applies a user supplied arithmetical expression to every pixel in each
-frame. To set the expression, set the component's ``func`` config to a
-suitable string expression. The input data should appear in your
-expression as the word ``data``.
-
-For example, to convert video levels from the range ``16..235`` to
-``64..204`` you could do this::
-
-    setlevel = Arithmetic()
-    cfg = setlevel.get_config()
-    cfg['func'] = '((data - pt_float(16.0)) * pt_float(140.0 / 219.0)) + pt_float(64.0)'
-    setlevel.set_config(cfg)
-    ...
-    pipeline(..., setlevel, ...)
-
-Note the liberal use of ``pt_float`` to coerce data to the Pyctools
-default floating point type (``numpy.float32``). NumPy will otherwise
-convert Python :py:class:`float` to ``numpy.float64``.
-
-Arithmetic2 is similar, but has two inputs. For example, to subtract the
-second inout from the first you could do::
-
-    subtracter = Arithmetic2(func='data1 - data2')
-
-"""
-
 __all__ = ['Arithmetic', 'Arithmetic2']
 __docformat__ = 'restructuredtext en'
 
@@ -54,6 +26,28 @@ from pyctools.core.base import Component, Transformer
 from pyctools.core.types import pt_float, pt_complex
 
 class Arithmetic(Transformer):
+    """Do simple arithmetic.
+
+    Applies a user supplied arithmetical expression to every pixel in
+    each frame. To set the expression, set the component's ``func``
+    config to a suitable string expression. The input data should appear
+    in your expression as the word ``data``.
+
+    For example, to convert video levels from the range ``16..235`` to
+    ``64..204`` you could do this::
+
+        setlevel = Arithmetic(
+            func='((data - pt_float(16.0)) * pt_float(140.0 / 219.0)) + pt_float(64.0)')
+        ...
+        pipeline(..., setlevel, ...)
+
+    Note the liberal use of :py:data:`~pyctools.core.types.pt_float` to
+    coerce numbers to the Pyctools default floating point type
+    (:py:class:`numpy.float32`). NumPy will otherwise convert Python
+    :py:class:`float` to :py:class:`numpy.float64`.
+
+    """
+
     def initialise(self):
         self.config['func'] = ConfigStr(value='data')
 
@@ -69,6 +63,15 @@ class Arithmetic(Transformer):
 
 
 class Arithmetic2(Component):
+    """Do simple arithmetic with two inputs.
+
+    Similar to :py:class:`Arithmetic`, but has two inputs. For example,
+    to subtract the second inout from the first you could do::
+
+        subtracter = Arithmetic2(func='data1 - data2')
+
+    """
+
     inputs = ['input1', 'input2']
 
     def initialise(self):

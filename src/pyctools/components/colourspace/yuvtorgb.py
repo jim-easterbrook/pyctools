@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,28 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""YUV (YCbCr) to RGB converter.
-
-Convert "YUV" (actually YCbCr) frames (with any UV subsampling) to
-RGB.
-
-For ``4:2:2`` subsampling a high quality resampling filter is used, as
-specified in `BBC R&D Report 1984/04
-<http://www.bbc.co.uk/rd/publications/rdreport_1984_04>`_. For other
-subsampling patterns, where the correct filtering is less well
-specified, simple bicubic interpolation is used.
-
-The ``matrix`` config item chooses the matrix coefficient set. It can
-be ``'601'`` ("Rec 601", standard definition) or ``'709'`` ("Rec 709",
-high definition). In ``'auto'`` mode the matrix is chosen according to
-the number of lines in the image.
-
-The ``range`` config item specifies the output video range. It can be
-either ``'studio'`` (16..235) or ``'computer'`` (0..255). Values are
-not clipped in either case.
-
-"""
-
 from __future__ import print_function
 
 __all__ = ['YUVtoRGB']
@@ -52,6 +30,28 @@ from pyctools.core.types import pt_float
 from pyctools.components.interp.resize import resize_frame
 
 class YUVtoRGB(Component):
+    """YUV (YCbCr) to RGB converter.
+
+    Convert "YUV" (actually YCbCr) frames (with any UV subsampling) to
+    RGB.
+
+    For ``4:2:2`` subsampling a high quality resampling filter is used,
+    as specified in `BBC R&D Report 1984/04
+    <http://www.bbc.co.uk/rd/publications/rdreport_1984_04>`_. For other
+    subsampling patterns, where the correct filtering is less well
+    specified, simple bicubic interpolation is used.
+
+    The ``matrix`` config item chooses the matrix coefficient set. It
+    can be ``'601'`` ("Rec 601", standard definition) or ``'709'`` ("Rec
+    709", high definition). In ``'auto'`` mode the matrix is chosen
+    according to the number of lines in the image.
+
+    The ``range`` config item specifies the output video range. It can
+    be either ``'studio'`` (16..235) or ``'computer'`` (0..255). Values
+    are not clipped in either case.
+
+    """
+
     mat_601 = numpy.array([[1.0,  0.0,       1.37071],
                            [1.0, -0.336455, -0.698196],
                            [1.0,  1.73245,   0.0]], dtype=pt_float)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -17,15 +17,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Extract colour components.
-
-Extract one or more components from a multi-component (RGB, YCrCb,
-etc.) input. The output components are specified by the config items
-``start`` and ``stop``. As in a Python :py:class:`slice`, ``stop``
-should be one more than the last component required.
-
-"""
-
 __all__ = ['ExtractComps']
 __docformat__ = 'restructuredtext en'
 
@@ -33,6 +24,22 @@ from pyctools.core.config import ConfigInt
 from pyctools.core.base import Transformer
 
 class ExtractComps(Transformer):
+    """Extract colour components.
+
+    Extract one or more components from a multi-component (RGB, YCrCb,
+    etc.) input. The output components are specified by the config items
+    ``start`` and ``stop``. As in a Python :py:class:`slice`, ``stop``
+    should be one more than the last component required.
+
+    Note that this operation is just as easily done with an
+    :py:class:`~pyctools.components.arithmetic.Arithmetic` component::
+
+        extract_R = Arithmetic(func='data[:,:,0:1]')
+        extract_G = Arithmetic(func='data[:,:,1:2]')
+        extract_B = Arithmetic(func='data[:,:,2:3]')
+
+    """
+
     def initialise(self):
         self.config['start'] = ConfigInt(min_value=0)
         self.config['stop'] = ConfigInt(min_value=1)

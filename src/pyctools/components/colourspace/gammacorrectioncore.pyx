@@ -16,10 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Cython extension for gamma correction component.
-
-"""
-
 from cython.parallel import prange
 
 from libc.math cimport log, sqrt

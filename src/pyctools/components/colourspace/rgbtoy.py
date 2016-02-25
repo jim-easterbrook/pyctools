@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -17,21 +17,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""RGB to Y converter.
-
-Convert RGB frames to luminance.
-
-The ``matrix`` config item chooses the matrix coefficient set. It can
-be ``'601'`` ("Rec 601", standard definition) or ``'709'`` ("Rec 709",
-high definition). In ``'auto'`` mode the matrix is chosen according to
-the number of lines in the image.
-
-The ``range`` config item specifies the input video range. It can be
-either ``'studio'`` (16..235) or ``'computer'`` (0..255). Values are
-not clipped in either case.
-
-"""
-
 __all__ = ['RGBtoY']
 __docformat__ = 'restructuredtext en'
 
@@ -43,6 +28,21 @@ from pyctools.core.types import pt_float
 from .rgbtoyuv import RGBtoYUV
 
 class RGBtoY(Transformer):
+    """RGB to Y converter.
+
+    Convert RGB frames to luminance.
+
+    The ``matrix`` config item chooses the matrix coefficient set. It
+    can be ``'601'`` ("Rec 601", standard definition) or ``'709'`` ("Rec
+    709", high definition). In ``'auto'`` mode the matrix is chosen
+    according to the number of lines in the image.
+
+    The ``range`` config item specifies the input video range. It can be
+    either ``'studio'`` (16..235) or ``'computer'`` (0..255). Values are
+    not clipped in either case.
+
+    """
+
     mat_601 = RGBtoYUV.mat_601[0:1]
     mat_709 = RGBtoYUV.mat_709[0:1]
 

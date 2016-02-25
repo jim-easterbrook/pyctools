@@ -16,19 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Quantisation.
-
-Round data to integer values, using error feedback (see
-http://www.bbc.co.uk/rd/publications/rdreport_1987_12) to reduce the
-visibility of quantisation effects.
-
-Note that if the input image is already quantised this component will
-have no effect. Hence it is recommended always to be used before any
-component that truncates the data, such as :py:mod:`ImageFileWriter
-<pyctools.components.io.imagefilewriter>`.
-
-"""
-
 __all__ = ['ErrorFeedbackQuantise']
 __docformat__ = 'restructuredtext en'
 
@@ -37,6 +24,19 @@ import numpy
 from pyctools.core.base import Transformer
 
 class ErrorFeedbackQuantise(Transformer):
+    """Quantisation with error feedback.
+
+    Round data to integer values, using error feedback (see
+    http://www.bbc.co.uk/rd/publications/rdreport_1987_12) to reduce the
+    visibility of quantisation effects.
+
+    Note that if the input image is already quantised this component
+    will have no effect. Hence it is recommended always to be used
+    before any component that truncates the data, such as
+    :py:class:`~pyctools.components.io.imagefilepil.ImageFileWriterPIL`.
+
+    """
+
     def transform(self, in_frame, out_frame):
         self.update_config()
         # get data

@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,21 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""RGB to YUV (YCbCr) converter.
-
-Convert RGB frames to "YUV" (actually YCbCr) with 4:4:4 sampling.
-
-The ``matrix`` config item chooses the matrix coefficient set. It can
-be ``'601'`` ("Rec 601", standard definition) or ``'709'`` ("Rec 709",
-high definition). In ``'auto'`` mode the matrix is chosen according to
-the number of lines in the image.
-
-The ``range`` config item specifies the input video range. It can be
-either ``'studio'`` (16..235) or ``'computer'`` (0..255). Values are
-not clipped in either case.
-
-"""
-
 __all__ = ['RGBtoYUV']
 __docformat__ = 'restructuredtext en'
 
@@ -41,6 +26,21 @@ from pyctools.core.base import Component
 from pyctools.core.types import pt_float
 
 class RGBtoYUV(Component):
+    """RGB to YUV (YCbCr) converter.
+
+    Convert RGB frames to "YUV" (actually YCbCr) with 4:4:4 sampling.
+
+    The ``matrix`` config item chooses the matrix coefficient set. It
+    can be ``'601'`` ("Rec 601", standard definition) or ``'709'`` ("Rec
+    709", high definition). In ``'auto'`` mode the matrix is chosen
+    according to the number of lines in the image.
+
+    The ``range`` config item specifies the input video range. It can be
+    either ``'studio'`` (16..235) or ``'computer'`` (0..255). Values are
+    not clipped in either case.
+
+    """
+
     mat_601 = numpy.array(
         [[ 0.299,      0.587,      0.114],
          [-0.1725883, -0.3388272,  0.5114155],

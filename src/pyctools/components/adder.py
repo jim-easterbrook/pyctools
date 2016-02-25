@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,15 +16,20 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Add two inputs.
-
-"""
-
 __all__ = ['Adder']
 
 from pyctools.core.base import Component
 
 class Adder(Component):
+    """Add two inputs.
+
+    Note that this operation is just as easily done with an
+    :py:class:`~pyctools.components.arithmetic.Arithmetic2` component::
+
+        adder = Arithmetic2(func='data1 + data2')
+
+    """
+
     inputs = ['input0', 'input1']
 
     def process_frame(self):
