@@ -393,6 +393,10 @@ class Component(ConfigMixin):
             while input.available() > 1 and in_frame.frame_no < frame_no:
                 input.get()
                 in_frame = input.peek()
+                if in_frame is None:
+                    input.get()
+                    self.stop()
+                    return
             # check for matching frame number
             if in_frame.frame_no >= 0 and in_frame.frame_no != frame_no:
                 return
