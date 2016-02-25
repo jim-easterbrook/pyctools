@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -30,17 +30,17 @@ fps). If the incoming video cannot keep up then frames will be
 repeated. Otherwise the entire processing pipeline is slowed down to
 supply images at the correct rate.
 
-=============  ===  ====
+=============  ====  ====
 Config
-=============  ===  ====
-``title``      str  Window title.
-``expand``     int  Image up-conversion factor.
-``shrink``     int  Image down-conversion factor.
-``framerate``  int  Target frame rate.
-``repeat``     str  Repeat frames until next one arrives. Can be ``'off'`` or ``'on'``.
-``sync``       str  Synchronise to video card frame rate. Can be ``'off'`` or ``'on'``.
-``stats``      str  Show actual frame rate statistics. Can be ``'off'`` or ``'on'``.
-=============  ===  ====
+=============  ====  ====
+``title``      str   Window title.
+``expand``     int   Image up-conversion factor.
+``shrink``     int   Image down-conversion factor.
+``framerate``  int   Target frame rate.
+``repeat``     bool  Repeat frames until next one arrives.
+``sync``       bool  Synchronise to video card frame rate.
+``stats``      bool  Show actual frame rate statistics.
+=============  ====  ====
 
 """
 
@@ -55,7 +55,7 @@ import time
 import numpy
 from OpenGL import GL
 
-from pyctools.core.config import ConfigInt, ConfigEnum, ConfigStr
+from pyctools.core.config import ConfigBool, ConfigInt, ConfigStr
 from pyctools.core.base import Transformer
 from pyctools.core.qt import (
     qt_version_info, Qt, QtCore, QtEventLoop, QtGui, QtOpenGL, QtWidgets)
@@ -306,11 +306,9 @@ class QtDisplay(Transformer, QtWidgets.QWidget):
         self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
         self.config['expand'] = ConfigInt(min_value=1, dynamic=True)
         self.config['framerate'] = ConfigInt(min_value=1, value=25)
-        self.config['sync'] = ConfigEnum(('off', 'on'))
-        self.config['sync'] = 'on'
-        self.config['repeat'] = ConfigEnum(('off', 'on'))
-        self.config['repeat'] = 'on'
-        self.config['stats'] = ConfigEnum(('off', 'on'))
+        self.config['sync'] = ConfigBool(value=True)
+        self.config['repeat'] = ConfigBool(value=True)
+        self.config['stats'] = ConfigBool()
 
     def pause(self):
         self.display.paused = not self.display.paused
@@ -341,9 +339,9 @@ class QtDisplay(Transformer, QtWidgets.QWidget):
         self.update_config()
         self.setWindowTitle(self.config['title'])
         self.display.frame_period = 1.0 / float(self.config['framerate'])
-        self.display.show_stats = self.config['stats'] == 'on'
-        self.display.repeat = self.config['repeat'] == 'on'
-        self.display.sync = self.config['sync'] == 'on'
+        self.display.show_stats = self.config['stats']
+        self.display.repeat = self.config['repeat']
+        self.display.sync = self.config['sync']
 
     def transform(self, in_frame, out_frame):
         numpy_image = in_frame.as_numpy(dtype=numpy.uint8)

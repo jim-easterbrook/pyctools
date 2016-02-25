@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -22,14 +22,14 @@ This component uses `FFmpeg <https://www.ffmpeg.org/>`_ to read video
 from a wide variety of formats. Make sure you have installed FFmpeg
 before attempting to use :py:class:`VideoFileReader`.
 
-===========  ===  ====
+===========  ====  ====
 Config
-===========  ===  ====
-``path``     str  Path name of file to be read.
-``looping``  str  Whether to play continuously. Can be ``'off'`` or ``'repeat'``.
-``type``     str  Output data type. Can be ``'RGB'`` or ``'Y'``.
-``16bit``    str  Attempt to get greater precision than normal 8-bit range. Can be ``'off'`` or ``'on'``.
-===========  ===  ====
+===========  ====  ====
+``path``     str   Path name of file to be read.
+``looping``  str   Whether to play continuously. Can be ``'off'`` or ``'repeat'``.
+``type``     str   Output data type. Can be ``'RGB'`` or ``'Y'``.
+``16bit``    bool  Attempt to get greater precision than normal 8-bit range.
+===========  ====  ====
 
 """
 
@@ -47,7 +47,7 @@ import sys
 
 import numpy
 
-from pyctools.core.config import ConfigPath, ConfigEnum
+from pyctools.core.config import ConfigBool, ConfigPath, ConfigEnum
 from pyctools.core.base import Component
 from pyctools.core.frame import Metadata
 from pyctools.core.types import pt_float
@@ -61,7 +61,7 @@ class VideoFileReader(Component):
         self.config['path'] = ConfigPath()
         self.config['looping'] = ConfigEnum(('off', 'repeat'), dynamic=True)
         self.config['type'] = ConfigEnum(('RGB', 'Y'))
-        self.config['16bit'] = ConfigEnum(('off', 'on'))
+        self.config['16bit'] = ConfigBool()
 
     @contextmanager
     def subprocess(self, *arg, **kw):
@@ -98,7 +98,7 @@ class VideoFileReader(Component):
                 self.logger.critical('Failed to open %s', path)
                 return
         while True:
-            bit16 = self.config['16bit'] != 'off'
+            bit16 = self.config['16bit']
             self.frame_type = self.config['type']
             if self.frame_type == 'RGB':
                 bps = 3

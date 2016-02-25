@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015  Pyctools contributors
+#  Copyright (C) 2015-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -23,12 +23,12 @@ Y-axis range. The X-axis covers the range [0, 256). Values outside this
 range are counted and the results displayed as raw numbers and
 percentage of pixels.
 
-=========  ===  ====
+=========  ====  ====
 Config
-=========  ===  ====
-``title``  str  Window title.
-``log``    str  Use logarithmic Y axis. Can be ``'off'`` or ``'on'``.
-=========  ===  ====
+=========  ====  ====
+``title``  str   Window title.
+``log``    bool  Use logarithmic Y axis.
+=========  ====  ====
 
 """
 
@@ -39,7 +39,7 @@ import math
 
 import numpy
 
-from pyctools.core.config import ConfigEnum, ConfigStr
+from pyctools.core.config import ConfigBool, ConfigStr
 from pyctools.core.base import Transformer
 from pyctools.core.qt import Qt, QtEventLoop, QtGui, QtWidgets
 
@@ -68,7 +68,7 @@ class ShowHistogram(Transformer, QtWidgets.QWidget):
 
     def initialise(self):
         self.config['title'] = ConfigStr()
-        self.config['log'] = ConfigEnum(('off', 'on'))
+        self.config['log'] = ConfigBool()
 
     def closeEvent(self, event):
         event.accept()
@@ -84,7 +84,7 @@ class ShowHistogram(Transformer, QtWidgets.QWidget):
 
     def transform(self, in_frame, out_frame):
         self.update_config()
-        log = self.config['log'] == 'on'
+        log = self.config['log']
         data = in_frame.as_numpy()
         h, w, comps = data.shape
         # generate histogram

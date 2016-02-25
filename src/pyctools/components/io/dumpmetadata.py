@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -36,11 +36,11 @@ __docformat__ = 'restructuredtext en'
 import pprint
 
 from pyctools.core.base import Transformer
-from pyctools.core.config import ConfigEnum
+from pyctools.core.config import ConfigBool
 
 class DumpMetadata(Transformer):
     def initialise(self):
-        self.config['raw'] = ConfigEnum(choices=('off', 'on'))
+        self.config['raw'] = ConfigBool()
         self.last_metadata = None
 
     def transform(self, in_frame, out_frame):
@@ -51,7 +51,7 @@ class DumpMetadata(Transformer):
         self.last_metadata = in_frame.metadata
         print('Frame %04d' % in_frame.frame_no)
         print('==========')
-        if self.config['raw'] == 'on':
+        if self.config['raw']:
             pprint.pprint(in_frame.metadata.data)
         else:
             indent = 0

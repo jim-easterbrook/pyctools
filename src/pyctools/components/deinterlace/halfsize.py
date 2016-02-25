@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -25,12 +25,12 @@ want to do some spatial processing, e.g. taking a Fourier transform.
 In ``inverse`` mode pairs of half-height frames are reassembled into
 single full height frames.
 
-============  ===  ====
+============  ====  ====
 Config
-============  ===  ====
-``inverse``   str  Can be set to ``off`` or ``on``.
-``topfirst``  str  Top field first. Can be set to ``off`` or ``on``.
-============  ===  ====
+============  ====  ====
+``inverse``   bool
+``topfirst``  bool  Top field first.
+============  ====  ====
 
 """
 
@@ -39,23 +39,21 @@ __docformat__ = 'restructuredtext en'
 
 import numpy
 
-from pyctools.core.config import ConfigEnum
+from pyctools.core.config import ConfigBool
 from pyctools.core.base import Component
 
 class HalfSize(Component):
     def initialise(self):
-        self.config['inverse'] = ConfigEnum(('off', 'on'))
-        self.config['topfirst'] = ConfigEnum(('off', 'on'))
-        self.config['topfirst'] = 'on'
+        self.config['inverse'] = ConfigBool()
+        self.config['topfirst'] = ConfigBool(value=True)
         self.first_field = True
 
     def process_frame(self):
         self.update_config()
-        top_field_first = self.config['topfirst'] == 'on'
-        if self.config['inverse'] == 'on':
-            self.do_inverse(top_field_first)
+        if self.config['inverse']:
+            self.do_inverse(self.config['topfirst'])
         else:
-            self.do_forward(top_field_first)
+            self.do_forward(self.config['topfirst'])
 
     def do_forward(self, top_field_first):
         if self.first_field:

@@ -23,7 +23,7 @@ __docformat__ = 'restructuredtext en'
 import numpy
 
 from pyctools.components.arithmetic import Arithmetic
-from pyctools.core.config import ConfigEnum, ConfigInt
+from pyctools.core.config import ConfigBool, ConfigEnum, ConfigInt
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_complex, pt_float
 
@@ -44,27 +44,27 @@ class FFT(Transformer):
     The :py:class:`VisualiseFFT` component can be used to convert the
     (complex) Fourier transform of a picture into a viewable image.
 
-    ===========  ===  ====
+    ===========  ====  ====
     Config
-    ===========  ===  ====
-    ``xtile``    int  Horizontal tile size. If zero a single tile the width of the picture is used.
-    ``ytile``    int  Vertical tile size. If zero a single tile the height of the picture is used.
-    ``inverse``  str  Can be set to ``off`` or ``on``.
-    ``output``   str  Can be set to ``complex`` or ``real``.
-    ===========  ===  ====
+    ===========  ====  ====
+    ``xtile``    int   Horizontal tile size. If zero a single tile the width of the picture is used.
+    ``ytile``    int   Vertical tile size. If zero a single tile the height of the picture is used.
+    ``inverse``  bool  FFT or IFFT.
+    ``output``   str   Can be set to ``complex`` or ``real``.
+    ===========  ====  ====
 
     """
     def initialise(self):
         self.config['xtile'] = ConfigInt(min_value=0, dynamic=True)
         self.config['ytile'] = ConfigInt(min_value=0, dynamic=True)
-        self.config['inverse'] = ConfigEnum(('off', 'on'), dynamic=True)
+        self.config['inverse'] = ConfigBool()
         self.config['output'] = ConfigEnum(('complex', 'real'), dynamic=True)
 
     def transform(self, in_frame, out_frame):
         self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
-        inverse = self.config['inverse'] == 'on'
+        inverse = self.config['inverse']
         out_type = self.config['output']
         in_data = in_frame.as_numpy()
         if not numpy.iscomplexobj(in_data):

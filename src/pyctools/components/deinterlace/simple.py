@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -21,13 +21,13 @@
 Insert lines of zero or repeat above line to convert each interlaced
 frame to two sequential frames.
 
-============  ===  ====
+============  ====  ====
 Config
-============  ===  ====
-``mode``      str  Can be set to ``insertzero`` or ``repeatline``.
-``inverse``   str  Can be set to ``off`` or ``on``.
-``topfirst``  str  Top field first. Can be set to ``off`` or ``on``.
-============  ===  ====
+============  ====  ====
+``mode``      str   Can be set to ``insertzero`` or ``repeatline``.
+``inverse``   bool  Interlace to sequential or vice versa.
+``topfirst``  bool  Top field first.
+============  ====  ====
 
 """
 
@@ -36,25 +36,23 @@ __docformat__ = 'restructuredtext en'
 
 import numpy
 
-from pyctools.core.config import ConfigEnum
+from pyctools.core.config import ConfigBool, ConfigEnum
 from pyctools.core.base import Component
 
 class SimpleDeinterlace(Component):
     def initialise(self):
         self.config['mode'] = ConfigEnum(('insertzero', 'repeatline'))
-        self.config['inverse'] = ConfigEnum(('off', 'on'))
-        self.config['topfirst'] = ConfigEnum(('off', 'on'))
-        self.config['topfirst'] = 'on'
+        self.config['inverse'] = ConfigBool()
+        self.config['topfirst'] = ConfigBool(value=True)
         self.first_field = True
 
     def process_frame(self):
         self.update_config()
         repeat_line = self.config['mode'] == 'repeatline'
-        top_field_first = self.config['topfirst'] == 'on'
-        if self.config['inverse'] == 'on':
-            self.do_inverse(top_field_first)
+        if self.config['inverse']:
+            self.do_inverse(self.config['topfirst'])
         else:
-            self.do_forward(top_field_first, repeat_line)
+            self.do_forward(self.config['topfirst'], repeat_line)
 
     def do_forward(self, top_field_first, repeat_line):
         if self.first_field:

@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015  Pyctools contributors
+#  Copyright (C) 2015-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -18,12 +18,12 @@
 
 """'Weston 3-field' interlace to sequential converter.
 
-============  ===  ====
+============  ====  ====
 Config
-============  ===  ====
-``mode``      int  Filtering mode. Can be set to ``0`` or ``1``.
-``topfirst``  str  Top field first. Can be set to ``off`` or ``on``.
-============  ===  ====
+============  ====  ====
+``mode``      int   Filtering mode. Can be set to ``0`` or ``1``.
+``topfirst``  bool  Top field first.
+============  ====  ====
 
 """
 
@@ -33,7 +33,7 @@ __docformat__ = 'restructuredtext en'
 import numpy
 
 from pyctools.components.interp.resize import resize_frame
-from pyctools.core.config import ConfigEnum, ConfigInt
+from pyctools.core.config import ConfigBool, ConfigInt
 from pyctools.core.base import Component
 from pyctools.core.types import pt_float
 
@@ -53,8 +53,7 @@ class Weston3Field(Component):
 
     def initialise(self):
         self.config['mode'] = ConfigInt(min_value=0, max_value=1)
-        self.config['topfirst'] = ConfigEnum(('off', 'on'))
-        self.config['topfirst'] = 'on'
+        self.config['topfirst'] = ConfigBool(value=True)
         self.first_field = True
         self.prev_hf = None
         self.delayed_frame = None
@@ -62,7 +61,6 @@ class Weston3Field(Component):
     def process_frame(self):
         self.update_config()
         mode = self.config['mode']
-        top_field_first = self.config['topfirst'] == 'on'
         if self.first_field:
             in_frame = self.input_buffer['input'].peek()
             self.in_data = in_frame.as_numpy(dtype=pt_float)
@@ -72,7 +70,7 @@ class Weston3Field(Component):
                 self.in_data, self.coef_hf[mode], 1, 1, 1, 1)
         else:
             in_frame = self.input_buffer['input'].get()
-        if top_field_first == self.first_field:
+        if self.config['topfirst'] == self.first_field:
             top_line = 0
         else:
             top_line = 1

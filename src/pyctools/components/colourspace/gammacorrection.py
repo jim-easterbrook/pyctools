@@ -27,7 +27,7 @@ if 'sphinx' in sys.modules:
 
 import numpy
 
-from pyctools.core.config import ConfigEnum
+from pyctools.core.config import ConfigBool, ConfigEnum
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
 from .gammacorrectioncore import gamma_frame, hybrid_gamma_frame, inverse_gamma_frame
@@ -59,13 +59,13 @@ class GammaCorrect(Transformer):
     ranges. It can be either ``'studio'`` (16..235) or ``'computer'``
     (0..255).
 
-    ===========  ===  ====
+    ===========  ====  ====
     Config
-    ===========  ===  ====
-    ``range``    str  Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
-    ``gamma``    str  Choose a gamma curve. Possible values: {}.
-    ``inverse``  str  Can be set to ``off`` or ``on``.
-    ===========  ===  ====
+    ===========  ====  ====
+    ``range``    str   Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
+    ``gamma``    str   Choose a gamma curve. Possible values: {}.
+    ``inverse``  bool
+    ===========  ====  ====
 
     """
 
@@ -74,7 +74,7 @@ class GammaCorrect(Transformer):
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
         self.config['gamma'] = ConfigEnum(list(gamma_toe.keys()))
-        self.config['inverse'] = ConfigEnum(('off', 'on'))
+        self.config['inverse'] = ConfigBool()
 
     def on_start(self):
         self.update_config()
@@ -82,7 +82,7 @@ class GammaCorrect(Transformer):
 
     def adjust_params(self):
         self.gamma, self.toe = gamma_toe[self.config['gamma']]
-        self.inverse = self.config['inverse'] == 'on'
+        self.inverse = self.config['inverse']
         # threshold for switch from linear to exponential
         if self.gamma == 1.0 or self.toe <= 0.0:
             self.threshold = 0.0

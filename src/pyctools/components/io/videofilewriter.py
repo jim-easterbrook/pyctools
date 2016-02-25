@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -35,14 +35,14 @@ include the following:
 I'd be interested to hear of any other good combinations. Email me at
 the address shown below.
 
-===========  ===  ====
+===========  ====  ====
 Config
-===========  ===  ====
-``path``     str  Path name of file to be created.
-``encoder``  str  A string of ``ffmpeg`` options.
-``fps``      int  Video frame rate. Only affects how file is replayed.
-``16bit``    str  Attempt to write precision than normal 8-bit range. Can be ``'off'`` or ``'on'``.
-===========  ===  ====
+===========  ====  ====
+``path``     str   Path name of file to be created.
+``encoder``  str   A string of ``ffmpeg`` options.
+``fps``      int   Video frame rate. Only affects how file is replayed.
+``16bit``    bool  Attempt to write precision than normal 8-bit range.
+===========  ====  ====
 
 """
 
@@ -53,7 +53,7 @@ import subprocess
 
 import numpy
 
-from pyctools.core.config import ConfigPath, ConfigInt, ConfigEnum
+from pyctools.core.config import ConfigBool, ConfigPath, ConfigInt, ConfigEnum
 from pyctools.core.frame import Metadata
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
@@ -70,7 +70,7 @@ class VideoFileWriter(Transformer):
              '-c:v libx264 -pix_fmt yuv444p -qp 0 -preset veryslow',
              ), extendable=True)
         self.config['fps'] = ConfigInt(value=25)
-        self.config['16bit'] = ConfigEnum(('off', 'on'))
+        self.config['16bit'] = ConfigBool()
 
     @contextmanager
     def subprocess(self, *arg, **kw):
@@ -88,7 +88,7 @@ class VideoFileWriter(Transformer):
         path = self.config['path']
         encoder = self.config['encoder']
         fps = self.config['fps']
-        bit16 = self.config['16bit'] != 'off'
+        bit16 = self.config['16bit']
         numpy_image = in_frame.as_numpy()
         ylen, xlen, bpc = numpy_image.shape
         if bpc == 3:
