@@ -16,21 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Simple interlace to sequential converter.
-
-Insert lines of zero or repeat above line to convert each interlaced
-frame to two sequential frames.
-
-============  ====  ====
-Config
-============  ====  ====
-``mode``      str   Can be set to ``insertzero`` or ``repeatline``.
-``inverse``   bool  Interlace to sequential or vice versa.
-``topfirst``  bool  Top field first.
-============  ====  ====
-
-"""
-
 __all__ = ['SimpleDeinterlace']
 __docformat__ = 'restructuredtext en'
 
@@ -40,6 +25,21 @@ from pyctools.core.config import ConfigBool, ConfigEnum
 from pyctools.core.base import Component
 
 class SimpleDeinterlace(Component):
+    """Simple interlace to sequential converter.
+
+    Insert lines of zero or repeat previous line to convert each
+    interlaced frame to two sequential frames.
+
+    ============  ====  ====
+    Config
+    ============  ====  ====
+    ``mode``      str   Can be set to ``insertzero`` or ``repeatline``.
+    ``inverse``   bool  Interlace to sequential or vice versa.
+    ``topfirst``  bool  Top field first.
+    ============  ====  ====
+
+    """
+
     def initialise(self):
         self.config['mode'] = ConfigEnum(('insertzero', 'repeatline'))
         self.config['inverse'] = ConfigBool()

@@ -16,17 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""'Weston 3-field' interlace to sequential converter.
-
-============  ====  ====
-Config
-============  ====  ====
-``mode``      int   Filtering mode. Can be set to ``0`` or ``1``.
-``topfirst``  bool  Top field first.
-============  ====  ====
-
-"""
-
 __all__ = ['Weston3Field']
 __docformat__ = 'restructuredtext en'
 
@@ -38,6 +27,26 @@ from pyctools.core.base import Component
 from pyctools.core.types import pt_float
 
 class Weston3Field(Component):
+    """'Weston 3-field' interlace to sequential converter.
+
+    This improves on the image quality of simple vertical filtering by
+    taking high vertical frequencies from adjacent fields. It is
+    probably as good as you can get without motion compensation or other
+    complicated techniques.
+
+    The ``mode`` config selects one of two filter sizes. Mode ``0`` has
+    a vertical aperture of 5 lines, mode ``1`` has a vertical aperture
+    of 9 lines.
+
+    ============  ====  ====
+    Config
+    ============  ====  ====
+    ``mode``      int   Filtering mode. Can be set to ``0`` or ``1``.
+    ``topfirst``  bool  Top field first.
+    ============  ====  ====
+
+    """
+
     coef_lf = {
         0: numpy.array([32768, 0, 32768],
                        dtype=pt_float).reshape(-1, 1, 1) / pt_float(2**16),

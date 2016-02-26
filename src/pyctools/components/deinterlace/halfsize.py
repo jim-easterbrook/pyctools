@@ -16,24 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Half-sizing interlace to sequential converter.
-
-This simply rearranges each interlaced frame into two frames of half
-the height. It is no use for viewing pictures but is useful if you
-want to do some spatial processing, e.g. taking a Fourier transform.
-
-In ``inverse`` mode pairs of half-height frames are reassembled into
-single full height frames.
-
-============  ====  ====
-Config
-============  ====  ====
-``inverse``   bool
-``topfirst``  bool  Top field first.
-============  ====  ====
-
-"""
-
 __all__ = ['HalfSize']
 __docformat__ = 'restructuredtext en'
 
@@ -43,6 +25,24 @@ from pyctools.core.config import ConfigBool
 from pyctools.core.base import Component
 
 class HalfSize(Component):
+    """Half-sizing interlace to sequential converter.
+
+    This simply rearranges each interlaced frame into two frames of half
+    the height. It is no use for viewing pictures but is useful if you
+    want to do some spatial processing, e.g. taking a Fourier transform.
+
+    In ``inverse`` mode pairs of half-height frames are reassembled into
+    single full height frames.
+
+    ============  ====  ====
+    Config
+    ============  ====  ====
+    ``inverse``   bool
+    ``topfirst``  bool  Top field first.
+    ============  ====  ====
+
+    """
+
     def initialise(self):
         self.config['inverse'] = ConfigBool()
         self.config['topfirst'] = ConfigBool(value=True)
