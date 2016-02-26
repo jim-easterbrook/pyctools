@@ -36,7 +36,6 @@ Reference
 ---------
 
 .. toctree::
-   :maxdepth: 2
 
    api/tools/pyctools.tools
    api/core/pyctools.core
