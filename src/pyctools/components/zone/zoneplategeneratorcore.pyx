@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -15,10 +15,6 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
-
-"""Cython extension for zone plate generator.
-
-"""
 
 cimport cython
 cimport numpy

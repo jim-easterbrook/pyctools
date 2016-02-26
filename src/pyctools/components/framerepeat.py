@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015  Pyctools contributors
+#  Copyright (C) 2015-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,16 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Repeat each input frame a fixed number of times.
-
-============  ===  ====
-Config
-============  ===  ====
-``count``     int  Number of times to repeat each frame.
-============  ===  ====
-
-"""
-
 __all__ = ['FrameRepeat']
 __docformat__ = 'restructuredtext en'
 
@@ -33,6 +23,19 @@ from pyctools.core.base import Component
 from pyctools.core.config import ConfigInt
 
 class FrameRepeat(Component):
+    """Repeat each input frame a fixed number of times.
+
+    This can be used to turn a still image into a video sequence, e.g.
+    to help with adjusting parameters while viewing a "live" output.
+
+    ============  ===  ====
+    Config
+    ============  ===  ====
+    ``count``     int  Number of times to repeat each frame.
+    ============  ===  ====
+
+    """
+
     def initialise(self):
         self.config['count'] = ConfigInt(min_value=1)
         self.repeat_count = 0

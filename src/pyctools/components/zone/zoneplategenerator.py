@@ -16,76 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Zone plate test pattern generator.
-
-A zone plate (in this context) is a 3 dimensional (horizontal,
-vertical & temporal) frequency sweep which can be a useful test
-pattern in image processing applications. `BBC R&D Report 1978/23
-<http://www.bbc.co.uk/rd/publications/rdreport_1978_23>`_ describes
-some typical uses. A static circular zone plate (see `recipes`_ below)
-resembles the `Fresnel zone plates
-<http://en.wikipedia.org/wiki/Zone_plate>`_ used in optics.
-
-At first sight there are an alarming number of configuration values,
-but you normally only need to set three or four of them. I suggest
-using the :py:mod:`pyctools-editor <pyctools.tools.editor>` tool to
-connect a zone plate generator and Qt display, open the generator's
-configuration dialog, set ``looping`` to ``repeat`` and run the
-network so you can experiment with the settings as you read this
-documentation.
-
-Each parameter is normalised so a value of ``1.0`` covers the entire
-frequency "gamut". For example, setting ``kx2`` to ``1.0`` will sweep
-the entire horizontal frequency range over the width of the picture.
-
-=======  ========
-name     controls
-=======  ========
-``k0``   phase at zero frequency
-``kx``   horizontal frequency at x=0 (left hand side of picture)
-``ky``   vertical frequency at y=0 (top of picture)
-``kt``   temporal frequency at t=0 (start of sequence)
-``kx2``  horizontal frequency with x
-``kxy``  horizontal frequency with y
-``kxt``  horizontal frequency with t
-``kyx``  vertical frequency with x
-``ky2``  vertical frequency with y
-``kyt``  vertical frequency with t
-``ktx``  temporal frequency with x
-``kty``  temporal frequency with y
-``kt2``  temporal frequency with t
-=======  ========
-
-Note that these controls are not all independent. For example, ``kxy``
-and ``kyx`` produce the same effect on a square image (and a subtly
-different effect on non-square images).
-
-Recipes
--------
-
-* static circular (or eliptical for non-square images)::
-
-    kx=0.5, kx2 = 1.0, ky=0.5, ky2=1.0
-
-* static hyperbolic (entire horizontal gamut)::
-
-    kx=0.5, kxy = 1.0, ky=0.5
-
-* static hyperbolic (entire vertical gamut)::
-
-    kx=0.5, ky=0.5, kyx = 1.0
-
-* circular at temporal frequency of 1/4 the frame rate::
-
-    kx=0.5, kx2 = 1.0, ky=0.5, ky2=1.0, kt=0.25
-
-* all temporal frequencies across width, all vertical frequencies
-  across height::
-
-    ky=0.5, ky2=1.0, ktx=1.0
-
-"""
-
 __all__ = ['ZonePlateGenerator']
 __docformat__ = 'restructuredtext en'
 
@@ -99,6 +29,78 @@ from pyctools.core.config import ConfigFloat, ConfigInt, ConfigEnum
 from .zoneplategeneratorcore import zone_frame
 
 class ZonePlateGenerator(Component):
+    """Zone plate test pattern generator.
+
+    A zone plate (in this context) is a 3 dimensional (horizontal,
+    vertical & temporal) frequency sweep which can be a useful test
+    pattern in image processing applications. `BBC R&D Report 1978/23
+    <http://www.bbc.co.uk/rd/publications/rdreport_1978_23>`_ describes
+    some typical uses. A static circular zone plate (see `recipes`_
+    below) resembles the `Fresnel zone plates
+    <http://en.wikipedia.org/wiki/Zone_plate>`_ used in optics.
+
+    At first sight there are an alarming number of configuration values,
+    but you normally only need to set three or four of them. I suggest
+    using the :py:mod:`pyctools-editor <pyctools.tools.editor>` tool to
+    connect a zone plate generator and Qt display, open the generator's
+    configuration dialog, set ``looping`` to ``repeat`` and run the
+    network so you can experiment with the settings as you read this
+    documentation.
+
+    Each parameter is normalised so a value of ``1.0`` covers the entire
+    frequency "gamut". For example, setting ``kx2`` to ``1.0`` will
+    sweep the entire horizontal frequency range over the width of the
+    picture.
+
+    =======  ========
+    name     controls
+    =======  ========
+    ``k0``   phase at zero frequency
+    ``kx``   horizontal frequency at x=0 (left hand side of picture)
+    ``ky``   vertical frequency at y=0 (top of picture)
+    ``kt``   temporal frequency at t=0 (start of sequence)
+    ``kx2``  horizontal frequency with x
+    ``kxy``  horizontal frequency with y
+    ``kxt``  horizontal frequency with t
+    ``kyx``  vertical frequency with x
+    ``ky2``  vertical frequency with y
+    ``kyt``  vertical frequency with t
+    ``ktx``  temporal frequency with x
+    ``kty``  temporal frequency with y
+    ``kt2``  temporal frequency with t
+    =======  ========
+
+    Note that these controls are not all independent. For example,
+    ``kxy`` and ``kyx`` produce the same effect on a square image (and a
+    subtly different effect on non-square images).
+
+    .. _recipes:
+
+    Recipes
+
+    * static circular (or eliptical for non-square images)::
+
+        kx=0.5, kx2 = 1.0, ky=0.5, ky2=1.0
+
+    * static hyperbolic (entire horizontal gamut)::
+
+        kx=0.5, kxy = 1.0, ky=0.5
+
+    * static hyperbolic (entire vertical gamut)::
+
+        kx=0.5, ky=0.5, kyx = 1.0
+
+    * circular at temporal frequency of 1/4 the frame rate::
+
+        kx=0.5, kx2 = 1.0, ky=0.5, ky2=1.0, kt=0.25
+
+    * all temporal frequencies across width, all vertical frequencies
+      across height::
+
+        ky=0.5, ky2=1.0, ktx=1.0
+
+    """
+
     inputs = []
 
     def initialise(self):

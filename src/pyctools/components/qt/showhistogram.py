@@ -16,22 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Display image hostograms in a Qt window.
-
-The histogram display is normalised so each component uses the full
-Y-axis range. The X-axis covers the range [0, 256). Values outside this
-range are counted and the results displayed as raw numbers and
-percentage of pixels.
-
-=========  ====  ====
-Config
-=========  ====  ====
-``title``  str   Window title.
-``log``    bool  Use logarithmic Y axis.
-=========  ====  ====
-
-"""
-
 __all__ = ['ShowHistogram']
 __docformat__ = 'restructuredtext en'
 
@@ -44,6 +28,22 @@ from pyctools.core.base import Transformer
 from pyctools.core.qt import Qt, QtEventLoop, QtGui, QtWidgets
 
 class ShowHistogram(Transformer, QtWidgets.QWidget):
+    """Display image hostograms in a Qt window.
+
+    The histogram display is normalised so each component uses the full
+    Y-axis range. The X-axis covers the range [0, 256). Values outside
+    this range are counted and the results displayed as raw numbers and
+    percentage of pixels.
+
+    =========  ====  ====
+    Config
+    =========  ====  ====
+    ``title``  str   Window title.
+    ``log``    bool  Use logarithmic Y axis.
+    =========  ====  ====
+
+    """
+
     event_loop = QtEventLoop
 
     def __init__(self, **config):

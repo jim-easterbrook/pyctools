@@ -16,23 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Read conventional video files (mp4, flv, AVI, etc.).
-
-This component uses `FFmpeg <https://www.ffmpeg.org/>`_ to read video
-from a wide variety of formats. Make sure you have installed FFmpeg
-before attempting to use :py:class:`VideoFileReader`.
-
-===========  ====  ====
-Config
-===========  ====  ====
-``path``     str   Path name of file to be read.
-``looping``  str   Whether to play continuously. Can be ``'off'`` or ``'repeat'``.
-``type``     str   Output data type. Can be ``'RGB'`` or ``'Y'``.
-``16bit``    bool  Attempt to get greater precision than normal 8-bit range.
-===========  ====  ====
-
-"""
-
 from __future__ import print_function
 
 __all__ = ['VideoFileReader']
@@ -53,6 +36,23 @@ from pyctools.core.frame import Metadata
 from pyctools.core.types import pt_float
 
 class VideoFileReader(Component):
+    """Read conventional video files (mp4, flv, AVI, etc.).
+
+    This component uses `FFmpeg <https://www.ffmpeg.org/>`_ to read
+    video from a wide variety of formats. Make sure you have installed
+    FFmpeg before attempting to use :py:class:`VideoFileReader`.
+
+    ===========  ====  ====
+    Config
+    ===========  ====  ====
+    ``path``     str   Path name of file to be read.
+    ``looping``  str   Whether to play continuously. Can be ``'off'`` or ``'repeat'``.
+    ``type``     str   Output data type. Can be ``'RGB'`` or ``'Y'``.
+    ``16bit``    bool  Attempt to get greater precision than normal 8-bit range.
+    ===========  ====  ====
+
+    """
+
     inputs = []
 
     def initialise(self):

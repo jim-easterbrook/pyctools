@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -17,14 +17,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""View still image file.
-
-This is a "pass through" component that can be inserted anywhere in a
-pipeline. It displays the first frame it receives using
-:py:meth:`PIL.Image.Image.show`.
-
-"""
-
 import PIL.Image
 
 __all__ = ['ImageDisplay']
@@ -33,6 +25,14 @@ __docformat__ = 'restructuredtext en'
 from pyctools.core.base import Transformer
 
 class ImageDisplay(Transformer):
+    """View still image file.
+
+    This is a "pass through" component that can be inserted anywhere in a
+    pipeline. It displays the first frame it receives using
+    :py:meth:`PIL.Image.Image.show`.
+
+    """
+
     def initialise(self):
         self.done = False
 

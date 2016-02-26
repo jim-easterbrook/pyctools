@@ -17,17 +17,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Print input frames' metadata.
-
-This is a "pass through" component that can be inserted anywhere in a
-pipeline. It prints (to :py:obj:`sys.stdout`) the metadata "audit trail"
-of its input frames.
-
-Note that the audit trail is only printed out for the first frame and
-if it subsequently changes.
-
-"""
-
 from __future__ import print_function
 
 __all__ = ['DumpMetadata']
@@ -39,6 +28,17 @@ from pyctools.core.base import Transformer
 from pyctools.core.config import ConfigBool
 
 class DumpMetadata(Transformer):
+    """Print input frames' metadata.
+
+    This is a "pass through" component that can be inserted anywhere in
+    a pipeline. It prints (to :py:obj:`sys.stdout`) the metadata "audit
+    trail" of its input frames.
+
+    Note that the audit trail is only printed out for the first frame
+    and if it subsequently changes.
+
+    """
+
     def initialise(self):
         self.config['raw'] = ConfigBool()
         self.last_metadata = None

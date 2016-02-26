@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-16  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,14 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Merge two inputs to produce a set of co-timed frames.
-
-This component allows two components' outputs to be merged. The inputs
-must be :py:class:`~pyctools.core.frame.Frame` objects -- the frame
-numbers are used to ensure that only co-timed frames are merged.
-
-"""
-
 __all__ = ['Collator']
 
 import numpy
@@ -31,6 +23,18 @@ import numpy
 from pyctools.core.base import Component
 
 class Collator(Component):
+    """Merge two inputs to produce a set of co-timed frames.
+
+    This component allows two components' outputs to be merged. The
+    inputs must be :py:class:`~pyctools.core.frame.Frame` objects -- the
+    frame numbers are used to ensure that only co-timed frames are
+    merged.
+
+    This component is redundant now that components can have multiple
+    inputs.
+
+    """
+
     inputs = ['input1', 'input2']
 
     def initialise(self):

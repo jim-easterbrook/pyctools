@@ -16,33 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Read 'raw' still image file (CR2, NEF, etc.).
-
-See the `rawkit documentation
-<https://rawkit.readthedocs.org/en/latest/api/rawkit.html>`_ for more
-detail on the configuration options.
-
-===================  =====  ====
-Config
-===================  =====  ====
-``path``             str    Path name of file to be read.
-``16bit``            bool   Get greater precision than normal 8-bit range.
-``brightness``       float  Set the gain.
-``gamma``            str    Set gamma curve. Possible values: {}.
-``colourspace``      str    Set colour space. Possible values: {}.
-``interpolation``    str    Set demosaicing method. Possible values: {}.
-``noise_threshold``  float  Set denoising threshold. Typically 100 to 1000.
-``wb_auto``          bool   Automatic white balance.
-``wb_camera``        bool   Use camera defined white balance.
-``wb_greybox``       str    4 comma separated integers that define a grey area of the image.
-``wb_rgbg``          str    4 comma separated floats that set the gain of each channel.
-``red_scale``        float  Chromatic aberration correction red scale factor.
-``blue_scale``       float  Chromatic aberration correction blue scale factor.
-``crop``             bool   Auto crop image to dimensions in metadata.
-===================  =====  ====
-
-"""
-
 from __future__ import print_function
 
 __all__ = ['RawImageFileReader']
@@ -61,12 +34,39 @@ from pyctools.core.base import Component
 from pyctools.core.frame import Frame, Metadata
 from pyctools.core.types import pt_float
 
-__doc__ = __doc__.format(
-    ', '.join(["``'" + x + "'``" for x in gamma_curves._fields]),
-    ', '.join(["``'" + x + "'``" for x in colorspaces._fields]),
-    ', '.join(["``'" + x + "'``" for x in interpolation._fields]))
-
 class RawImageFileReader(Component):
+    """Read 'raw' still image file (CR2, NEF, etc.).
+
+    See the `rawkit documentation
+    <https://rawkit.readthedocs.org/en/latest/api/rawkit.html>`_ for
+    more detail on the configuration options.
+
+    ===================  =====  ====
+    Config
+    ===================  =====  ====
+    ``path``             str    Path name of file to be read.
+    ``16bit``            bool   Get greater precision than normal 8-bit range.
+    ``brightness``       float  Set the gain.
+    ``gamma``            str    Set gamma curve. Possible values: {}.
+    ``colourspace``      str    Set colour space. Possible values: {}.
+    ``interpolation``    str    Set demosaicing method. Possible values: {}.
+    ``noise_threshold``  float  Set denoising threshold. Typically 100 to 1000.
+    ``wb_auto``          bool   Automatic white balance.
+    ``wb_camera``        bool   Use camera defined white balance.
+    ``wb_greybox``       str    4 comma separated integers that define a grey area of the image.
+    ``wb_rgbg``          str    4 comma separated floats that set the gain of each channel.
+    ``red_scale``        float  Chromatic aberration correction red scale factor.
+    ``blue_scale``       float  Chromatic aberration correction blue scale factor.
+    ``crop``             bool   Auto crop image to dimensions in metadata.
+    ===================  =====  ====
+
+    """
+
+    __doc__ = __doc__.format(
+        ', '.join(["``'" + x + "'``" for x in gamma_curves._fields]),
+        ', '.join(["``'" + x + "'``" for x in colorspaces._fields]),
+        ', '.join(["``'" + x + "'``" for x in interpolation._fields]))
+
     inputs = []
     with_outframe_pool = False
 

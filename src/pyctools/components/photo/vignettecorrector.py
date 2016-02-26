@@ -16,15 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-"""Vignette correction.
-
-.. autosummary::
-
-   VignetteCorrector
-   AnalyseVignette
-
-"""
-
 from __future__ import print_function
 
 __all__ = ['VignetteCorrector', 'AnalyseVignette']
@@ -51,7 +42,8 @@ class VignetteCorrector(Transformer):
 
     The ``r1`` ... ``r4`` parameters set how the correction varies with
     radius^n. The first affects the whole picture, the higher powers
-    have more effect at the edges.
+    have more effect at the edges. The :py:class:`AnalyseVignette`
+    component can be used to generate an optimised set of values.
 
     ===========  =====  ====
     Config
