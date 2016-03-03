@@ -88,10 +88,11 @@ class ShowHistogram(Transformer, QtWidgets.QWidget):
         data = in_frame.as_numpy()
         h, w, comps = data.shape
         # generate histogram
-        if comps == 3:
-            colours = (0xff0000, 0x00ff00, 0x0000ff)
+        if comps > 1:
+            colours = (0xff0000, 0x00ff00, 0x0000ff, 0,
+                       0xffff00, 0x00ffff, 0xff00ff)
         else:
-            colours = (0,) * comps
+            colours = (0,)
         q_image = QtGui.QImage(256, 100, QtGui.QImage.Format_RGB888)
         q_image.fill(Qt.white)
         pos_clips = []
@@ -100,7 +101,7 @@ class ShowHistogram(Transformer, QtWidgets.QWidget):
             histogram, edges = numpy.histogram(
                 data[:,:,comp], bins=256, range=(0.0, 256.0))
             max_value = float(1 + max(histogram))
-            colour = colours[comp]
+            colour = QtGui.QColor.fromRgb(colours[comp % len(colours)]).rgb()
             for x in range(len(histogram)):
                 y = float(1 + histogram[x]) / max_value
                 if log:
