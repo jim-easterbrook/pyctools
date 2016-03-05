@@ -41,8 +41,8 @@ class InputBuffer(object):
     def available(self):
         return len(self.queue)
 
-    def peek(self):
-        return self.queue[0]
+    def peek(self, idx=0):
+        return self.queue[idx]
 
     def get(self):
         return self.queue.popleft()
@@ -390,13 +390,23 @@ class Component(ConfigMixin):
         for input in self.input_buffer.values():
             in_frame = input.peek()
             # discard old frames that can never be used
-            while input.available() > 1 and in_frame.frame_no < frame_no:
-                input.get()
-                in_frame = input.peek()
-                if in_frame is None:
+            while input.available() > 1:
+                if in_frame.frame_no >= frame_no:
+                    break
+                elif in_frame.frame_no < 0:
+                    # new 'static' input available
+                    if input.peek(1) is None:
+                        # don't discard last static input
+                        break
                     input.get()
-                    self.stop()
-                    return
+                    in_frame = input.peek()
+                else:
+                    input.get()
+                    in_frame = input.peek()
+                    if in_frame is None:
+                        input.get()
+                        self.stop()
+                        return
             # check for matching frame number
             if in_frame.frame_no >= 0 and in_frame.frame_no != frame_no:
                 return
