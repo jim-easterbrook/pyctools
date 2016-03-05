@@ -35,6 +35,7 @@ class ColourCorrect(Transformer):
     ===========  =====  ====
     Config
     ===========  =====  ====
+    ``gain``     float  Adjust overall gain.
     ``R_hue``    float  Adjust hue of red primary.
     ``R_sat``    float  Adjust saturation of red primary.
     ``G_hue``    float  Adjust hue of green primary.
@@ -46,6 +47,7 @@ class ColourCorrect(Transformer):
     """
 
     def initialise(self):
+        self.config['gain'] = ConfigFloat(value=1.0, decimals=2)
         self.config['R_hue'] = ConfigFloat(decimals=2)
         self.config['R_sat'] = ConfigFloat(value=1.0, decimals=2)
         self.config['G_hue'] = ConfigFloat(decimals=2)
@@ -56,6 +58,7 @@ class ColourCorrect(Transformer):
     def transform(self, in_frame, out_frame):
         # compute colour matrix
         self.update_config()
+        gain = self.config['gain']
         R_hue = self.config['R_hue']
         R_sat = self.config['R_sat']
         G_hue = self.config['G_hue']
@@ -100,13 +103,15 @@ class ColourCorrect(Transformer):
             [[0.0, 0.0, 0.0722],
              [0.0, 0.0, 0.0722],
              [0.0, 0.0, 0.0722 - 1.0]], dtype=pt_float) * pt_float(1.0 - B_sat)
-        matrix = numpy.dot(hue_matrix, sat_matrix)
+        matrix = numpy.dot(hue_matrix, sat_matrix) * pt_float(gain)
         # apply matrix
         in_data = in_frame.as_numpy(dtype=pt_float)
         out_frame.data = numpy.dot(in_data, matrix.T)
         # add audit
         audit = out_frame.metadata.get('audit')
         audit += 'data = ColourCorrect(data)\n'
+        if gain != 1.0:
+            audit += '    gain: {}\n'.format(gain)
         if R_hue != 0.0:
             audit += '    R_hue: {}\n'.format(R_hue)
         if R_sat != 1.0:
