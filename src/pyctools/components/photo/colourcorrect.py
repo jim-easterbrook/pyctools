@@ -79,6 +79,10 @@ class ColourCorrect(Transformer):
             [[0.0, 0.0,  0.5],
              [0.0, 0.0, -0.5],
              [0.0, 0.0,  0.0]], dtype=pt_float) * pt_float(B_hue * B_sat)
+        # adjust to preserve white balance
+        hue_matrix /= numpy.array(
+            [[sum(hue_matrix[0])], [sum(hue_matrix[1])], [sum(hue_matrix[2])]],
+            dtype=pt_float)
         # 'saturation' matrix - uses BT.709 RGB->Y as specified by sRGB
         sat_matrix = numpy.array(
             [[1.0, 0.0, 0.0],
