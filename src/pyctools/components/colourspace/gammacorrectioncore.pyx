@@ -18,119 +18,51 @@
 
 from cython.parallel import prange
 
-from libc.math cimport log, sqrt
-
 cimport cython
 cimport numpy
 
 ctypedef numpy.float32_t DTYPE_t
 
 @cython.boundscheck(False)
-def gamma_frame(numpy.ndarray[DTYPE_t, ndim=3] frame,
-                DTYPE_t gamma, DTYPE_t toe, DTYPE_t threshold, DTYPE_t a):
-    """Gamma correct a single 3-D :py:class:`numpy.ndarray`.
+def apply_transfer_function(numpy.ndarray[DTYPE_t, ndim=3] frame,
+                            numpy.ndarray[DTYPE_t, ndim=1] in_val,
+                            numpy.ndarray[DTYPE_t, ndim=1] out_val):
+    """Apply a transfer function to a single 3-D :py:class:`numpy.ndarray`.
 
-    The input should be normalised to the range black = 0, white = 1.
+    The function is defined by two 1-D arrays - input values ``in_val``
+    and the corresponding output values ``out_val``. Linear
+    interpolation is used to map input values that lie between members
+    of the ``in_val`` list. Input values outside the range of ``in_val``
+    are mapped by extrapolation from the first or last two values.
 
     :param numpy.ndarray frame: Input/output image.
 
-    :param DTYPE_t gamma: The gamma power.
+    :param numpy.ndarray in_val: Function inputs.
 
-    :param DTYPE_t toe: The linear slope.
-
-    :param DTYPE_t threshold: The transition from linear to exponential.
-
-    :param DTYPE_t a: The exponential section gain correction.
+    :param numpy.ndarray out_val: Function outputs.
 
     """
     cdef:
-        int xlen, ylen, comps
-        int x, y, c
-        DTYPE_t v
+        int xlen, ylen, comps, points
+        int x, y, c, i
+        DTYPE_t v, d_in, d_out
     xlen = frame.shape[1]
     ylen = frame.shape[0]
     comps = frame.shape[2]
+    points = in_val.shape[0]
     with nogil:
         for y in prange(ylen, schedule='static'):
-            for x in range(xlen):
-                for c in range(comps):
+            i = 0
+            for c in range(comps):
+                for x in range(xlen):
                     v = frame[y, x, c]
-                    if v <= threshold:
-                        v *= toe
-                    else:
-                        v = v ** gamma
-                        v = ((1.0 + a) * v) - a
-                    frame[y, x, c] = v
-
-@cython.boundscheck(False)
-def inverse_gamma_frame(numpy.ndarray[DTYPE_t, ndim=3] frame,
-                        DTYPE_t gamma, DTYPE_t toe, DTYPE_t threshold, DTYPE_t a):
-    """Inverse gamma correct a single 3-D :py:class:`numpy.ndarray`.
-
-    The input should be normalised to the range black = 0, white = 1.
-
-    :param numpy.ndarray frame: Input/output image.
-
-    :param DTYPE_t gamma: The gamma power.
-
-    :param DTYPE_t toe: The linear slope.
-
-    :param DTYPE_t threshold: The transition from linear to exponential.
-
-    :param DTYPE_t a: The exponential section gain correction.
-
-    """
-    cdef:
-        int xlen, ylen, comps
-        int x, y, c
-        DTYPE_t v
-    xlen = frame.shape[1]
-    ylen = frame.shape[0]
-    comps = frame.shape[2]
-    with nogil:
-        threshold *= toe
-        gamma = 1.0 / gamma
-        if toe > 0.0:
-            toe = 1.0 / toe
-        for y in prange(ylen, schedule='static'):
-            for x in range(xlen):
-                for c in range(comps):
-                    v = frame[y, x, c]
-                    if v <= threshold:
-                        v *= toe
-                    else:
-                        v = (v + a) / (1.0 + a)
-                        v = v ** gamma
-                    frame[y, x, c] = v
-
-@cython.boundscheck(False)
-def hybrid_gamma_frame(numpy.ndarray[DTYPE_t, ndim=3] frame):
-    """Hybrid log-gamma correct a single 3-D :py:class:`numpy.ndarray`.
-
-    The input should be normalised to the range black = 0, white = 1.
-
-    :param numpy.ndarray frame: Input/output image.
-
-    """
-    cdef:
-        int xlen, ylen, comps
-        int x, y, c
-        DTYPE_t v, ka, kb, kc
-    xlen = frame.shape[1]
-    ylen = frame.shape[0]
-    comps = frame.shape[2]
-    with nogil:
-        ka = 0.17883277
-        kb = 0.28466892
-        kc = 0.55991073
-        for y in prange(ylen, schedule='static'):
-            for x in range(xlen):
-                for c in range(comps):
-                    v = frame[y, x, c] * 6.0
-                    if v <= 0.0:
-                        v = 0.0
-                    elif v <= 1.0:
-                        v = 0.5 * sqrt(v)
-                    else:
-                        v = (ka * log(v - kb)) + kc
-                    frame[y, x, c] = v
+                    # find bracketing input values
+                    while i + 1 < points - 1 and v > in_val[i+1]:
+                        i = i + 1
+                    while i > 0 and v < in_val[i]:
+                        i = i - 1
+                    # do linear interpolation (or if outside range)
+                    d_in = in_val[i+1] - in_val[i]
+                    d_out = out_val[i+1] - out_val[i]
+                    frame[y, x, c] = out_val[i] + (
+                        d_out * (v - in_val[i]) / d_in)

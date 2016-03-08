@@ -20,17 +20,18 @@ __all__ = ['GammaCorrect']
 __docformat__ = 'restructuredtext en'
 
 from collections import OrderedDict
+import math
 
 import sys
 if 'sphinx' in sys.modules:
-    __all__ += ['gamma_frame', 'hybrid_gamma_frame', 'inverse_gamma_frame']
+    __all__ += ['apply_transfer_function']
 
 import numpy
 
 from pyctools.core.config import ConfigBool, ConfigEnum, ConfigFloat
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
-from .gammacorrectioncore import gamma_frame, hybrid_gamma_frame, inverse_gamma_frame
+from .gammacorrectioncore import apply_transfer_function
 
 class GammaCorrect(Transformer):
     """Gamma correction.
@@ -84,66 +85,79 @@ class GammaCorrect(Transformer):
         self.adjust_params()
 
     def adjust_params(self):
-        (self.gamma, self.toe,
-             self.threshold, self.a) = self.gamma_toe[self.config['gamma']]
-        self.inverse = self.config['inverse']
+        gamma, toe, threshold, k_a = self.gamma_toe[self.config['gamma']]
         # threshold for switch from linear to exponential
-        if self.threshold is None:
+        if threshold is None:
             # first approximate value, ignoring extra scaling factor a
-            self.threshold = (self.toe / self.gamma) ** (1.0 / (self.gamma - 1.0))
+            threshold = (toe / gamma) ** (1.0 / (gamma - 1.0))
             # refine using Newton-Raphson method
             last_err = 1.0
             while True:
-                f_p = (((1.0 - self.gamma) * (self.threshold ** self.gamma)) +
-                       ((self.gamma / self.toe) *
-                        (self.threshold ** (self.gamma - 1.0))) - 1.0)
-                df_p = (((1.0 - self.gamma) * self.gamma *
-                         (self.threshold ** (self.gamma - 1.0))) +
-                        ((self.gamma / self.toe) * (self.gamma - 1.0) *
-                         (self.threshold ** (self.gamma - 2.0))))
+                f_p = (((1.0 - gamma) * (threshold ** gamma)) +
+                       ((gamma / toe) *
+                        (threshold ** (gamma - 1.0))) - 1.0)
+                df_p = (((1.0 - gamma) * gamma *
+                         (threshold ** (gamma - 1.0))) +
+                        ((gamma / toe) * (gamma - 1.0) *
+                         (threshold ** (gamma - 2.0))))
                 err = f_p / df_p
                 if abs(err) >= last_err:
                     break
                 last_err = abs(err)
-                self.threshold -= err
-        if self.a is None:
-            self.a = (1.0 - self.gamma) * (self.threshold ** self.gamma)
-            self.a = self.a / (1.0 - self.a)
+                threshold -= err
+        if k_a is None:
+            k_a = (1.0 - gamma) * (threshold ** gamma)
+            k_a = k_a / (1.0 - k_a)
+        self.in_val = numpy.ndarray(512, dtype=pt_float)
+        self.out_val = numpy.ndarray(self.in_val.shape, dtype=pt_float)
+        scale = pt_float(self.config['scale'])
+        ka = 0.17883277
+        kb = 0.28466892
+        kc = 0.55991073
+        for i in range(self.in_val.shape[0]):
+            v = ((float(i) / float(self.in_val.shape[0])) * 2.0) - 0.5
+            v /= scale
+            self.in_val[i] = v
+            if self.config['gamma'] == 'hybrid_log':
+                v *= 6.0
+                if v <= 0.0:
+                    v = 0.0
+                elif v <= 1.0:
+                    v = 0.5 * math.sqrt(v)
+                else:
+                    v = (ka * math.log(v - kb)) + kc
+            elif gamma != 1.0:
+                # conventional gamma + linear toe
+                if v <= threshold:
+                    v *= toe
+                else:
+                    v = v ** gamma
+                    v = ((1.0 + k_a) * v) - k_a
+            v *= scale
+            self.out_val[i] = v
+        # scale values to normal video range
+        if self.config['range'] == 'studio':
+            self.in_val *= pt_float(219.0)
+            self.out_val *= pt_float(219.0)
+            self.in_val += pt_float(16.0)
+            self.out_val += pt_float(16.0)
+        else:
+            self.in_val *= pt_float(255.0)
+            self.out_val *= pt_float(255.0)
 
     def transform(self, in_frame, out_frame):
         if self.update_config():
             self.adjust_params()
-        scale = pt_float(self.config['scale'])
-        # get data
-        if self.gamma != 1.0:
-            data = in_frame.as_numpy(dtype=pt_float, copy=True)
-            # convert range to 0..1
-            if self.config['range'] == 'studio':
-                data -= pt_float(16.0)
-                data /= pt_float(219.0)
-            else:
-                data /= pt_float(255.0)
-            # apply gamma function
-            data /= scale
-            if self.inverse:
-                inverse_gamma_frame(
-                    data, self.gamma, self.toe, self.threshold, self.a)
-            elif self.config['gamma'] == 'hybrid_log':
-                hybrid_gamma_frame(data)
-            else:
-                gamma_frame(
-                    data, self.gamma, self.toe, self.threshold, self.a)
-            data *= scale
-            # convert back to input range
-            if self.config['range'] == 'studio':
-                data *= pt_float(219.0)
-                data += pt_float(16.0)
-            else:
-                data *= pt_float(255.0)
-            out_frame.data = data
+        inverse = self.config['inverse']
+        data = in_frame.as_numpy(dtype=pt_float, copy=True)
+        if inverse:
+            apply_transfer_function(data, self.out_val, self.in_val)
+        else:
+            apply_transfer_function(data, self.in_val, self.out_val)
+        out_frame.data = data
         # add audit
         audit = out_frame.metadata.get('audit')
         audit += 'data = {}GammaCorrect(data, {})\n'.format(
-            ('', 'Inverse ')[self.inverse], self.config['gamma'])
+            ('', 'Inverse ')[inverse], self.config['gamma'])
         out_frame.metadata.set('audit', audit)
         return True
