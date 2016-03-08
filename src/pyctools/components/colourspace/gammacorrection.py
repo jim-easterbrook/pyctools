@@ -63,11 +63,12 @@ class GammaCorrect(Transformer):
     """
 
     gamma_toe = OrderedDict([
-        ('linear',     (1.0, 1.0)),
-        ('bt709',      (0.45, 4.5)),
-        ('srgb',       (1.0 / 2.4, 12.92)),
-        ('adobe_rgb',  (256.0 / 563.0, 0.0)),
-        ('hybrid_log', (1.0 / 2.0, 0.0)),
+        # name          gamma          toe    threshold  "a"
+        ('linear',     (1.0,           1.0,   0.0 ,      0.0)),
+        ('bt709',      (0.45,          4.5,   0.018,     0.099)),
+        ('srgb',       (1.0 / 2.4,     12.92, 0.0031308, 0.055)),
+        ('adobe_rgb',  (256.0 / 563.0, 0.0,   0.0,       0.0)),
+        ('hybrid_log', (1.0 / 2.0,     0.0,   0.0,       0.0)),
         ])
 
     __doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in gamma_toe]))
@@ -83,13 +84,11 @@ class GammaCorrect(Transformer):
         self.adjust_params()
 
     def adjust_params(self):
-        self.gamma, self.toe = self.gamma_toe[self.config['gamma']]
+        (self.gamma, self.toe,
+             self.threshold, self.a) = self.gamma_toe[self.config['gamma']]
         self.inverse = self.config['inverse']
         # threshold for switch from linear to exponential
-        if self.gamma == 1.0 or self.toe <= 0.0:
-            self.threshold = 0.0
-            self.a = 0.0
-        else:
+        if self.threshold is None:
             # first approximate value, ignoring extra scaling factor a
             self.threshold = (self.toe / self.gamma) ** (1.0 / (self.gamma - 1.0))
             # refine using Newton-Raphson method
@@ -107,6 +106,7 @@ class GammaCorrect(Transformer):
                     break
                 last_err = abs(err)
                 self.threshold -= err
+        if self.a is None:
             self.a = (1.0 - self.gamma) * (self.threshold ** self.gamma)
             self.a = self.a / (1.0 - self.a)
 
@@ -143,7 +143,7 @@ class GammaCorrect(Transformer):
             out_frame.data = data
         # add audit
         audit = out_frame.metadata.get('audit')
-        audit += 'data = {}GammaCorrect(data, {}, {})\n'.format(
-            ('', 'Inverse ')[self.inverse], self.gamma, self.toe)
+        audit += 'data = {}GammaCorrect(data, {})\n'.format(
+            ('', 'Inverse ')[self.inverse], self.config['gamma'])
         out_frame.metadata.set('audit', audit)
         return True
