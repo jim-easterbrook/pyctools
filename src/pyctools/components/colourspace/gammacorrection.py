@@ -27,18 +27,10 @@ if 'sphinx' in sys.modules:
 
 import numpy
 
-from pyctools.core.config import ConfigBool, ConfigEnum
+from pyctools.core.config import ConfigBool, ConfigEnum, ConfigFloat
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
 from .gammacorrectioncore import gamma_frame, hybrid_gamma_frame, inverse_gamma_frame
-
-gamma_toe = OrderedDict([
-    ('linear',     (1.0, 1.0)),
-    ('bt709',      (0.45, 4.5)),
-    ('srgb',       (1.0 / 2.4, 12.92)),
-    ('adobe_rgb',  (256.0 / 563.0, 0.0)),
-    ('hybrid_log', (1.0 / 2.0, 0.0)),
-    ])
 
 class GammaCorrect(Transformer):
     """Gamma correction.
@@ -59,21 +51,31 @@ class GammaCorrect(Transformer):
     ranges. It can be either ``'studio'`` (16..235) or ``'computer'``
     (0..255).
 
-    ===========  ====  ====
+    ==============  =====  ====
     Config
-    ===========  ====  ====
-    ``range``    str   Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
-    ``gamma``    str   Choose a gamma curve. Possible values: {}.
-    ``inverse``  bool
-    ===========  ====  ====
+    ==============  =====  ====
+    ``range``       str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
+    ``scale``       float  Adjust nominal white level of input data.
+    ``gamma``       str    Choose a gamma curve. Possible values: {}.
+    ``inverse``     bool
+    ==============  =====  ====
 
     """
+
+    gamma_toe = OrderedDict([
+        ('linear',     (1.0, 1.0)),
+        ('bt709',      (0.45, 4.5)),
+        ('srgb',       (1.0 / 2.4, 12.92)),
+        ('adobe_rgb',  (256.0 / 563.0, 0.0)),
+        ('hybrid_log', (1.0 / 2.0, 0.0)),
+        ])
 
     __doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in gamma_toe]))
 
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
-        self.config['gamma'] = ConfigEnum(list(gamma_toe.keys()))
+        self.config['scale'] = ConfigFloat(value=1.0, decimals=2)
+        self.config['gamma'] = ConfigEnum(list(self.gamma_toe.keys()))
         self.config['inverse'] = ConfigBool()
 
     def on_start(self):
@@ -81,7 +83,7 @@ class GammaCorrect(Transformer):
         self.adjust_params()
 
     def adjust_params(self):
-        self.gamma, self.toe = gamma_toe[self.config['gamma']]
+        self.gamma, self.toe = self.gamma_toe[self.config['gamma']]
         self.inverse = self.config['inverse']
         # threshold for switch from linear to exponential
         if self.gamma == 1.0 or self.toe <= 0.0:
@@ -111,16 +113,18 @@ class GammaCorrect(Transformer):
     def transform(self, in_frame, out_frame):
         if self.update_config():
             self.adjust_params()
+        scale = pt_float(self.config['scale'])
         # get data
         if self.gamma != 1.0:
             data = in_frame.as_numpy(dtype=pt_float, copy=True)
-            # convert range to 0..1 (and copy data)
+            # convert range to 0..1
             if self.config['range'] == 'studio':
                 data -= pt_float(16.0)
                 data /= pt_float(219.0)
             else:
                 data /= pt_float(255.0)
             # apply gamma function
+            data /= scale
             if self.inverse:
                 inverse_gamma_frame(
                     data, self.gamma, self.toe, self.threshold, self.a)
@@ -129,6 +133,7 @@ class GammaCorrect(Transformer):
             else:
                 gamma_frame(
                     data, self.gamma, self.toe, self.threshold, self.a)
+            data *= scale
             # convert back to input range
             if self.config['range'] == 'studio':
                 data *= pt_float(219.0)
