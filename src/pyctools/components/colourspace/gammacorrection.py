@@ -58,6 +58,9 @@ class GammaCorrect(Transformer):
     ``range``       str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
     ``scale``       float  Adjust nominal white level of input data.
     ``gamma``       str    Choose a gamma curve. Possible values: {}.
+    ``knee``        bool   Turn on "knee" (highlight compression).
+    ``knee_point``  float  Highlight compression threshold (normalised 0..1 range).
+    ``knee_slope``  float  Slope of transfer function above knee threshold.
     ``inverse``     bool
     ==============  =====  ====
 
@@ -79,6 +82,9 @@ class GammaCorrect(Transformer):
         self.config['scale'] = ConfigFloat(value=1.0, decimals=2)
         self.config['gamma'] = ConfigEnum(list(self.gamma_toe.keys()))
         self.config['inverse'] = ConfigBool()
+        self.config['knee'] = ConfigBool()
+        self.config['knee_point'] = ConfigFloat(value=0.9, decimals=2)
+        self.config['knee_slope'] = ConfigFloat(value=0.25, decimals=2)
 
     def on_start(self):
         self.update_config()
@@ -111,14 +117,22 @@ class GammaCorrect(Transformer):
         self.in_val = numpy.ndarray(512, dtype=pt_float)
         self.out_val = numpy.ndarray(self.in_val.shape, dtype=pt_float)
         scale = pt_float(self.config['scale'])
+        knee = self.config['knee']
+        knee_point = self.config['knee_point']
+        knee_slope = self.config['knee_slope']
+        knee_idx = 0
         ka = 0.17883277
         kb = 0.28466892
         kc = 0.55991073
         for i in range(self.in_val.shape[0]):
             v = ((float(i) / float(self.in_val.shape[0])) * 2.0) - 0.5
-            v /= scale
             self.in_val[i] = v
-            if self.config['gamma'] == 'hybrid_log':
+            if knee and v <= knee_point:
+                knee_idx = i
+            if knee and v > knee_point:
+                v = self.out_val[knee_idx] + (
+                    knee_slope * (v - self.in_val[knee_idx]))
+            elif self.config['gamma'] == 'hybrid_log':
                 v *= 6.0
                 if v <= 0.0:
                     v = 0.0
@@ -133,9 +147,10 @@ class GammaCorrect(Transformer):
                 else:
                     v = v ** gamma
                     v = ((1.0 + k_a) * v) - k_a
-            v *= scale
             self.out_val[i] = v
         # scale values to normal video range
+        self.in_val *= pt_float(scale)
+        self.out_val *= pt_float(scale)
         if self.config['range'] == 'studio':
             self.in_val *= pt_float(219.0)
             self.out_val *= pt_float(219.0)
