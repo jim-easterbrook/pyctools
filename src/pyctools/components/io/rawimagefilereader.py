@@ -41,24 +41,25 @@ class RawImageFileReader(Component):
     <https://rawkit.readthedocs.org/en/latest/api/rawkit.html>`_ for
     more detail on the configuration options.
 
-    ===================  =====  ====
+    ======================  =====  ====
     Config
-    ===================  =====  ====
-    ``path``             str    Path name of file to be read.
-    ``16bit``            bool   Get greater precision than normal 8-bit range.
-    ``brightness``       float  Set the gain.
-    ``gamma``            str    Set gamma curve. Possible values: {}.
-    ``colourspace``      str    Set colour space. Possible values: {}.
-    ``interpolation``    str    Set demosaicing method. Possible values: {}.
-    ``noise_threshold``  float  Set denoising threshold. Typically 100 to 1000.
-    ``wb_auto``          bool   Automatic white balance.
-    ``wb_camera``        bool   Use camera defined white balance.
-    ``wb_greybox``       str    4 comma separated integers that define a grey area of the image.
-    ``wb_rgbg``          str    4 comma separated floats that set the gain of each channel.
-    ``red_scale``        float  Chromatic aberration correction red scale factor.
-    ``blue_scale``       float  Chromatic aberration correction blue scale factor.
-    ``crop``             bool   Auto crop image to dimensions in metadata.
-    ===================  =====  ====
+    ======================  =====  ====
+    ``path``                str    Path name of file to be read.
+    ``16bit``               bool   Get greater precision than normal 8-bit range.
+    ``brightness``          float  Set the gain.
+    ``gamma``               str    Set gamma curve. Possible values: {}.
+    ``colourspace``         str    Set colour space. Possible values: {}.
+    ``interpolation``       str    Set demosaicing method. Possible values: {}.
+    ``noise_threshold``     float  Set denoising threshold. Typically 100 to 1000.
+    ``wb_auto``             bool   Automatic white balance.
+    ``wb_camera``           bool   Use camera defined white balance.
+    ``wb_greybox``          str    4 comma separated integers that define a grey area of the image.
+    ``wb_rgbg``             str    4 comma separated floats that set the gain of each channel.
+    ``red_scale``           float  Chromatic aberration correction red scale factor.
+    ``blue_scale``          float  Chromatic aberration correction blue scale factor.
+    ``crop``                bool   Auto crop image to dimensions in metadata.
+    ``use_camera_profile``  bool   Use embedded camera peofile, if present.
+    ======================  =====  ====
 
     """
 
@@ -86,6 +87,7 @@ class RawImageFileReader(Component):
         self.config['red_scale'] = ConfigFloat(value=1.0, decimals=4)
         self.config['blue_scale'] = ConfigFloat(value=1.0, decimals=4)
         self.config['crop'] = ConfigBool()
+        self.config['use_camera_profile'] = ConfigBool()
 
     def on_start(self):
         # read file
@@ -93,6 +95,7 @@ class RawImageFileReader(Component):
         path = self.config['path']
         with Raw(filename=path) as raw:
             raw.options.auto_brightness = False
+            raw.options.use_camera_profile = self.config['use_camera_profile']
             raw.options.brightness = self.config['brightness']
             raw.options.chromatic_aberration = (
                 self.config['red_scale'], self.config['blue_scale'])
