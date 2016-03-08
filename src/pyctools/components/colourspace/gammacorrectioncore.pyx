@@ -61,8 +61,11 @@ def apply_transfer_function(numpy.ndarray[DTYPE_t, ndim=3] frame,
                         i = i + 1
                     while i > 0 and v < in_val[i]:
                         i = i - 1
-                    # do linear interpolation (or if outside range)
+                    # do linear interpolation (or extrapolation if outside range)
                     d_in = in_val[i+1] - in_val[i]
                     d_out = out_val[i+1] - out_val[i]
-                    frame[y, x, c] = out_val[i] + (
-                        d_out * (v - in_val[i]) / d_in)
+                    if d_in == 0.0:
+                        frame[y, x, c] = out_val[i] + (d_out * 0.5)
+                    else:
+                        frame[y, x, c] = out_val[i] + (
+                            d_out * (v - in_val[i]) / d_in)
