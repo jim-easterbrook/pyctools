@@ -125,7 +125,7 @@ class GammaCorrect(Transformer):
         kb = 0.28466892
         kc = 0.55991073
         for i in range(self.in_val.shape[0]):
-            v = ((float(i) / float(self.in_val.shape[0])) * 2.0) - 0.5
+            v = ((float(i) / float(self.in_val.shape[0] - 1)) * 2.1) - 0.1
             self.in_val[i] = v
             if knee and v <= knee_point:
                 knee_idx = i
