@@ -16,7 +16,7 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-__all__ = ['GammaCorrect']
+__all__ = ['GammaCorrect', 'PiecewiseGammaCorrect']
 __docformat__ = 'restructuredtext en'
 
 from collections import OrderedDict
@@ -28,7 +28,7 @@ if 'sphinx' in sys.modules:
 
 import numpy
 
-from pyctools.core.config import ConfigBool, ConfigEnum, ConfigFloat
+from pyctools.core.config import ConfigBool, ConfigEnum, ConfigFloat, ConfigStr
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
 from .gammacorrectioncore import apply_transfer_function
@@ -174,5 +174,50 @@ class GammaCorrect(Transformer):
         audit = out_frame.metadata.get('audit')
         audit += 'data = {}GammaCorrect(data, {})\n'.format(
             ('', 'Inverse ')[inverse], self.config['gamma'])
+        out_frame.metadata.set('audit', audit)
+        return True
+
+
+class PiecewiseGammaCorrect(Transformer):
+    """Gamma correction with a piecewise linear transform.
+
+    The transform is specified as a series of input values and
+    corresponding output values. Linear interpolation is used to convert
+    data that lies between ``in_vals`` values, and extrapolation is used
+    for data outside the range of ``in_vals``.
+
+    ==============  =====  ====
+    Config
+    ==============  =====  ====
+    ``in_vals``     str    List of input values, in increasing order.
+    ``out_vals``    str    List of corresponding output values.
+    ``inverse``     bool
+    ==============  =====  ====
+
+    """
+
+    def initialise(self):
+        self.config['in_vals'] = ConfigStr(value='0.0, 255.0')
+        self.config['out_vals'] = ConfigStr(value='0.0, 255.0')
+        self.config['inverse'] = ConfigBool()
+
+    def transform(self, in_frame, out_frame):
+        self.update_config()
+        in_vals = eval(self.config['in_vals'])
+        out_vals = eval(self.config['out_vals'])
+        in_vals = numpy.array(in_vals, dtype=pt_float)
+        out_vals = numpy.array(out_vals, dtype=pt_float)
+        inverse = self.config['inverse']
+        data = in_frame.as_numpy(dtype=pt_float, copy=True)
+        if inverse:
+            apply_transfer_function(data, out_vals, in_vals)
+        else:
+            apply_transfer_function(data, in_vals, out_vals)
+        out_frame.data = data
+        # add audit
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = {}PiecewiseGammaCorrect(data)\n'.format(('', 'Inverse ')[inverse])
+        audit += '    in_vals: {}\n'.format(str(in_vals))
+        audit += '    out_vals: {}\n'.format(str(out_vals))
         out_frame.metadata.set('audit', audit)
         return True
