@@ -40,6 +40,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 import mock
 
 for mod_name in ('cv2', 'pgi', 'gi', 'gi.repository', 'OpenGL',
+                 'matplotlib', 'matplotlib.pyplot',
                  'scipy', 'scipy.special', 'sip'):
     sys.modules[mod_name] = mock.Mock()
 

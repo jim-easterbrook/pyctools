@@ -53,7 +53,8 @@ class GammaCorrect(Transformer):
     (0..255).
 
     The ``function`` output emits the transfer function data whenever it
-    changes.
+    changes. It can be connected to the
+    :py:class:`~pyctools.components.io.plotdata.PlotData` component.
 
     ==============  =====  ====
     Config
@@ -195,7 +196,8 @@ class PiecewiseGammaCorrect(Transformer):
     for data outside the range of ``in_vals``.
 
     The ``function`` output emits the transfer function data whenever it
-    changes.
+    changes. It can be connected to the
+    :py:class:`~pyctools.components.io.plotdata.PlotData` component.
 
     ==============  =====  ====
     Config
