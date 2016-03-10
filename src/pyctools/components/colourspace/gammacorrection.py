@@ -115,40 +115,52 @@ class GammaCorrect(Transformer):
         if k_a is None:
             k_a = (1.0 - gamma) * (threshold ** gamma)
             k_a = k_a / (1.0 - k_a)
-        self.in_val = numpy.ndarray(512, dtype=pt_float)
-        self.out_val = numpy.ndarray(self.in_val.shape, dtype=pt_float)
+        # make list of in and out values
+        in_val = []
+        out_val = []
         scale = pt_float(self.config['scale'])
         knee = self.config['knee']
         knee_point = self.config['knee_point']
         knee_slope = self.config['knee_slope']
-        knee_idx = 0
         ka = 0.17883277
         kb = 0.28466892
         kc = 0.55991073
-        for i in range(self.in_val.shape[0]):
-            v = ((float(i) / float(self.in_val.shape[0] - 1)) * 2.1) - 0.1
-            self.in_val[i] = v
-            if knee and v <= knee_point:
-                knee_idx = i
-            if knee and v > knee_point:
-                v = self.out_val[knee_idx] + (
-                    knee_slope * (v - self.in_val[knee_idx]))
-            elif self.config['gamma'] == 'hybrid_log':
-                v *= 6.0
-                if v <= 0.0:
-                    v = 0.0
-                elif v <= 1.0:
-                    v = 0.5 * math.sqrt(v)
+        # toe section just needs two end points
+        v_in = -0.1
+        v_out = v_in * toe
+        in_val.append(v_in)
+        out_val.append(v_out)
+        v_in = threshold
+        v_out = v_in * toe
+        in_val.append(v_in)
+        out_val.append(v_out)
+        # complicated section needs many points
+        while v_in < 2.0:
+            v_in += 0.01
+            if knee:
+                v_in = min(v_in, knee_point)
+            if self.config['gamma'] == 'hybrid_log':
+                v_out = v_in * 6.0
+                if v_out <= 1.0:
+                    v_out = 0.5 * math.sqrt(v_out)
                 else:
-                    v = (ka * math.log(v - kb)) + kc
-            elif gamma != 1.0:
-                # conventional gamma + linear toe
-                if v <= threshold:
-                    v *= toe
-                else:
-                    v = v ** gamma
-                    v = ((1.0 + k_a) * v) - k_a
-            self.out_val[i] = v
+                    v_out = (ka * math.log(v_out - kb)) + kc
+            else:
+                v_out = v_in ** gamma
+                v_out = ((1.0 + k_a) * v_out) - k_a
+            if abs(v_out - out_val[-1]) >= 0.005:
+                in_val.append(v_in)
+                out_val.append(v_out)
+            if knee and v_in >= knee_point:
+                break
+        # knee section just needs another endpoint
+        if knee:
+            v_in = max(2.0, in_val[-1] + 0.1)
+            v_out = out_val[-1] + (knee_slope * (v_in - in_val[-1]))
+            in_val.append(v_in)
+            out_val.append(v_out)
+        self.in_val = numpy.array(in_val, dtype=pt_float)
+        self.out_val = numpy.array(out_val, dtype=pt_float)
         # scale values to normal video range
         self.in_val *= pt_float(scale)
         self.out_val *= pt_float(scale)
