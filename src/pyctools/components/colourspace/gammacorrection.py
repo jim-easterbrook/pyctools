@@ -52,6 +52,9 @@ class GammaCorrect(Transformer):
     ranges. It can be either ``'studio'`` (16..235) or ``'computer'``
     (0..255).
 
+    The ``function`` output emits the transfer function data whenever it
+    changes.
+
     ==============  =====  ====
     Config
     ==============  =====  ====
@@ -65,7 +68,7 @@ class GammaCorrect(Transformer):
     ==============  =====  ====
 
     """
-
+    outputs = ['output', 'function']
     gamma_toe = OrderedDict([
         # name          gamma          toe    threshold  "a"
         ('linear',     (1.0,           1.0,   0.0 ,      0.0)),
@@ -74,7 +77,6 @@ class GammaCorrect(Transformer):
         ('adobe_rgb',  (256.0 / 563.0, 0.0,   0.0,       0.0)),
         ('hybrid_log', (1.0 / 2.0,     0.0,   0.0,       0.0)),
         ])
-
     __doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in gamma_toe]))
 
     def initialise(self):
@@ -85,12 +87,10 @@ class GammaCorrect(Transformer):
         self.config['knee'] = ConfigBool()
         self.config['knee_point'] = ConfigFloat(value=0.9, decimals=2)
         self.config['knee_slope'] = ConfigFloat(value=0.25, decimals=2)
-
-    def on_start(self):
-        self.update_config()
-        self.adjust_params()
+        self.initialised = False
 
     def adjust_params(self):
+        self.initialised = True
         gamma, toe, threshold, k_a = self.gamma_toe[self.config['gamma']]
         # threshold for switch from linear to exponential
         if threshold is None:
@@ -159,9 +159,17 @@ class GammaCorrect(Transformer):
         else:
             self.in_val *= pt_float(255.0)
             self.out_val *= pt_float(255.0)
+        # send to function output
+        func_frame = self.outframe_pool['function'].get()
+        func_frame.data = numpy.stack((self.in_val, self.out_val))
+        func_frame.type = 'func'
+        audit = func_frame.metadata.get('audit')
+        audit += 'data = GammaFunction({})\n'.format(self.config['gamma'])
+        func_frame.metadata.set('audit', audit)
+        self.send('function', func_frame)
 
     def transform(self, in_frame, out_frame):
-        if self.update_config():
+        if self.update_config() or not self.initialised:
             self.adjust_params()
         inverse = self.config['inverse']
         data = in_frame.as_numpy(dtype=pt_float, copy=True)
@@ -186,6 +194,9 @@ class PiecewiseGammaCorrect(Transformer):
     data that lies between ``in_vals`` values, and extrapolation is used
     for data outside the range of ``in_vals``.
 
+    The ``function`` output emits the transfer function data whenever it
+    changes.
+
     ==============  =====  ====
     Config
     ==============  =====  ====
@@ -195,29 +206,44 @@ class PiecewiseGammaCorrect(Transformer):
     ==============  =====  ====
 
     """
+    outputs = ['output', 'function']
 
     def initialise(self):
         self.config['in_vals'] = ConfigStr(value='0.0, 255.0')
         self.config['out_vals'] = ConfigStr(value='0.0, 255.0')
         self.config['inverse'] = ConfigBool()
+        self.initialised = False
 
-    def transform(self, in_frame, out_frame):
-        self.update_config()
+    def adjust_params(self):
+        self.initialised = True
         in_vals = eval(self.config['in_vals'])
         out_vals = eval(self.config['out_vals'])
-        in_vals = numpy.array(in_vals, dtype=pt_float)
-        out_vals = numpy.array(out_vals, dtype=pt_float)
+        self.in_vals = numpy.array(in_vals, dtype=pt_float)
+        self.out_vals = numpy.array(out_vals, dtype=pt_float)
+        func_frame = self.outframe_pool['function'].get()
+        func_frame.data = numpy.stack((self.in_vals, self.out_vals))
+        func_frame.type = 'func'
+        audit = func_frame.metadata.get('audit')
+        audit += 'data = PiecewiseGammaFunction()\n'
+        audit += '    in_vals: {}\n'.format(self.config['in_vals'])
+        audit += '    out_vals: {}\n'.format(self.config['out_vals'])
+        func_frame.metadata.set('audit', audit)
+        self.send('function', func_frame)
+
+    def transform(self, in_frame, out_frame):
+        if self.update_config() or not self.initialised:
+            self.adjust_params()
         inverse = self.config['inverse']
         data = in_frame.as_numpy(dtype=pt_float, copy=True)
         if inverse:
-            apply_transfer_function(data, out_vals, in_vals)
+            apply_transfer_function(data, self.out_vals, self.in_vals)
         else:
-            apply_transfer_function(data, in_vals, out_vals)
+            apply_transfer_function(data, self.in_vals, self.out_vals)
         out_frame.data = data
         # add audit
         audit = out_frame.metadata.get('audit')
         audit += 'data = {}PiecewiseGammaCorrect(data)\n'.format(('', 'Inverse ')[inverse])
-        audit += '    in_vals: {}\n'.format(str(in_vals))
-        audit += '    out_vals: {}\n'.format(str(out_vals))
+        audit += '    in_vals: {}\n'.format(self.config['in_vals'])
+        audit += '    out_vals: {}\n'.format(self.config['out_vals'])
         out_frame.metadata.set('audit', audit)
         return True
