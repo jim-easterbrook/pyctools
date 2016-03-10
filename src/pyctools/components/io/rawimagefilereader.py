@@ -95,6 +95,7 @@ class RawImageFileReader(Component):
         path = self.config['path']
         with Raw(filename=path) as raw:
             raw.options.auto_brightness = False
+            raw.options.rotation = 0
             raw.options.use_camera_profile = self.config['use_camera_profile']
             raw.options.brightness = self.config['brightness']
             raw.options.chromatic_aberration = (
