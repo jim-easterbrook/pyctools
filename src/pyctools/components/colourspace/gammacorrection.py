@@ -48,6 +48,9 @@ class GammaCorrect(Transformer):
     http://www.bbc.co.uk/rd/publications/whitepaper309 for more
     information.
 
+    The ``'S-Log'`` option is taken from a Sony document
+    https://pro.sony.com/bbsccms/assets/files/mkt/cinema/solutions/slog_manual.pdf
+
     The ``range`` config item specifies the input and output video
     ranges. It can be either ``'studio'`` (16..235) or ``'computer'``
     (0..255).
@@ -77,6 +80,7 @@ class GammaCorrect(Transformer):
         ('srgb',       (1.0 / 2.4,     12.92, 0.0031308, 0.055)),
         ('adobe_rgb',  (256.0 / 563.0, 0.0,   0.0,       0.0)),
         ('hybrid_log', (1.0 / 2.0,     0.0,   0.0,       0.0)),
+        ('S-Log',      (None,          0.0,   0.0,       0.0)),
         ])
     __doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in gamma_toe]))
 
@@ -135,7 +139,7 @@ class GammaCorrect(Transformer):
         in_val.append(v_in)
         out_val.append(v_out)
         # complicated section needs many points
-        while v_in < 2.0:
+        while v_in < 10.0:
             v_in += 0.01
             if knee:
                 v_in = min(v_in, knee_point)
@@ -145,6 +149,8 @@ class GammaCorrect(Transformer):
                     v_out = 0.5 * math.sqrt(v_out)
                 else:
                     v_out = (ka * math.log(v_out - kb)) + kc
+            elif self.config['gamma'] == 'S-Log':
+                v_out = (0.432699 * math.log10(v_in + 0.037584)) + 0.616596 + 0.03
             else:
                 v_out = v_in ** gamma
                 v_out = ((1.0 + k_a) * v_out) - k_a
@@ -155,7 +161,7 @@ class GammaCorrect(Transformer):
                 break
         # knee section just needs another endpoint
         if knee:
-            v_in = max(2.0, in_val[-1] + 0.1)
+            v_in = max(10.0, in_val[-1] + 0.1)
             v_out = out_val[-1] + (knee_slope * (v_in - in_val[-1]))
             in_val.append(v_in)
             out_val.append(v_out)
