@@ -19,13 +19,51 @@
 
 from __future__ import print_function
 
-__all__ = ['DumpMetadata']
+__all__ = ['DumpMetadata', 'Stats']
 __docformat__ = 'restructuredtext en'
 
+import math
 import pprint
+
+import numpy
 
 from pyctools.core.base import Transformer
 from pyctools.core.config import ConfigBool
+
+class Stats(Transformer):
+    """Print information about input video.
+
+    Note that the data is only printed out for the first frame
+    and if it subsequently changes.
+
+    """
+
+    def initialise(self):
+        self.config['rms'] = ConfigBool()
+        self.config['mean'] = ConfigBool()
+        self.config['variance'] = ConfigBool()
+        self.last_result = None
+
+    def transform(self, in_frame, out_frame):
+        if self.update_config():
+            self.last_result = None
+        result = {}
+        data = in_frame.as_numpy()
+        if self.config['rms']:
+            result['rms'] = list(numpy.sqrt(numpy.mean(
+                numpy.square(data), axis=(0, 1))))
+        if self.config['mean']:
+            result['mean'] = list(numpy.mean(data, axis=(0, 1)))
+        if self.config['variance']:
+            result['variance'] = list(numpy.var(data, axis=(0, 1)))
+        if self.last_result == result:
+            return True
+        self.last_result = result
+        print('Frame %04d' % in_frame.frame_no)
+        print('==========')
+        pprint.pprint(result)
+        return True
+
 
 class DumpMetadata(Transformer):
     """Print input frames' metadata.
