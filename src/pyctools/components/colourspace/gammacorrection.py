@@ -51,9 +51,10 @@ class GammaCorrect(Transformer):
     The ``'S-Log'`` option is taken from a Sony document
     https://pro.sony.com/bbsccms/assets/files/mkt/cinema/solutions/slog_manual.pdf
 
-    The ``range`` config item specifies the input and output video
-    ranges. It can be either ``'studio'`` (16..235) or ``'computer'``
-    (0..255).
+    The ``range`` config item specifies the gamma corrected black to
+    white range. It can be either ``'studio'`` (16..235) or
+    ``'computer'`` (0..255). The linear intensity black and white values
+    are set by the ``black`` and ``white`` config items.
 
     The ``function`` output emits the transfer function data whenever it
     changes. It can be connected to the
@@ -62,8 +63,9 @@ class GammaCorrect(Transformer):
     ==============  =====  ====
     Config
     ==============  =====  ====
-    ``range``       str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
-    ``scale``       float  Adjust nominal white level of input data.
+    ``range``       str    Nominal gamma corrected black and white levels. Can be ``'studio'`` or ``'computer'``.
+    ``black``       float  "Linear intensity" black level.
+    ``white``       float  "Linear intensity" white level.
     ``gamma``       str    Choose a gamma curve. Possible values: {}.
     ``knee``        bool   Turn on "knee" (highlight compression).
     ``knee_point``  float  Highlight compression threshold (normalised 0..1 range).
@@ -86,8 +88,9 @@ class GammaCorrect(Transformer):
 
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
-        self.config['scale'] = ConfigFloat(value=1.0, decimals=2)
         self.config['gamma'] = ConfigEnum(list(self.gamma_toe.keys()))
+        self.config['black'] = ConfigFloat(value=0.0, decimals=2)
+        self.config['white'] = ConfigFloat(value=255.0, decimals=2)
         self.config['inverse'] = ConfigBool()
         self.config['knee'] = ConfigBool()
         self.config['knee_point'] = ConfigFloat(value=0.9, decimals=2)
@@ -122,7 +125,6 @@ class GammaCorrect(Transformer):
         # make list of in and out values
         in_val = []
         out_val = []
-        scale = pt_float(self.config['scale'])
         knee = self.config['knee']
         knee_point = self.config['knee_point']
         knee_slope = self.config['knee_slope']
@@ -144,11 +146,11 @@ class GammaCorrect(Transformer):
             if knee:
                 v_in = min(v_in, knee_point)
             if self.config['gamma'] == 'hybrid_log':
-                v_out = v_in * 6.0
-                if v_out <= 1.0:
-                    v_out = 0.5 * math.sqrt(v_out)
+                if v_in <= 1.0:
+                    v_out = 0.5 * math.sqrt(v_in)
                 else:
-                    v_out = (ka * math.log(v_out - kb)) + kc
+                    v_out = (ka * math.log(v_in - kb)) + kc
+                v_out *= 2.0
             elif self.config['gamma'] == 'S-Log':
                 v_out = (0.432699 * math.log10(v_in + 0.037584)) + 0.616596 + 0.03
             else:
@@ -167,16 +169,16 @@ class GammaCorrect(Transformer):
             out_val.append(v_out)
         self.in_val = numpy.array(in_val, dtype=pt_float)
         self.out_val = numpy.array(out_val, dtype=pt_float)
-        # scale values to normal video range
-        self.in_val *= pt_float(scale)
-        self.out_val *= pt_float(scale)
+        # scale "linear" values
+        black = self.config['black']
+        white = self.config['white']
+        self.in_val *= pt_float(white - black)
+        self.in_val += pt_float(black)
+        # scale gamma corrected values to normal video range
         if self.config['range'] == 'studio':
-            self.in_val *= pt_float(219.0)
             self.out_val *= pt_float(219.0)
-            self.in_val += pt_float(16.0)
             self.out_val += pt_float(16.0)
         else:
-            self.in_val *= pt_float(255.0)
             self.out_val *= pt_float(255.0)
         # send to function output
         func_frame = self.outframe_pool['function'].get()
