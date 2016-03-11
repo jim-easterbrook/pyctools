@@ -53,4 +53,5 @@ class PlotData(Component):
             plt.ion()
             for y in data[1:]:
                 self.lines.append(plt.plot(x, y, '-')[0])
+            plt.grid(True)
             plt.show()
