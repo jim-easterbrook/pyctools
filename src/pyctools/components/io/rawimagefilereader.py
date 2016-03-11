@@ -126,9 +126,15 @@ class RawImageFileReader(Component):
             data = raw.to_buffer()
             if self.config['16bit']:
                 image = numpy.frombuffer(data, dtype=numpy.uint16)
+                clip_count = numpy.count_nonzero(
+                    numpy.greater_equal(image, (2 ** 16) - 1))
                 image = image.astype(pt_float) / pt_float(256.0)
             else:
                 image = numpy.frombuffer(data, dtype=numpy.uint8)
+                clip_count = numpy.count_nonzero(
+                    numpy.greater_equal(image, (2 ** 8) - 1))
+            if clip_count > 0:
+                print('Pixels at clipping limit:', clip_count)
             image = image.reshape((raw.metadata.height, raw.metadata.width, 3))
         out_frame = Frame()
         # send output frame
