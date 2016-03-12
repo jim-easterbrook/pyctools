@@ -1044,11 +1044,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def set_zoom(self):
         current_action = self.zoom_group.checkedAction()
-        zoom, OK = current_action.data().toInt()
-        if not OK:
-            return
-        zoom = float(zoom) / 100.0
-        self.view.resetMatrix()
+        zoom = float(current_action.data()) / 100.0
+        self.view.resetTransform()
         self.view.scale(zoom, zoom)
 
 def main():
