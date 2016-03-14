@@ -157,8 +157,10 @@ class GammaCorrect(Transformer):
                 v_out *= 2.0
             elif self.config['gamma'] == 'S-Log':
                 v_out = (0.432699 * math.log10(v_in + 0.037584)) + 0.616596 + 0.03
+                v_out /= 0.653529251225
             elif self.config['gamma'] == 'Canon-Log':
                 v_out = (0.529136 * math.log10((10.1596 * v_in) + 1.0)) + 0.0730597
+                v_out /= 0.627408304538
             else:
                 v_out = v_in ** gamma
                 v_out = ((1.0 + k_a) * v_out) - k_a
