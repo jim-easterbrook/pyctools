@@ -27,6 +27,10 @@ if 'sphinx' in sys.modules:
     __all__ += ['apply_transfer_function']
 
 import numpy
+try:
+    from scipy import interpolate
+except ImportError:
+    interpolate = None
 
 from pyctools.core.config import ConfigBool, ConfigEnum, ConfigFloat, ConfigStr
 from pyctools.core.base import Transformer
@@ -233,12 +237,18 @@ class PiecewiseGammaCorrect(Transformer):
     changes. It can be connected to the
     :py:class:`~pyctools.components.io.plotdata.PlotData` component.
 
+    The ``smooth`` option (present if scipy_ is installed) converts the
+    series of data points to a smooth curve using cubic spline interpolation.
+
+    .. _scipy: http://scipy.org/
+
     ==============  =====  ====
     Config
     ==============  =====  ====
     ``in_vals``     str    List of input values, in increasing order.
     ``out_vals``    str    List of corresponding output values.
     ``inverse``     bool
+    ``smooth``      bool   Smooth transform with cubic spline interpolation. Requires scipy_.
     ==============  =====  ====
 
     """
@@ -248,6 +258,8 @@ class PiecewiseGammaCorrect(Transformer):
         self.config['in_vals'] = ConfigStr(value='0.0, 255.0')
         self.config['out_vals'] = ConfigStr(value='0.0, 255.0')
         self.config['inverse'] = ConfigBool()
+        if interpolate:
+            self.config['smooth'] = ConfigBool()
         self.initialised = False
 
     def adjust_params(self):
@@ -260,6 +272,15 @@ class PiecewiseGammaCorrect(Transformer):
             out_vals = out_vals[:len(in_vals)]
         self.in_vals = numpy.array(in_vals, dtype=pt_float)
         self.out_vals = numpy.array(out_vals, dtype=pt_float)
+        # smooth data
+        if self.config['smooth']:
+            tck = interpolate.splrep(self.in_vals, self.out_vals)
+            step = (self.in_vals[-1] - self.in_vals[0]) / 256.0
+            self.in_vals = numpy.arange(
+                self.in_vals[0], self.in_vals[-1] + step, step)
+            self.out_vals = interpolate.splev(self.in_vals, tck)
+            self.in_vals = self.in_vals.astype(pt_float)
+            self.out_vals = self.out_vals.astype(pt_float)
         # send function output
         func_frame = self.outframe_pool['function'].get()
         func_frame.data = numpy.stack((self.in_vals, self.out_vals))
