@@ -59,8 +59,14 @@ class GammaCorrect(Transformer):
     ``'computer'`` (0..255). The linear intensity black and white values
     are set by the ``black`` and ``white`` config items.
 
+    The gamma options have all been normalised so that linear intensity
+    ``white`` level input produces a gamma corrected output of 235 or
+    255. You can use an
+    :py:class:`~pyctools.components.arithmetic.Arithmetic` component to
+    scale the output if required.
+
     The ``function`` output emits the transfer function data whenever it
-    changes. It can be connected to the
+    changes. It can be connected to a
     :py:class:`~pyctools.components.io.plotdata.PlotData` component.
 
     ==============  =====  ====
@@ -132,9 +138,6 @@ class GammaCorrect(Transformer):
         knee = self.config['knee']
         knee_point = self.config['knee_point']
         knee_slope = self.config['knee_slope']
-        ka = 0.17883277
-        kb = 0.28466892
-        kc = 0.55991073
         # toe section just needs two end points
         v_in = -0.1
         v_out = v_in * toe
@@ -153,13 +156,16 @@ class GammaCorrect(Transformer):
                 if v_in <= 1.0:
                     v_out = 0.5 * math.sqrt(v_in)
                 else:
-                    v_out = (ka * math.log(v_in - kb)) + kc
+                    v_out = (
+                        0.17883277 * math.log(v_in - 0.28466892)) + 0.55991073
                 v_out *= 2.0
             elif self.config['gamma'] == 'S-Log':
-                v_out = (0.432699 * math.log10(v_in + 0.037584)) + 0.616596 + 0.03
+                v_out = (
+                    0.432699 * math.log10(v_in + 0.037584)) + 0.616596 + 0.03
                 v_out /= 0.653529251225
             elif self.config['gamma'] == 'Canon-Log':
-                v_out = (0.529136 * math.log10((10.1596 * v_in) + 1.0)) + 0.0730597
+                v_out = (
+                    0.529136 * math.log10((10.1596 * v_in) + 1.0)) + 0.0730597
                 v_out /= 0.627408304538
             else:
                 v_out = v_in ** gamma
