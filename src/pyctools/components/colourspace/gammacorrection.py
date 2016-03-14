@@ -51,6 +51,9 @@ class GammaCorrect(Transformer):
     The ``'S-Log'`` option is taken from a Sony document
     https://pro.sony.com/bbsccms/assets/files/mkt/cinema/solutions/slog_manual.pdf
 
+    ``'Canon-Log'`` is taken from a white paper on the EOS C300 camera:
+    http://learn.usa.canon.com/app/pdfs/white_papers/White_Paper_Clog_optoelectronic.pdf
+
     The ``range`` config item specifies the gamma corrected black to
     white range. It can be either ``'studio'`` (16..235) or
     ``'computer'`` (0..255). The linear intensity black and white values
@@ -81,8 +84,9 @@ class GammaCorrect(Transformer):
         ('bt709',      (0.45,          4.5,   0.018,     0.099)),
         ('srgb',       (1.0 / 2.4,     12.92, 0.0031308, 0.055)),
         ('adobe_rgb',  (256.0 / 563.0, 0.0,   0.0,       0.0)),
-        ('hybrid_log', (1.0 / 2.0,     0.0,   0.0,       0.0)),
+        ('hybrid_log', (None,          0.0,   0.0,       0.0)),
         ('S-Log',      (None,          0.0,   0.0,       0.0)),
+        ('Canon-Log',  (None,          0.0,  -0.0452664, 0.0)),
         ])
     __doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in gamma_toe]))
 
@@ -93,14 +97,14 @@ class GammaCorrect(Transformer):
         self.config['white'] = ConfigFloat(value=255.0, decimals=2)
         self.config['inverse'] = ConfigBool()
         self.config['knee'] = ConfigBool()
-        self.config['knee_point'] = ConfigFloat(value=0.9, decimals=2)
-        self.config['knee_slope'] = ConfigFloat(value=0.25, decimals=2)
+        self.config['knee_point'] = ConfigFloat(value=0.9, decimals=3)
+        self.config['knee_slope'] = ConfigFloat(value=0.25, decimals=3)
         self.initialised = False
 
     def adjust_params(self):
         self.initialised = True
         gamma, toe, threshold, k_a = self.gamma_toe[self.config['gamma']]
-        # threshold for switch from linear to exponential
+        # threshold for switch from toe to exponential gamma
         if threshold is None:
             # first approximate value, ignoring extra scaling factor a
             threshold = (toe / gamma) ** (1.0 / (gamma - 1.0))
@@ -153,6 +157,8 @@ class GammaCorrect(Transformer):
                 v_out *= 2.0
             elif self.config['gamma'] == 'S-Log':
                 v_out = (0.432699 * math.log10(v_in + 0.037584)) + 0.616596 + 0.03
+            elif self.config['gamma'] == 'Canon-Log':
+                v_out = (0.529136 * math.log10((10.1596 * v_in) + 1.0)) + 0.0730597
             else:
                 v_out = v_in ** gamma
                 v_out = ((1.0 + k_a) * v_out) - k_a
@@ -240,8 +246,13 @@ class PiecewiseGammaCorrect(Transformer):
         self.initialised = True
         in_vals = eval(self.config['in_vals'])
         out_vals = eval(self.config['out_vals'])
+        if len(in_vals) > len(out_vals):
+            in_vals = in_vals[:len(out_vals)]
+        elif len(out_vals) > len(in_vals):
+            out_vals = out_vals[:len(in_vals)]
         self.in_vals = numpy.array(in_vals, dtype=pt_float)
         self.out_vals = numpy.array(out_vals, dtype=pt_float)
+        # send function output
         func_frame = self.outframe_pool['function'].get()
         func_frame.data = numpy.stack((self.in_vals, self.out_vals))
         func_frame.type = 'func'
