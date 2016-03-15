@@ -160,16 +160,23 @@ class GammaCorrect(Transformer):
             func = self.eval_canon_log
         else:
             func = self.eval_gamma
+        x_step = 0.01
         while v_in < 10.0:
-            v_in += 0.01
-            if knee:
-                v_in = min(v_in, knee_point)
-            v_out = func(v_in)
-            if abs(v_out - out_val[-1]) >= 0.005:
-                in_val.append(v_in)
-                out_val.append(v_out)
+            v_in += x_step
             if knee and v_in >= knee_point:
                 break
+            v_out = func(v_in)
+            y_step = abs(v_out - out_val[-1])
+            if y_step < 0.02 and x_step < 0.5:
+                v_in -= x_step
+                x_step *= 2.0
+                continue
+            if y_step > 0.5 and x_step > 0.02:
+                v_in -= x_step
+                x_step /= 2.0
+                continue
+            in_val.append(v_in)
+            out_val.append(v_out)
         # knee section just needs another two endpoints
         if knee:
             v_in = knee_point
