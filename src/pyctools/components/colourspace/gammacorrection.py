@@ -273,14 +273,27 @@ class PiecewiseGammaCorrect(Transformer):
         self.in_vals = numpy.array(in_vals, dtype=pt_float)
         self.out_vals = numpy.array(out_vals, dtype=pt_float)
         # smooth data
-        if self.config['smooth']:
-            tck = interpolate.splrep(self.in_vals, self.out_vals)
+        if interpolate and self.config['smooth'] and len(in_vals) >= 4:
+            # extend input to straighten ends of interpolation
+            dx0 = (self.in_vals[1] - self.in_vals[0]) / 2.0
+            dy0 = (self.out_vals[1] - self.out_vals[0]) / 2.0
+            dx1 = (self.in_vals[-1] - self.in_vals[-2]) / 2.0
+            dy1 = (self.out_vals[-1] - self.out_vals[-2]) / 2.0
+            x = numpy.concatenate((
+                [self.in_vals[0]-dx0, self.in_vals[0], self.in_vals[0]+dx0],
+                self.in_vals[1:-2],
+                [self.in_vals[-1]-dx1, self.in_vals[-1], self.in_vals[-1]+dx1]))
+            y = numpy.concatenate((
+                [self.out_vals[0]-dy0, self.out_vals[0], self.out_vals[0]+dy0],
+                self.out_vals[1:-2],
+                [self.out_vals[-1]-dy1, self.out_vals[-1], self.out_vals[-1]+dy1]))
+            tck = interpolate.splrep(x, y)
             step = (self.in_vals[-1] - self.in_vals[0]) / 256.0
-            self.in_vals = numpy.arange(
+            x = numpy.arange(
                 self.in_vals[0], self.in_vals[-1] + step, step)
-            self.out_vals = interpolate.splev(self.in_vals, tck)
-            self.in_vals = self.in_vals.astype(pt_float)
-            self.out_vals = self.out_vals.astype(pt_float)
+            y = interpolate.splev(x, tck)
+            self.in_vals = x.astype(pt_float)
+            self.out_vals = y.astype(pt_float)
         # send function output
         func_frame = self.outframe_pool['function'].get()
         func_frame.data = numpy.stack((self.in_vals, self.out_vals))
@@ -289,6 +302,8 @@ class PiecewiseGammaCorrect(Transformer):
         audit += 'data = PiecewiseGammaFunction()\n'
         audit += '    in_vals: {}\n'.format(self.config['in_vals'])
         audit += '    out_vals: {}\n'.format(self.config['out_vals'])
+        if interpolate:
+            audit += '    smoothing: {}\n'.format(self.config['smooth'])
         func_frame.metadata.set('audit', audit)
         self.send('function', func_frame)
 
