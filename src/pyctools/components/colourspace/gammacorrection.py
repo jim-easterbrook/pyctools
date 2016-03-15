@@ -113,29 +113,29 @@ class GammaCorrect(Transformer):
 
     def adjust_params(self):
         self.initialised = True
-        gamma, toe, threshold, k_a = self.gamma_toe[self.config['gamma']]
+        self.gamma, toe, threshold, self.a = self.gamma_toe[self.config['gamma']]
         # threshold for switch from toe to exponential gamma
         if threshold is None:
             # first approximate value, ignoring extra scaling factor a
-            threshold = (toe / gamma) ** (1.0 / (gamma - 1.0))
+            threshold = (toe / self.gamma) ** (1.0 / (self.gamma - 1.0))
             # refine using Newton-Raphson method
             last_err = 1.0
             while True:
-                f_p = (((1.0 - gamma) * (threshold ** gamma)) +
-                       ((gamma / toe) *
-                        (threshold ** (gamma - 1.0))) - 1.0)
-                df_p = (((1.0 - gamma) * gamma *
-                         (threshold ** (gamma - 1.0))) +
-                        ((gamma / toe) * (gamma - 1.0) *
-                         (threshold ** (gamma - 2.0))))
+                f_p = (((1.0 - self.gamma) * (threshold ** self.gamma)) +
+                       ((self.gamma / toe) *
+                        (threshold ** (self.gamma - 1.0))) - 1.0)
+                df_p = (((1.0 - self.gamma) * self.gamma *
+                         (threshold ** (self.gamma - 1.0))) +
+                        ((self.gamma / toe) * (self.gamma - 1.0) *
+                         (threshold ** (self.gamma - 2.0))))
                 err = f_p / df_p
                 if abs(err) >= last_err:
                     break
                 last_err = abs(err)
                 threshold -= err
-        if k_a is None:
-            k_a = (1.0 - gamma) * (threshold ** gamma)
-            k_a = k_a / (1.0 - k_a)
+        if self.a is None:
+            self.a = (1.0 - self.gamma) * (threshold ** self.gamma)
+            self.a = self.a / (1.0 - self.a)
         # make list of in and out values
         in_val = []
         out_val = []
@@ -152,39 +152,33 @@ class GammaCorrect(Transformer):
         in_val.append(v_in)
         out_val.append(v_out)
         # complicated section needs many points
+        if self.config['gamma'] == 'hybrid_log':
+            func = self.eval_hybrid_log
+        elif self.config['gamma'] == 'S-Log':
+            func = self.eval_s_log
+        elif self.config['gamma'] == 'Canon-Log':
+            func = self.eval_canon_log
+        else:
+            func = self.eval_gamma
         while v_in < 10.0:
             v_in += 0.01
             if knee:
                 v_in = min(v_in, knee_point)
-            if self.config['gamma'] == 'hybrid_log':
-                if v_in <= 1.0:
-                    v_out = 0.5 * math.sqrt(v_in)
-                else:
-                    v_out = (
-                        0.17883277 * math.log(v_in - 0.28466892)) + 0.55991073
-                v_out *= 2.0
-            elif self.config['gamma'] == 'S-Log':
-                v_out = (
-                    0.432699 * math.log10(v_in + 0.037584)) + 0.616596 + 0.03
-                v_out /= 0.653529251225
-            elif self.config['gamma'] == 'Canon-Log':
-                v_out = (
-                    0.529136 * math.log10((10.1596 * v_in) + 1.0)) + 0.0730597
-                v_out /= 0.627408304538
-            else:
-                v_out = v_in ** gamma
-                v_out = ((1.0 + k_a) * v_out) - k_a
+            v_out = func(v_in)
             if abs(v_out - out_val[-1]) >= 0.005:
                 in_val.append(v_in)
                 out_val.append(v_out)
             if knee and v_in >= knee_point:
                 break
-        # knee section just needs another endpoint
+        # knee section just needs another two endpoints
         if knee:
-            v_in = max(10.0, in_val[-1] + 0.1)
-            v_out = out_val[-1] + (knee_slope * (v_in - in_val[-1]))
+            v_in = knee_point
+            v_out = func(v_in)
             in_val.append(v_in)
             out_val.append(v_out)
+            step = max(10.0 - v_in, 0.1)
+            in_val.append(v_in + step)
+            out_val.append(v_out + (knee_slope * step))
         self.in_val = numpy.array(in_val, dtype=pt_float)
         self.out_val = numpy.array(out_val, dtype=pt_float)
         # scale "linear" values
@@ -206,6 +200,29 @@ class GammaCorrect(Transformer):
         audit += 'data = GammaFunction({})\n'.format(self.config['gamma'])
         func_frame.metadata.set('audit', audit)
         self.send('function', func_frame)
+
+    def eval_hybrid_log(self, v_in):
+        if v_in <= 1.0:
+            v_out = 0.5 * math.sqrt(v_in)
+        else:
+            v_out = (0.17883277 * math.log(v_in - 0.28466892)) + 0.55991073
+        v_out *= 2.0
+        return v_out
+
+    def eval_s_log(self, v_in):
+        v_out = (0.432699 * math.log10(v_in + 0.037584)) + 0.616596 + 0.03
+        v_out /= 0.653529251225
+        return v_out
+
+    def eval_canon_log(self, v_in):
+        v_out = (0.529136 * math.log10((10.1596 * v_in) + 1.0)) + 0.0730597
+        v_out /= 0.627408304538
+        return v_out
+
+    def eval_gamma(self, v_in):
+        v_out = v_in ** self.gamma
+        v_out = ((1.0 + self.a) * v_out) - self.a
+        return v_out
 
     def transform(self, in_frame, out_frame):
         if self.update_config() or not self.initialised:
