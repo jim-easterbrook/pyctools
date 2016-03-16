@@ -27,6 +27,13 @@ try:
     pgi.install_as_gi()
 except ImportError:
     pass
+import gi
+for gexiv2_vsn in ('0.10', '0.4'):
+    try:
+        gi.require_version('GExiv2', gexiv2_vsn)
+        break
+    except ValueError:
+        pass
 from gi.repository import GObject, GExiv2
 import numpy
 import PIL.Image
