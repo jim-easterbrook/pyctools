@@ -117,6 +117,10 @@ class AnalyseVignette(Transformer):
     coefficients produced. It is probably a good idea to use the
     smallest number that gives acceptable results.
 
+    The ``function`` output emits the measured and fitted gain
+    functions. It can be connected to a
+    :py:class:`~pyctools.components.io.plotdata.PlotData` component.
+
     ===========  =====  ====
     Config
     ===========  =====  ====
@@ -125,6 +129,7 @@ class AnalyseVignette(Transformer):
     ===========  =====  ====
 
     """
+    outputs = ['output', 'function']
 
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
@@ -168,4 +173,12 @@ class AnalyseVignette(Transformer):
         for i in range(order):
             k = fit[-(i+2)] / fit[-1]
             print('r{} = {}'.format(i+1, k))
+        # send plottable data
+        func_frame = self.outframe_pool['function'].get()
+        func_frame.data = numpy.stack((x, y, numpy.polyval(fit, x)))
+        func_frame.type = 'func'
+        audit = func_frame.metadata.get('audit')
+        audit += 'data = VignetteCorrectorFunction()\n'
+        func_frame.metadata.set('audit', audit)
+        self.send('function', func_frame)
         return True
