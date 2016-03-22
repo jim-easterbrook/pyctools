@@ -41,7 +41,7 @@ class VignetteCorrector(Transformer):
     (0..255).
 
     The ``r1`` ... ``r4`` parameters set how the correction varies with
-    radius^n. The first affects the whole picture, the higher powers
+    radius^2n. The first affects the whole picture, the higher powers
     have more effect at the edges. The :py:class:`AnalyseVignette`
     component can be used to generate an optimised set of values.
 
@@ -49,10 +49,10 @@ class VignetteCorrector(Transformer):
     Config
     ===========  =====  ====
     ``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
-    ``r1``       float  Amount of radius correction
-    ``r2``       float  Amount of radius^2 correction
-    ``r3``       float  Amount of radius^3 correction
-    ``r4``       float  Amount of radius^4 correction
+    ``r1``       float  Amount of radius^2 correction
+    ``r2``       float  Amount of radius^4 correction
+    ``r3``       float  Amount of radius^6 correction
+    ``r4``       float  Amount of radius^8 correction
     ===========  =====  ====
 
     """
@@ -83,9 +83,9 @@ class VignetteCorrector(Transformer):
             index = numpy.mgrid[0:h, 0:w].astype(pt_float)
             y = (index[0] - pt_float(yc)) / pt_float(r0)
             x = (index[1] - pt_float(xc)) / pt_float(r0)
-            r = numpy.sqrt((x ** 2) + (y ** 2))
-            self.gain = ((r * pt_float(r1)) + ((r ** 2) * pt_float(r2)) +
-                         ((r ** 3) * pt_float(r3)) + ((r ** 4) * pt_float(r4)) +
+            r_sq = (x ** 2) + (y ** 2)
+            self.gain = ((r_sq * pt_float(r1)) + ((r_sq ** 2) * pt_float(r2)) +
+                         ((r_sq ** 3) * pt_float(r3)) + ((r_sq ** 4) * pt_float(r4)) +
                          pt_float(1.0))
             self.gain = numpy.expand_dims(self.gain, axis=2)
         # subtract black level
@@ -161,21 +161,23 @@ class AnalyseVignette(Transformer):
             hi = (float(i) + 0.5) / float(bands - 1)
             mask = numpy.logical_or(r < lo, r >= hi)
             mean.append(numpy.ma.array(data, mask=mask).mean())
+        x = numpy.array(x)
         # calculate required gain for each radial band
         norm_factor = mean[0]
         y = []
         for i, value in enumerate(mean):
             y.append(norm_factor / mean[i])
-        # fit a polynomial to the required gain
+        y = numpy.array(y)
+        # fit a polynomial in x^2 to the required gain
         order = self.config['order']
-        fit = numpy.polyfit(x, y, order)
+        fit = numpy.polyfit(x * x, y, order)
         # print out parameters
         for i in range(order):
             k = fit[-(i+2)] / fit[-1]
             print('r{} = {}'.format(i+1, k))
         # send plottable data
         func_frame = self.outframe_pool['function'].get()
-        func_frame.data = numpy.stack((x, y, numpy.polyval(fit, x)))
+        func_frame.data = numpy.stack((x, y, numpy.polyval(fit, x * x)))
         func_frame.type = 'func'
         audit = func_frame.metadata.get('audit')
         audit += 'data = VignetteCorrectorFunction()\n'
