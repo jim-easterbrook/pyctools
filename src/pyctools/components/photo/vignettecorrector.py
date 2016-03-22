@@ -40,8 +40,8 @@ class VignetteCorrector(Transformer):
     ranges. It can be either ``'studio'`` (16..235) or ``'computer'``
     (0..255).
 
-    The ``r1`` ... ``r4`` parameters set how the correction varies with
-    radius^2n. The first affects the whole picture, the higher powers
+    The ``r2`` ... ``r8`` parameters set how the correction varies with
+    radius^n. The first affects the whole picture, the higher powers
     have more effect at the edges. The :py:class:`AnalyseVignette`
     component can be used to generate an optimised set of values.
 
@@ -49,20 +49,20 @@ class VignetteCorrector(Transformer):
     Config
     ===========  =====  ====
     ``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
-    ``r1``       float  Amount of radius^2 correction
-    ``r2``       float  Amount of radius^4 correction
-    ``r3``       float  Amount of radius^6 correction
-    ``r4``       float  Amount of radius^8 correction
+    ``r2``       float  Amount of radius^2 correction
+    ``r4``       float  Amount of radius^4 correction
+    ``r6``       float  Amount of radius^6 correction
+    ``r8``       float  Amount of radius^8 correction
     ===========  =====  ====
 
     """
 
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
-        self.config['r1'] = ConfigFloat(decimals=4)
         self.config['r2'] = ConfigFloat(decimals=4)
-        self.config['r3'] = ConfigFloat(decimals=4)
         self.config['r4'] = ConfigFloat(decimals=4)
+        self.config['r6'] = ConfigFloat(decimals=4)
+        self.config['r8'] = ConfigFloat(decimals=4)
         self.gain = None
 
     def transform(self, in_frame, out_frame):
@@ -71,10 +71,10 @@ class VignetteCorrector(Transformer):
         # get data
         data = in_frame.as_numpy(dtype=pt_float, copy=True)
         # generate correction function
-        r1 = self.config['r1']
         r2 = self.config['r2']
-        r3 = self.config['r3']
         r4 = self.config['r4']
+        r6 = self.config['r6']
+        r8 = self.config['r8']
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
             xc = float(w - 1) / 2.0
@@ -84,8 +84,10 @@ class VignetteCorrector(Transformer):
             y = (index[0] - pt_float(yc)) / pt_float(r0)
             x = (index[1] - pt_float(xc)) / pt_float(r0)
             r_sq = (x ** 2) + (y ** 2)
-            self.gain = ((r_sq * pt_float(r1)) + ((r_sq ** 2) * pt_float(r2)) +
-                         ((r_sq ** 3) * pt_float(r3)) + ((r_sq ** 4) * pt_float(r4)) +
+            self.gain = (( r_sq       * pt_float(r2)) +
+                         ((r_sq ** 2) * pt_float(r4)) +
+                         ((r_sq ** 3) * pt_float(r6)) +
+                         ((r_sq ** 4) * pt_float(r8)) +
                          pt_float(1.0))
             self.gain = numpy.expand_dims(self.gain, axis=2)
         # subtract black level
@@ -100,7 +102,7 @@ class VignetteCorrector(Transformer):
         # add audit
         audit = out_frame.metadata.get('audit')
         audit += 'data = VignetteCorrector(data, {}, {}, {}, {})\n'.format(
-            r1, r2, r3, r4)
+            r2, r4, r6, r8)
         out_frame.metadata.set('audit', audit)
         return True
 
@@ -109,7 +111,7 @@ class AnalyseVignette(Transformer):
     """Vignette analysis.
 
     Measures the average luminance of 50 circular bands of an input grey
-    image, then calculates the optimum ``r1`` ... ``rn`` parameters to
+    image, then calculates the optimum ``r2`` ... ``rn`` parameters to
     correct it. This is easier to use than trying to set the parameters
     manually.
 
@@ -174,7 +176,7 @@ class AnalyseVignette(Transformer):
         # print out parameters
         for i in range(order):
             k = fit[-(i+2)] / fit[-1]
-            print('r{} = {}'.format(i+1, k))
+            print('r{} = {:.4f}'.format((i + 1) * 2, k))
         # send plottable data
         func_frame = self.outframe_pool['function'].get()
         func_frame.data = numpy.stack((x, y, numpy.polyval(fit, x * x)))
