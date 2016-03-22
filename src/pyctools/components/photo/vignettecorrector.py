@@ -153,26 +153,27 @@ class AnalyseVignette(Transformer):
         y = (index[0] - pt_float(yc)) / pt_float(r0)
         x = (index[1] - pt_float(xc)) / pt_float(r0)
         r = numpy.sqrt((x ** 2) + (y ** 2))
-        # calculate mean of each radial band
+        # calculate required gain for each radial band
         bands = 50
         x = []
-        mean = []
+        y = []
+        w = []
         for i in range(bands):
             x.append(float(i) / float(bands - 1))
             lo = (float(i) - 0.5) / float(bands - 1)
             hi = (float(i) + 0.5) / float(bands - 1)
-            mask = numpy.logical_or(r < lo, r >= hi)
-            mean.append(numpy.ma.array(data, mask=mask).mean())
+            mask = numpy.logical_and(r >= lo, r < hi)
+            mean = numpy.mean(data[mask])
+            std = numpy.std(data[mask])
+            w.append(1.0 / std)
+            if i == 0:
+                norm_factor = mean
+            y.append(norm_factor / mean)
         x = numpy.array(x)
-        # calculate required gain for each radial band
-        norm_factor = mean[0]
-        y = []
-        for i, value in enumerate(mean):
-            y.append(norm_factor / mean[i])
         y = numpy.array(y)
         # fit a polynomial in x^2 to the required gain
         order = self.config['order']
-        fit = numpy.polyfit(x * x, y, order)
+        fit = numpy.polyfit(x * x, y, order, w=w)
         # print out parameters
         for i in range(order):
             k = fit[-(i+2)] / fit[-1]
