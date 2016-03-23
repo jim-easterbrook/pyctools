@@ -206,17 +206,17 @@ class Component(ConfigMixin):
         for key, value in config.items():
             self.config[key] = value
         # create a threadsafe buffer for each input and adopt its input method
-        for input in self.inputs:
-            self.input_buffer[input] = InputBuffer(self.new_frame)
-            setattr(self, input, self.input_buffer[input].input)
+        for name in self.inputs:
+            self.input_buffer[name] = InputBuffer(self.new_frame)
+            setattr(self, name, self.input_buffer[name].input)
         # create object pool for each output
         if self.with_outframe_pool:
-            for output in self.outputs:
-                self.outframe_pool[output] = ObjectPool(Frame, self.new_frame)
+            for name in self.outputs:
+                self.outframe_pool[name] = ObjectPool(Frame, self.new_frame)
         # initialise output connections lists
         self._component_connections = {}
-        for output in self.outputs:
-            self._component_connections[output] = []
+        for name in self.outputs:
+            self._component_connections[name] = []
 
     def initialise(self):
         """Over ride this in your derived class if you need to do any
@@ -313,8 +313,8 @@ class Component(ConfigMixin):
         self.on_start()
         if self.with_outframe_pool:
             self.update_config()
-            for output in self.outframe_pool.values():
-                output.start(self.config['outframe_pool_len'])
+            for out_pool in self.outframe_pool.values():
+                out_pool.start(self.config['outframe_pool_len'])
 
     def stop_event(self):
         """Called by the event loop when it is stopped.
@@ -325,8 +325,8 @@ class Component(ConfigMixin):
         """
         self.logger.debug('stopping')
         self.on_stop()
-        for output in self.outputs:
-            self.send(output, None)
+        for name in self.outputs:
+            self.send(name, None)
 
     def is_pipe_end(self):
         """Is component the last one in a pipeline.
@@ -342,8 +342,8 @@ class Component(ConfigMixin):
         :rtype: :py:class:`bool`
 
         """
-        for output in self.outputs:
-            if self._component_connections[output]:
+        for name in self.outputs:
+            if self._component_connections[name]:
                 return False
         return True
 
@@ -372,43 +372,41 @@ class Component(ConfigMixin):
 
         """
         # check output frames are available
-        for output in self.outframe_pool.values():
-            if not output.available():
+        for out_pool in self.outframe_pool.values():
+            if not out_pool.available():
                 return
         # check input frames are available, and get current frame number
         frame_no = 0
-        for input in self.input_buffer.values():
-            if not input.available():
+        for in_buff in self.input_buffer.values():
+            if not in_buff.available():
                 return
-            in_frame = input.peek()
+            in_frame = in_buff.peek()
             if in_frame is None:
-                input.get()
+                in_buff.get()
                 self.stop()
                 return
-            frame_no = max(frame_no, in_frame.frame_no)
+            if in_frame.frame_no >= 0:
+                frame_no = max(frame_no, in_frame.frame_no)
+            else:
+                # discard any superseded 'static' input
+                while in_buff.available() > 1 and in_buff.peek(1) is not None:
+                    in_buff.get()
         # check for complete set of matching frame numbers
-        for input in self.input_buffer.values():
-            in_frame = input.peek()
+        for in_buff in self.input_buffer.values():
+            in_frame = in_buff.peek()
+            if in_frame.frame_no < 0:
+                # 'static' input
+                continue
             # discard old frames that can never be used
-            while input.available() > 1:
-                if in_frame.frame_no >= frame_no:
-                    break
-                elif in_frame.frame_no < 0:
-                    # new 'static' input available
-                    if input.peek(1) is None:
-                        # don't discard last static input
-                        break
-                    input.get()
-                    in_frame = input.peek()
-                else:
-                    input.get()
-                    in_frame = input.peek()
-                    if in_frame is None:
-                        input.get()
-                        self.stop()
-                        return
+            while in_buff.available() > 1 and in_frame.frame_no < frame_no:
+                in_buff.get()
+                in_frame = in_buff.peek()
+                if in_frame is None:
+                    in_buff.get()
+                    self.stop()
+                    return
             # check for matching frame number
-            if in_frame.frame_no >= 0 and in_frame.frame_no != frame_no:
+            if in_frame.frame_no != frame_no:
                 return
         # now have a full set of correlated inputs to process
         self.process_frame()
