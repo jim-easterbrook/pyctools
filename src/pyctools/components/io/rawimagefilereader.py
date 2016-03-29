@@ -26,7 +26,7 @@ import time
 import numpy
 from rawkit.raw import Raw
 from rawkit.options import (
-    colorspaces, gamma_curves, interpolation, WhiteBalance)
+    colorspaces, gamma_curves, highlight_modes, interpolation, WhiteBalance)
 
 from pyctools.core.config import (
     ConfigBool, ConfigEnum, ConfigFloat, ConfigPath, ConfigStr)
@@ -47,6 +47,7 @@ class RawImageFileReader(Component):
     ``path``                str    Path name of file to be read.
     ``16bit``               bool   Get greater precision than normal 8-bit range.
     ``brightness``          float  Set the gain.
+    ``highlight_mode``      str    Set highlight mode. Possible values: {}.
     ``gamma``               str    Set gamma curve. Possible values: {}.
     ``colourspace``         str    Set colour space. Possible values: {}.
     ``interpolation``       str    Set demosaicing method. Possible values: {}.
@@ -64,6 +65,7 @@ class RawImageFileReader(Component):
     """
 
     __doc__ = __doc__.format(
+        ', '.join(["``'" + x + "'``" for x in highlight_modes._fields]),
         ', '.join(["``'" + x + "'``" for x in gamma_curves._fields]),
         ', '.join(["``'" + x + "'``" for x in colorspaces._fields]),
         ', '.join(["``'" + x + "'``" for x in interpolation._fields]))
@@ -73,20 +75,22 @@ class RawImageFileReader(Component):
 
     def initialise(self):
         self.config['path'] = ConfigPath()
-        self.config['16bit'] = ConfigBool()
+        self.config['16bit'] = ConfigBool(value=True)
         self.config['brightness'] = ConfigFloat(value=1.0, decimals=2)
+        self.config['highlight_mode'] = ConfigEnum(highlight_modes._fields)
         self.config['gamma'] = ConfigEnum(gamma_curves._fields)
-        self.config['colourspace'] = ConfigEnum(colorspaces._fields,
-                                                value='srgb')
-        self.config['interpolation'] = ConfigEnum(interpolation._fields)
+        self.config['colourspace'] = ConfigEnum(
+            colorspaces._fields, value='srgb')
+        self.config['interpolation'] = ConfigEnum(
+            interpolation._fields, value='ahd')
         self.config['noise_threshold'] = ConfigFloat(value=0, decimals=0)
         self.config['wb_auto'] = ConfigBool(value=False)
         self.config['wb_camera'] = ConfigBool(value=True)
         self.config['wb_greybox'] = ConfigStr()
         self.config['wb_rgbg'] = ConfigStr()
-        self.config['red_scale'] = ConfigFloat(value=1.0, decimals=4)
-        self.config['blue_scale'] = ConfigFloat(value=1.0, decimals=4)
-        self.config['crop'] = ConfigBool()
+        self.config['red_scale'] = ConfigFloat(value=1.0, decimals=5)
+        self.config['blue_scale'] = ConfigFloat(value=1.0, decimals=5)
+        self.config['crop'] = ConfigBool(value=True)
         self.config['use_camera_profile'] = ConfigBool()
 
     def on_start(self):
@@ -98,6 +102,8 @@ class RawImageFileReader(Component):
             raw.options.rotation = 0
             raw.options.use_camera_profile = self.config['use_camera_profile']
             raw.options.brightness = self.config['brightness']
+            raw.options.highlight_mode = getattr(
+                highlight_modes, self.config['highlight_mode'])
             raw.options.chromatic_aberration = (
                 self.config['red_scale'], self.config['blue_scale'])
             if self.config['crop']:
