@@ -20,8 +20,6 @@
 __all__ = ['Modulate']
 __docformat__ = 'restructuredtext en'
 
-import numpy
-
 from pyctools.core.base import Transformer
 
 class Modulate(Transformer):
@@ -65,7 +63,7 @@ class Modulate(Transformer):
     def initialise(self):
         self.cell_frame = None
 
-    def get_cell(self):
+    def get_cell(self, in_data):
         cell_frame = self.input_buffer['cell'].peek()
         if cell_frame == self.cell_frame:
             return True
@@ -74,19 +72,16 @@ class Modulate(Transformer):
             self.logger.error('Cell input must be 4 dimensional')
             self.input_buffer['cell'].get()
             return False
+        if self.cell_data.shape[3] not in (1, in_data.shape[2]):
+            self.logger.warning('Mismatch between %d cells and %d components',
+                                self.cell_data.shape[3], in_data.shape[2])
         self.cell_frame = cell_frame
-        self.cell_count = None
         return True
 
     def transform(self, in_frame, out_frame):
-        if not self.get_cell():
-            return False
         data = in_frame.as_numpy(copy=True)
-        if self.cell_count != self.cell_data.shape[3]:
-            self.cell_count = self.cell_data.shape[3]
-            if self.cell_count != 1 and self.cell_count != data.shape[2]:
-                self.logger.warning('Mismatch between %d cells and %d components',
-                                    self.cell_count, data.shape[2])
+        if not self.get_cell(data):
+            return False
         k = in_frame.frame_no % self.cell_data.shape[0]
         cell = self.cell_data[k]
         ylen = min(cell.shape[0], data.shape[0])
