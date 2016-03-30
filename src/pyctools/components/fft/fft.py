@@ -34,9 +34,9 @@ class FFT(Transformer):
     It is padded out to an integer number of tiles in each direction. If
     you need overlapping tiles, preprocess your images with the
     :py:class:`Tile` component. If you want to window the data before
-    computing the FFT, use the :py:mod:`Modulate
-    <pyctools.components.modulate.modulate>` component with a window
-    function from :py:mod:`.window`.
+    computing the FFT, use the
+    :py:class:`~pyctools.components.modulate.Modulate` component with a
+    window function from :py:mod:`.window`.
 
     Inputs can be real or complex. The output type is set by the
     ``output`` config value.
