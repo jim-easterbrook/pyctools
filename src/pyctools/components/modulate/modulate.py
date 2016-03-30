@@ -23,7 +23,6 @@ __docformat__ = 'restructuredtext en'
 import numpy
 
 from pyctools.core.base import Transformer
-from .modulatecore import modulate_frame
 
 class Modulate(Transformer):
     """Modulate or sample an image.
@@ -70,7 +69,7 @@ class Modulate(Transformer):
         cell_frame = self.input_buffer['cell'].peek()
         if cell_frame == self.cell_frame:
             return True
-        self.cell_data = cell_frame.as_numpy(dtype=numpy.float32)
+        self.cell_data = cell_frame.as_numpy()
         if self.cell_data.ndim != 4:
             self.logger.error('Cell input must be 4 dimensional')
             self.input_buffer['cell'].get()
@@ -82,14 +81,22 @@ class Modulate(Transformer):
     def transform(self, in_frame, out_frame):
         if not self.get_cell():
             return False
-        in_data = in_frame.as_numpy(dtype=numpy.float32)
+        data = in_frame.as_numpy(copy=True)
         if self.cell_count != self.cell_data.shape[3]:
             self.cell_count = self.cell_data.shape[3]
-            if self.cell_count != 1 and self.cell_count != in_data.shape[2]:
+            if self.cell_count != 1 and self.cell_count != data.shape[2]:
                 self.logger.warning('Mismatch between %d cells and %d components',
-                                    self.cell_count, in_data.shape[2])
-        out_frame.data = modulate_frame(
-            in_data, self.cell_data, in_frame.frame_no)
+                                    self.cell_count, data.shape[2])
+        k = in_frame.frame_no % self.cell_data.shape[0]
+        cell = self.cell_data[k]
+        ylen = min(cell.shape[0], data.shape[0])
+        xlen = min(cell.shape[1], data.shape[1])
+        comps = min(cell.shape[2], data.shape[2])
+        for j in range(ylen):
+            for i in range(xlen):
+                for c in range(comps):
+                    data[j::ylen, i::xlen, c::comps] *= cell[j, i, c]
+        out_frame.data = data
         audit = out_frame.metadata.get('audit')
         audit += 'data = Modulate(data)\n'
         audit += '    cell: {\n%s}\n' % (
