@@ -37,6 +37,7 @@ if not use_qt5:
     from PyQt4 import QtCore, QtGui, QtOpenGL
     QtWidgets = QtGui
     from PyQt4.QtCore import Qt
+    QtWidgets.QOpenGLWidget = QtWidgets.QWidget
 
 qt_version_info = namedtuple(
     'qt_version_info', ('major', 'minor', 'micro'))._make(
