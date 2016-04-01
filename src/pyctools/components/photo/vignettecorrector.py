@@ -29,6 +29,13 @@ from pyctools.core.config import ConfigEnum, ConfigFloat, ConfigInt
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
 
+def radius_squared(w, h):
+    xc = float(w - 1) / 2.0
+    yc = float(h - 1) / 2.0
+    index = numpy.mgrid[0:h, 0:w]
+    return ((((index[1] - xc) ** 2) + ((index[0] - yc) ** 2)) /
+            ((xc ** 2) + (yc ** 2)))
+
 class VignetteCorrector(Transformer):
     """Vignette corrector.
 
@@ -77,13 +84,7 @@ class VignetteCorrector(Transformer):
         r8 = self.config['r8']
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
-            xc = float(w - 1) / 2.0
-            yc = float(h - 1) / 2.0
-            r0 = math.sqrt((xc ** 2) + (yc ** 2))
-            index = numpy.mgrid[0:h, 0:w].astype(pt_float)
-            y = (index[0] - pt_float(yc)) / pt_float(r0)
-            x = (index[1] - pt_float(xc)) / pt_float(r0)
-            r_sq = (x ** 2) + (y ** 2)
+            r_sq = radius_squared(w, h)
             self.gain = (( r_sq       * pt_float(r2)) +
                          ((r_sq ** 2) * pt_float(r4)) +
                          ((r_sq ** 3) * pt_float(r6)) +
@@ -146,21 +147,16 @@ class AnalyseVignette(Transformer):
             data -= pt_float(16.0)
         # compute normalised radius
         h, w = data.shape[:2]
-        xc = float(w - 1) / 2.0
-        yc = float(h - 1) / 2.0
-        r0 = math.sqrt((xc ** 2) + (yc ** 2))
-        index = numpy.mgrid[0:h, 0:w].astype(pt_float)
-        y = (index[0] - pt_float(yc)) / pt_float(r0)
-        x = (index[1] - pt_float(xc)) / pt_float(r0)
-        r = numpy.sqrt((x ** 2) + (y ** 2))
+        r = numpy.sqrt(radius_squared(w, h))
         # calculate required gain for each radial band
         bands = 50
         x = []
         y = []
         w = []
+        hi = 0.0
         for i in range(bands):
             x.append(float(i) / float(bands - 1))
-            lo = (float(i) - 0.5) / float(bands - 1)
+            lo = hi
             hi = (float(i) + 0.5) / float(bands - 1)
             mask = numpy.logical_and(r >= lo, r < hi)
             mean = numpy.mean(data[mask])
@@ -171,6 +167,9 @@ class AnalyseVignette(Transformer):
             y.append(norm_factor / mean)
         x = numpy.array(x)
         y = numpy.array(y)
+        w = numpy.array(w)
+        # boost weighting at centre
+        w[0] *= 100.0
         # fit a polynomial in x^2 to the required gain
         order = self.config['order']
         fit = numpy.polyfit(x * x, y, order, w=w)
