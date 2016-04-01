@@ -84,12 +84,8 @@ class VignetteCorrector(Transformer):
         r8 = self.config['r8']
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
-            r_sq = radius_squared(w, h)
-            self.gain = (( r_sq       * pt_float(r2)) +
-                         ((r_sq ** 2) * pt_float(r4)) +
-                         ((r_sq ** 3) * pt_float(r6)) +
-                         ((r_sq ** 4) * pt_float(r8)) +
-                         pt_float(1.0))
+            self.gain = numpy.polyval(
+                [r8, r6, r4, r2, 1.0], radius_squared(w, h))
             self.gain = numpy.expand_dims(self.gain, axis=2)
         # subtract black level
         if self.config['range'] == 'studio':
@@ -172,10 +168,11 @@ class AnalyseVignette(Transformer):
         w[0] *= 100.0
         # fit a polynomial in x^2 to the required gain
         order = self.config['order']
-        fit = numpy.polyfit(x * x, y, order, w=w)
+        fit = numpy.polyfit(x * x, y, order, rcond=bands * 1.0e-4, w=w)
+        fit /= fit[-1]
         # print out parameters
         for i in range(order):
-            k = fit[-(i+2)] / fit[-1]
+            k = fit[-(i+2)]
             print('r{} = {:.4f}'.format((i + 1) * 2, k))
         # send plottable data
         func_frame = self.outframe_pool['function'].get()
