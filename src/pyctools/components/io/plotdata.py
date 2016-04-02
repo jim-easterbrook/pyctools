@@ -38,20 +38,30 @@ class PlotData(Component):
     event_loop = QtEventLoop
 
     def initialise(self):
-        self.lines = []
+        self.first_plot = True
 
     def process_frame(self):
         in_frame = self.input_buffer['input'].get()
+        labels = eval(in_frame.metadata.get('labels', '[]'))
         data = in_frame.as_numpy()
         x = data[0]
-        if self.lines:
+        if self.first_plot:
+            plt.ion()
+            self.lines = []
+            for i, y in enumerate(data[1:]):
+                self.lines.append(plt.plot(x, y, '-')[0])
+        else:
             for i, y in enumerate(data[1:]):
                 self.lines[i].set_xdata(x)
                 self.lines[i].set_ydata(y)
-            plt.draw()
-        else:
-            plt.ion()
-            for y in data[1:]:
-                self.lines.append(plt.plot(x, y, '-')[0])
+        if labels:
+            plt.xlabel(labels[0])
+            if len(labels) > 1:
+                for i in range(min(len(labels) - 1, len(self.lines))):
+                    self.lines[i].set(label=labels[i + 1])
+                plt.legend()
+        if self.first_plot:
             plt.grid(True)
             plt.show()
+        else:
+            plt.draw()
