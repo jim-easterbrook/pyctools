@@ -116,6 +116,12 @@ class AnalyseVignette(Transformer):
     coefficients produced. It is probably a good idea to use the
     smallest number that gives acceptable results.
 
+    ``log_eps`` controls the fitting of the polynomial. If it is too
+    negative the polynomial will be a very tight fit but the
+    coefficients may have very large values and change wildly when there
+    is a small change in input. See :py:func:`numpy.polyfit` for more
+    detail.
+
     The ``function`` output emits the measured and fitted gain
     functions. It can be connected to a
     :py:class:`~pyctools.components.io.plotdata.PlotData` component.
@@ -125,6 +131,7 @@ class AnalyseVignette(Transformer):
     ===========  =====  ====
     ``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
     ``order``    int    Number of ``r`` parameters to generate.
+    ``log_eps``  float  Base 10 logarithm of relative precision.
     ===========  =====  ====
 
     """
@@ -133,6 +140,7 @@ class AnalyseVignette(Transformer):
     def initialise(self):
         self.config['range'] = ConfigEnum(('studio', 'computer'))
         self.config['order'] = ConfigInt(value=3, min_value=1)
+        self.config['log_eps'] = ConfigFloat(value=-4, decimals=1)
 
     def transform(self, in_frame, out_frame):
         self.update_config()
@@ -168,7 +176,8 @@ class AnalyseVignette(Transformer):
         w[0] *= 100.0
         # fit a polynomial in x^2 to the required gain
         order = self.config['order']
-        fit = numpy.polyfit(x * x, y, order, rcond=bands * 1.0e-4, w=w)
+        rcond = float(bands) * (10.0 ** self.config['log_eps'])
+        fit = numpy.polyfit(x * x, y, order, rcond=rcond, w=w)
         fit /= fit[-1]
         # print out parameters
         for i in range(order):
