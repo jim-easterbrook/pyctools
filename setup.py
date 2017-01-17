@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-17  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -28,7 +28,7 @@ version = '0.3.0'
 
 # find packages
 packages = ['pyctools']
-for root, dirs, files in os.walk('src/pyctools'):
+for root, dirs, files in os.walk(os.path.join('src', 'pyctools')):
     package = '.'.join(root.split(os.sep)[1:])
     for name in dirs:
         packages.append(package + '.' + name)
@@ -53,7 +53,7 @@ for package in packages:
             f.write(init_text)
 
 console_scripts = []
-for name in os.listdir('src/pyctools/tools'):
+for name in os.listdir(os.path.join('src', 'pyctools', 'tools')):
     base, ext = os.path.splitext(name)
     if name.startswith('_') or ext != '.py':
         continue
@@ -61,7 +61,7 @@ for name in os.listdir('src/pyctools/tools'):
         'pyctools-{name} = pyctools.tools.{name}:main'.format(name=base))
 
 ext_modules = []
-for root, dirs, files in os.walk('src/pyctools'):
+for root, dirs, files in os.walk(os.path.join('src', 'pyctools')):
     for name in files:
         base, ext = os.path.splitext(name)
         if ext != '.pyx':
