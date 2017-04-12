@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-17  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -321,7 +321,12 @@ class ConfigGrandParent(ConfigParent):
     :py:class:`dict`.
 
     """
-    pass
+    def __repr__(self):
+        result = {}
+        for key, value in self.value.items():
+            if repr(value) != '{}':
+                result[key] = value
+        return repr(result)
 
 
 class ConfigMixin(object):
