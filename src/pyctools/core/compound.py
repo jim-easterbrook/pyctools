@@ -84,24 +84,26 @@ class Compound(object):
         component inputs.
 
     """
-    def __init__(self, **kw):
+    def __init__(self, config={}, linkages={}, **kw):
         super(Compound, self).__init__()
         self.logger = logging.getLogger(self.__class__.__name__)
         self.inputs = []
         self.outputs = []
         # get child components
         self._compound_children = {}
-        self._compound_linkages = {}
         for key, value in kw.items():
-            if key == 'linkages':
-                self._compound_linkages = value
-            else:
-                self._compound_children[key] = value
+            self._compound_children[key] = value
+        # apply config
+        for key, value in config.items():
+            cnf = self._compound_children[key].get_config()
+            for k, v in value.items():
+                cnf[k] = v
+            self._compound_children[key].set_config(cnf)
         # set up linkages
         self._compound_outputs = {}
-        for source in self._compound_linkages:
+        for source in linkages:
             src, outbox = source
-            targets = self._compound_linkages[source]
+            targets = linkages[source]
             if isinstance(targets[0], six.string_types):
                 # not a list of pairs, so make it into one
                 targets = zip(targets[0::2], targets[1::2])
