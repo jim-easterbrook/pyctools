@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-17  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -82,6 +82,9 @@ class Compound(object):
 
     :keyword dict linkages: A mapping from component outputs to
         component inputs.
+
+    :keyword dict config: Additional config to be applied to the
+        components before they are connected.
 
     """
     def __init__(self, config={}, linkages={}, **kw):
