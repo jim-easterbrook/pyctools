@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-17  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -73,7 +73,7 @@ class ImageFileWriterPIL(Transformer):
     :py:meth:`PIL.Image.Image.save`.
 
     See the `PIL documentation
-    <http://pillow.readthedocs.org/en/latest/handbook/image-file-formats.html>`_
+    <http://pillow.readthedocs.io/en/latest/handbook/image-file-formats.html>`_
     for details of the available formats and options.
 
     The ``options`` configuration should be a comma separated list of

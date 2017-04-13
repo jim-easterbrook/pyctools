@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-16  Jim Easterbrook  jim@jim-easterbrook.me.uk
+   Copyright (C) 2014-17  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -93,8 +93,8 @@ The ``ffmpeg -h`` command will show if FFmpeg is already installed.
 
 FFmpeg should be installable with your system's package manager.
 
-`rawkit <https://rawkit.readthedocs.org/>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+`rawkit <https://rawkit.readthedocs.io/>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The :py:mod:`pyctools.components.io.rawimagefilereader` component uses ``rawkit`` to read raw image files such as the CR2 format produced by Canon cameras.
 If you need to process raw images you can install ``rawkit`` using ``pip``::
@@ -157,7 +157,7 @@ As before, a "local" installation can be done instead of a system-wide installat
 Documentation
 ^^^^^^^^^^^^^
 
-Pyctools documentation is available `online <http://pyctools.readthedocs.org/>`_ but it's sometimes useful to have a local copy.
+Pyctools documentation is available `online <http://pyctools.readthedocs.io/>`_ but it's sometimes useful to have a local copy.
 A local copy may be more up to date and should include documentation of all your installed components, not just the core Pyctools ones.
 The documentation is built using a package called `Sphinx <http://sphinx-doc.org/>`_, available from PyPI.
 You will also need the `mock <https://github.com/testing-cabal/mock>`_ package::

@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-17  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -38,7 +38,7 @@ class RawImageFileReader(Component):
     """Read 'raw' still image file (CR2, NEF, etc.).
 
     See the `rawkit documentation
-    <https://rawkit.readthedocs.org/en/latest/api/rawkit.html>`_ for
+    <https://rawkit.readthedocs.io/en/latest/api/rawkit.html>`_ for
     more detail on the configuration options.
 
     ======================  =====  ====

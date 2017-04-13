@@ -13,7 +13,7 @@ Example projects using pyctools include `pyctools-pal <https://github.com/jim-ea
 Documentation
 -------------
 
-The core Pyctools library and components are documented on `ReadTheDocs.org <http://pyctools.readthedocs.org/>`_.
+The core Pyctools library and components are documented on `Read The Docs <http://pyctools.readthedocs.io/>`_.
 If you install additional components you should build a local copy of the documentation to include the extra components.
 
 Requirements
@@ -26,21 +26,21 @@ Requirements
 * `gexiv2 <https://wiki.gnome.org/Projects/gexiv2>`_ to handle metadata.
 * `OpenCV <http://opencv.org/>`_ python bindings (optional) for advanced image processing.
 * `FFmpeg <https://www.ffmpeg.org/>`_ (optional) to read and write video files.
-* `rawkit <https://rawkit.readthedocs.org/>`_ (optional) to read raw image files.
+* `rawkit <https://rawkit.readthedocs.io/>`_ (optional) to read raw image files.
 * `PyQt <http://www.riverbankcomputing.com/software/pyqt/intro>`_ and `PyOpenGL <http://pyopengl.sourceforge.net/>`_ (optional) graphic toolkit used by the Pyctools visual editor and the Qt display components.
 * `Sphinx <http://sphinx-doc.org/>`_ and `mock <https://github.com/testing-cabal/mock>`_ (optional) to build local documentation.
 
 Installation
 ------------
 
-Please see `the documentation <http://pyctools.readthedocs.org/en/latest/manual/installation.html>`_ for full details of how to install Pyctools and its requirements.
+Please see `the documentation <http://pyctools.readthedocs.io/en/latest/manual/installation.html>`_ for full details of how to install Pyctools and its requirements.
 
 Licence
 -------
 
 | Pyctools - a picture processing algorithm development kit.
 | http://github.com/jim-easterbrook/pyctools
-| Copyright (C) 2014-16  Jim Easterbrook  jim@jim-easterbrook.me.uk
+| Copyright (C) 2014-17  Pyctools contributors
 
 This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as

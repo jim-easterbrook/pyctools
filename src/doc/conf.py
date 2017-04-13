@@ -78,7 +78,7 @@ autosummary_generate = False
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-    'PIL': ('http://pillow.readthedocs.org/en/latest/', None),
+    'PIL': ('http://pillow.readthedocs.io/en/latest/', None),
     }
 
 keep_warnings = True
