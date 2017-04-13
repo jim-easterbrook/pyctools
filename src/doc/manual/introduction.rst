@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+   Copyright (C) 2014-17  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -44,6 +44,8 @@ Technologies
 
 There are several options for software frameworks to create interconnected components.
 My previous experience with `Kamaelia <http://www.kamaelia.org/>`_ was very positive so when I discovered that its author (a former colleague) was developing a simpler replacement called `Guild <https://github.com/sparkslabs/guild>`_ it seemed an obvious choice.
+Eventually I needed things that Guild doesn't provide -- particularly the ability to connect one output to multiple inputs -- so Pyctools now has its own Guild-like framework.
+You can still use Guild to connect and run Pyctools components though.
 
 Python's `NumPy <http://www.numpy.org/>`_ library provides an array object that is ideally suited to image processing.
 `OpenCV <http://opencv.org/>`_ has Python bindings that use NumPy arrays and provide a huge range of image processing functions.

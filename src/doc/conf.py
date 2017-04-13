@@ -2,7 +2,7 @@
 #
 # Pyctools - a picture processing algorithm development kit.
 # http://github.com/jim-easterbrook/pyctools
-# Copyright (C) 2014-16  Pyctools contributors
+# Copyright (C) 2014-17  Pyctools contributors
 #
 # This program is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -103,7 +103,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Pyctools'
-copyright = u'2014-16, Pyctools contributors'
+copyright = u'2014-17, Pyctools contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
