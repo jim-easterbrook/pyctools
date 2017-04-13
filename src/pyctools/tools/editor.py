@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-17  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -677,9 +677,15 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         if name:
             self.new_component(name, klass, position)
 
-    def new_component(self, name, klass, position, parent=None, obj=None):
+    def new_component(self, name, klass, position,
+                      parent=None, obj=None, config={}):
         if not obj:
-            obj = klass()
+            obj = klass(config=config)
+        elif config:
+            cnf = obj.get_config()
+            for key, value in config.items():
+                cnf[key] = value
+            obj.set_config(cnf)
         if isinstance(obj, Compound):
             component = CompoundIcon(name, klass, obj, parent=parent)
         else:
@@ -755,11 +761,8 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         comps = {}
         for name, comp in network.components.items():
             comps[name] = self.new_component(
-                name, eval(comp['class']), QtCore.QPointF(*comp['pos']))
-            cnf = comps[name].obj.get_config()
-            for key, value in eval(comp['config']).items():
-                self.set_config(cnf, key, value)
-            comps[name].obj.set_config(cnf)
+                name, eval(comp['class']), QtCore.QPointF(*comp['pos']),
+                config=eval(comp['config']))
         for source in network.linkages:
             src, outbox = source
             targets = network.linkages[source]
