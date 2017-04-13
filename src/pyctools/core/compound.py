@@ -103,6 +103,7 @@ class Compound(object):
                 cnf[k] = v
             self._compound_children[key].set_config(cnf)
         # set up linkages
+        self._compound_linkages = linkages
         self._compound_outputs = {}
         for source in linkages:
             src, outbox = source

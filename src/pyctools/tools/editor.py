@@ -531,35 +531,34 @@ class CompoundIcon(BasicComponentIcon):
             for name in self.obj._compound_children:
                 pos[name] = [50, 50]
             # move components down and/or right according to linkages
-            while True:
+            for i in range(len(self.obj._compound_children) ** 2):
                 no_move = True
                 for source in self.obj._compound_linkages:
                     src, outbox = source
+                    if src == 'self':
+                        continue
                     targets = self.obj._compound_linkages[source]
                     if isinstance(targets[0], six.string_types):
                         # not a list of pairs, so make it into one
                         targets = zip(targets[0::2], targets[1::2])
+                    x = pos[src][0] + 150
+                    connection_no = self.obj._compound_children[src].outputs.index(outbox)
                     for dest, inbox in targets:
-                        if src == 'self' or dest == 'self':
+                        if dest == 'self':
                             continue
-                        x = pos[src][0] + 150
                         if pos[dest][0] < x:
                             pos[dest][0] = x
                             no_move = False
-                        y_off = (150 * (
-                            self.obj._compound_children[dest].inputs.index(inbox) -
-                            self.obj._compound_children[src].outputs.index(outbox)))
-                        y = pos[src][1] - y_off
+                        y = pos[src][1] + (150 * (
+                            connection_no -
+                            self.obj._compound_children[dest].inputs.index(inbox)))
                         if pos[dest][1] < y:
                             pos[dest][1] = y
                             no_move = False
-                        y = pos[dest][1] + y_off
-                        if pos[src][1] < y:
-                            pos[src][1] = y
-                            no_move = False
+                        connection_no += 1
                 if no_move:
                     break
-            x_min, y_min = pos[pos.keys()[0]]
+            x_min, y_min = pos[list(pos.keys())[0]]
             x_max, y_max = x_min, y_min
             for i in pos:
                 x_min = min(x_min, pos[i][0])
