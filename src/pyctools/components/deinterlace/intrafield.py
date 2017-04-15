@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015-16  Pyctools contributors
+#  Copyright (C) 2015-17  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -25,7 +25,7 @@ from pyctools.components.interp.filtergenerator import FilterGenerator
 from pyctools.components.interp.resize import Resize
 from pyctools.core.compound import Compound
 
-def IntraField():
+def IntraField(config={}):
     """Intra field interlace to sequential converter.
 
     This uses a vertical filter with an aperture of 8 lines, generated
@@ -37,10 +37,11 @@ def IntraField():
     """
 
     return Compound(
+        config = config,
         deint = SimpleDeinterlace(),
         interp = Resize(),
-        filgen = FilterGenerator(config={'yaperture' : 8, 'ycut' : 50}),
-        gain = Arithmetic(config={'func' : 'data * pt_float(2)'}),
+        filgen = FilterGenerator(yaperture=8, ycut=50),
+        gain = Arithmetic(func='data * pt_float(2)'),
         linkages = {
             ('self',   'input')  : [('deint',  'input')],
             ('deint',  'output') : [('interp', 'input')],

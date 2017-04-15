@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-17  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -99,7 +99,7 @@ class FFT(Transformer):
         return True
 
 
-def VisualiseFFT():
+def VisualiseFFT(config={}):
     """Convert output of :py:class:`FFT` to a viewable image.
 
     Computes the logarithmic magnitude of a complex FT and scales to
@@ -107,4 +107,5 @@ def VisualiseFFT():
 
     """
     return Arithmetic(
+        config=config,
         func='(numpy.log(numpy.maximum(numpy.absolute(data), 0.0001)) * pt_float(15.0)) + pt_float(40.0)')

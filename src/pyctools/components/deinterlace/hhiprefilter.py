@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015-16  Pyctools contributors
+#  Copyright (C) 2015-17  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -24,7 +24,7 @@ import numpy
 from pyctools.core.frame import Frame
 from pyctools.components.interp.resize import Resize
 
-def HHIPreFilter():
+def HHIPreFilter(config={}):
     """HHI pre-interlace filter.
 
     A widely used prefilter to prevent line twitter when converting
@@ -40,7 +40,7 @@ def HHIPreFilter():
     fil = numpy.array(
         [-4, 8, 25, -123, 230, 728, 230, -123, 25, 8, -4],
         dtype=numpy.float32).reshape((-1, 1, 1)) / numpy.float32(1000)
-    resize = Resize()
+    resize = Resize(config=config)
     out_frame = Frame()
     out_frame.data = fil
     out_frame.type = 'fil'
