@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+   Copyright (C) 2014-17  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -105,34 +105,10 @@ Pyctools provides a :py:class:`~pyctools.core.base.Transformer` base class to ma
 Consider the ``Flip`` example component.
 This listing shows all the active Python code:
 
-.. code-block:: python
+.. literalinclude:: ../../examples/simple/src/pyctools/components/example/flip.py
+   :language: python
    :linenos:
-
-    __all__ = ['Flip']
-
-    import PIL.Image
-
-    from pyctools.core.base import Transformer
-    from pyctools.core.config import ConfigEnum
-
-    class Flip(Transformer):
-        def initialise(self):
-            self.config['direction'] = ConfigEnum(('vertical', 'horizontal'))
-
-        def transform(self, in_frame, out_frame):
-            self.update_config()
-            direction = self.config['direction']
-            if direction == 'vertical':
-                flip = PIL.Image.FLIP_TOP_BOTTOM
-            else:
-                flip = PIL.Image.FLIP_LEFT_RIGHT
-            in_data = in_frame.as_PIL()
-            out_frame.data = in_data.transpose(flip)
-            audit = out_frame.metadata.get('audit')
-            audit += 'data = Flip(data)\n'
-            audit += '    direction: %s\n' % direction
-            out_frame.metadata.set('audit', audit)
-            return True
+   :lines: 24, 26-
 
 Line 1 is important.
 The module's ``__all__`` value is used by :py:mod:`pyctools-editor <pyctools.tools.editor>` to determine what components a module provides.

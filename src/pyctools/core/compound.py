@@ -37,7 +37,7 @@ class Compound(object):
     to a :py:class:`~pyctools.components.interp.resize.Resize` as
     follows::
 
-        def ImageResizer(x_up=1, x_down=1, y_up=1, y_down=1):
+        def ImageResizer(x_up=1, x_down=1, y_up=1, y_down=1, config={}):
             xaperture = 1
             if x_up != 1 or x_down != 1:
                 xaperture = 16
@@ -49,6 +49,7 @@ class Compound(object):
                 yup=y_up, ydown=y_down, yaperture=yaperture)
             resize = Resize(xup=x_up, xdown=x_down, yup=y_up, ydown=y_down)
             return Compound(
+                config = config,
                 filgen = filgen,
                 resize = resize,
                 linkages = {
@@ -76,6 +77,10 @@ class Compound(object):
 
     This allows compound components to be nested to any depth whilst
     still making their configuration available at the top level.
+
+    You can also adjust the configuration when the compound component is
+    created by passing a :py:class:`dict` containing additional values.
+    This allows the component user to over-ride the default values.
 
     :keyword Component name: Add ``Component`` to the network as
         ``name``. Can be repeated with different values of ``name``.
