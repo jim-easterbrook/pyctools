@@ -42,7 +42,10 @@ class CoreEventLoop(QtCore.QObject):
             return super(CoreEventLoop, self).event(event)
         event.accept()
         if event.command is None:
-            self.owner.stop_event()
+            try:
+                self.owner.stop_event()
+            except Exception as ex:
+                self.owner.logger.exception(ex)
             self._quit()
             return True
         try:
@@ -54,6 +57,12 @@ class CoreEventLoop(QtCore.QObject):
     def _put_on_queue(self, command):
         QtCore.QCoreApplication.postEvent(
             self, ActionEvent(command), QtCore.Qt.LowEventPriority)
+
+    def start(self):
+        try:
+            self.owner.start_event()
+        except Exception as ex:
+            self.owner.logger.exception(ex)
 
     def stop(self):
         if self.running():
@@ -88,7 +97,7 @@ class QtEventLoop(CoreEventLoop):
 
     def start(self):
         self.is_running = True
-        self.owner.start_event()
+        super(QtEventLoop, self).start()
 
     def join(self):
         pass
@@ -123,4 +132,4 @@ class QtThreadEventLoop(CoreEventLoop):
         self.join = self.thread.wait
         self.running = self.thread.isRunning
         self.moveToThread(self.thread)
-        self.thread.started.connect(self.owner.start_event)
+        self.thread.started.connect(self.start)

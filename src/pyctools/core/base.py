@@ -94,7 +94,11 @@ class ThreadEventLoop(threading.Thread):
         thread terminates.
 
         """
-        self.owner.start_event()
+        try:
+            self.owner.start_event()
+        except Exception as ex:
+            self.owner.logger.exception(ex)
+            return
         while True:
             while not self.incoming:
                 time.sleep(0.01)
@@ -106,7 +110,10 @@ class ThreadEventLoop(threading.Thread):
             except Exception as ex:
                 self.owner.logger.exception(ex)
                 break
-        self.owner.stop_event()
+        try:
+            self.owner.stop_event()
+        except Exception as ex:
+            self.owner.logger.exception(ex)
 
     def stop(self):
         """Thread-safe method to stop the component."""
