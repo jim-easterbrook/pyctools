@@ -165,7 +165,7 @@ class AnalyseVignette(Transformer):
             mask = numpy.logical_and(r >= lo, r < hi)
             mean = numpy.mean(data[mask])
             std = numpy.std(data[mask])
-            w.append(1.0 / std)
+            w.append(((1.1 * bands) - i) / std)
             if i == 0:
                 norm_factor = mean
             y.append(norm_factor / mean)
@@ -187,6 +187,7 @@ class AnalyseVignette(Transformer):
         func_frame = self.outframe_pool['function'].get()
         func_frame.data = numpy.stack((x, y, numpy.polyval(fit, x * x)))
         func_frame.type = 'func'
+        func_frame.metadata.set('labels', repr(['radius', 'measured', 'fitted']))
         audit = func_frame.metadata.get('audit')
         audit += 'data = VignetteCorrectorFunction()\n'
         func_frame.metadata.set('audit', audit)

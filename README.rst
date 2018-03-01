@@ -27,7 +27,7 @@ Requirements
 * `OpenCV <http://opencv.org/>`_ python bindings (optional) for advanced image processing.
 * `FFmpeg <https://www.ffmpeg.org/>`_ (optional) to read and write video files.
 * `rawkit <https://rawkit.readthedocs.io/>`_ (optional) to read raw image files.
-* `PyQt <http://www.riverbankcomputing.com/software/pyqt/intro>`_ and `PyOpenGL <http://pyopengl.sourceforge.net/>`_ (optional) graphic toolkit used by the Pyctools visual editor and the Qt display components.
+* `PyQt5 <https://riverbankcomputing.com/software/pyqt/intro>`_ and `PyOpenGL <http://pyopengl.sourceforge.net/>`_ (optional) graphic toolkit used by the Pyctools visual editor and the Qt display components.
 * `Sphinx <http://sphinx-doc.org/>`_ and `mock <https://github.com/testing-cabal/mock>`_ (optional) to build local documentation.
 
 Installation

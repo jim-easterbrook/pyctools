@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015-16  Pyctools contributors
+#  Copyright (C) 2015-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -22,10 +22,11 @@ __docformat__ = 'restructuredtext en'
 import math
 
 import numpy
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 from pyctools.core.config import ConfigBool, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import Qt, QtEventLoop, QtGui, QtWidgets
+from pyctools.core.qt import QtEventLoop
 
 class ShowHistogram(Transformer, QtWidgets.QWidget):
     """Display image hostograms in a Qt window.
@@ -48,12 +49,12 @@ class ShowHistogram(Transformer, QtWidgets.QWidget):
 
     def __init__(self, **config):
         super(ShowHistogram, self).__init__(**config)
-        self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
         self.setLayout(QtWidgets.QFormLayout())
         # main histogram display
         self.display = QtWidgets.QLabel()
         self.display.setPixmap(QtGui.QPixmap(256, 100))
-        self.display.pixmap().fill(Qt.white)
+        self.display.pixmap().fill(QtCore.Qt.white)
         self.layout().addRow(self.display)
         # positive clip count
         self.pos_clips = QtWidgets.QLabel()
@@ -94,7 +95,7 @@ class ShowHistogram(Transformer, QtWidgets.QWidget):
         else:
             colours = (0,)
         q_image = QtGui.QImage(256, 100, QtGui.QImage.Format_RGB888)
-        q_image.fill(Qt.white)
+        q_image.fill(QtCore.Qt.white)
         pos_clips = []
         neg_clips = []
         for comp in range(comps):

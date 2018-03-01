@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -26,11 +26,12 @@ import time
 
 import numpy
 from OpenGL import GL
+from PyQt5 import QtCore, QtGui, QtOpenGL, QtWidgets
+from PyQt5.QtCore import Qt
 
 from pyctools.core.config import ConfigBool, ConfigInt, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import (
-    qt_version_info, Qt, QtCore, QtEventLoop, QtGui, QtOpenGL, QtWidgets)
+from pyctools.core.qt import qt_version_info, QtEventLoop
 
 # single context lock to serialise OpenGL operations across multiple
 # windows

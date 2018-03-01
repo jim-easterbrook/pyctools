@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-17  Pyctools contributors
+   Copyright (C) 2014-18  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -101,16 +101,15 @@ If you need to process raw images you can install ``rawkit`` using ``pip``::
 
   sudo pip install rawkit
 
-`PyQt <http://www.riverbankcomputing.com/software/pyqt/intro>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+`PyQt5 <https://riverbankcomputing.com/software/pyqt/intro>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-PyQt is an optional dependency.
+PyQt5 is an optional dependency.
 If it is not installed then the :py:mod:`Pyctools visual editor <pyctools.tools.editor>` will not be usable.
-PyQt4 or PyQt5 can be used, but PyQt5 is preferred.
 
-If PyQt is already installed the ``python -c 'import PyQt5'`` (or ``python -c 'import PyQt4'``) command will run without error.
+If PyQt5 is already installed the ``python -c 'import PyQt5'`` command will run without error.
 
-PyQt should be installable with your system's package manager.
+PyQt5 should be installable with your system's package manager.
 
 `PyOpenGL <http://pyopengl.sourceforge.net/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

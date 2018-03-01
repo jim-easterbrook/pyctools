@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015-16  Pyctools contributors
+#  Copyright (C) 2015-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -21,23 +21,7 @@ __docformat__ = 'restructuredtext en'
 
 from collections import namedtuple
 
-use_qt5 = True
-
-if use_qt5:
-    try:
-        from PyQt5 import QtCore, QtGui, QtOpenGL, QtWidgets
-        from PyQt5.QtCore import Qt
-    except ImportError:
-        use_qt5 = False
-
-if not use_qt5:
-    import sip
-    sip.setapi('QString', 2)
-    sip.setapi('QVariant', 2)
-    from PyQt4 import QtCore, QtGui, QtOpenGL
-    QtWidgets = QtGui
-    from PyQt4.QtCore import Qt
-    QtWidgets.QOpenGLWidget = QtWidgets.QWidget
+from PyQt5 import QtCore
 
 qt_version_info = namedtuple(
     'qt_version_info', ('major', 'minor', 'micro'))._make(

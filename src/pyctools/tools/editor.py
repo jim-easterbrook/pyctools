@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-17  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -58,10 +58,11 @@ import pkgutil
 import sys
 import types
 
+from PyQt5 import QtCore, QtGui, QtWidgets
+
 import pyctools.components
 from pyctools.core.compound import Compound
 from pyctools.core.config import *
-from pyctools.core.qt import qt_version_info, Qt, QtCore, QtGui, QtWidgets
 
 logger = logging.getLogger('pyctools-editor')
 
@@ -88,8 +89,7 @@ class ConfigPathWidget(QtWidgets.QPushButton):
         else:
             value = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Choose file', directory)
-        if qt_version_info >= (5,):
-            value = value[0]
+        value = value[0]
         if value:
             self.config.set(value)
             self.show_value(value)
@@ -222,7 +222,8 @@ config_widget = {
 
 class ConfigDialog(QtWidgets.QDialog):
     def __init__(self, parent, **kwds):
-        super(ConfigDialog, self).__init__(flags=Qt.WindowStaysOnTopHint, **kwds)
+        super(ConfigDialog, self).__init__(
+            flags=QtCore.Qt.WindowStaysOnTopHint, **kwds)
         self.setWindowTitle('%s configuration' % parent.name)
         self.component = parent
         self.config = self.component.obj.get_config()
@@ -268,9 +269,9 @@ class ComponentLink(QtWidgets.QGraphicsLineItem):
             if isinstance(value, QtCore.QVariant):
                 value = value.toBool()
             if value:
-                pen.setStyle(Qt.DashLine)
+                pen.setStyle(QtCore.Qt.DashLine)
             else:
-                pen.setStyle(Qt.SolidLine)
+                pen.setStyle(QtCore.Qt.SolidLine)
             self.setPen(pen)
         return super(ComponentLink, self).itemChange(change, value)
 
@@ -290,7 +291,7 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
         self.setAcceptDrops(True)
         # draw an invisible rectangle to define drag-and-drop area
         pen = self.pen()
-        pen.setStyle(Qt.NoPen)
+        pen.setStyle(QtCore.Qt.NoPen)
         self.setPen(pen)
         self.setRect(-3, -8, 13, 17)
         # draw a smaller visible triangle
@@ -309,16 +310,16 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
         pass
 
     def mouseMoveEvent(self, event):
-        start_pos = event.buttonDownScreenPos(Qt.LeftButton)
+        start_pos = event.buttonDownScreenPos(QtCore.Qt.LeftButton)
         if (QtCore.QLineF(event.screenPos(), start_pos).length() <
                                         QtWidgets.QApplication.startDragDistance()):
             return
-        start_pos = event.buttonDownScenePos(Qt.LeftButton)
+        start_pos = event.buttonDownScenePos(QtCore.Qt.LeftButton)
         drag = QtGui.QDrag(event.widget())
         mimeData = QtCore.QMimeData()
         mimeData.setData(self.mime_type, cPickle.dumps(start_pos))
         drag.setMimeData(mimeData)
-        dropAction = drag.exec_(Qt.LinkAction)
+        dropAction = drag.exec_(QtCore.Qt.LinkAction)
 
     def dragEnterEvent(self, event):
         event.setAccepted(event.mimeData().hasFormat(self.link_mime_type))
@@ -590,7 +591,7 @@ class CompoundIcon(BasicComponentIcon):
         surround = QtWidgets.QGraphicsRectItem(
             -3, -3, self.width + 6, self.height + 6, self)
         pen = surround.pen()
-        pen.setStyle(Qt.DashDotLine)
+        pen.setStyle(QtCore.Qt.DashDotLine)
         surround.setPen(pen)
         # draw rest of icon, including inputs and outputs
         super(CompoundIcon, self).draw_icon()
@@ -828,8 +829,8 @@ class Network(object):
 if __name__ == '__main__':
 """ % (components, linkages))
             if with_qt:
-                of.write('    from pyctools.core.qt import Qt, QtWidgets\n' +
-                         '    QtWidgets.QApplication.setAttribute(Qt.AA_X11InitThreads)\n' +
+                of.write('    from PyQt5 import QtCore, QtWidgets\n' +
+                         '    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)\n' +
                          '    app = QtWidgets.QApplication([])\n')
             of.write("""
     comp = Network().make()
@@ -869,7 +870,7 @@ class ComponentItemModel(QtGui.QStandardItemModel):
         idx = index_list[0]
         if not idx.isValid():
             return None
-        data = idx.data(Qt.UserRole+1)
+        data = idx.data(QtCore.Qt.UserRole+1)
         if isinstance(data, QtCore.QVariant):
             data = data.toPyObject()
         if not data:
@@ -985,8 +986,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.view = QtWidgets.QGraphicsView(self.network_area)
         self.view.setAcceptDrops(True)
         self.view.setDragMode(QtWidgets.QGraphicsView.RubberBandDrag)
-        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         splitter.addWidget(self.view)
         splitter.setStretchFactor(1, 1)
         grid.addWidget(splitter, 0, 0, 1, 5)
@@ -1006,8 +1007,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def load_script(self):
         file_name = QtWidgets.QFileDialog.getOpenFileName(
             self, 'Load file', self.script_file, 'Python scripts (*.py)')
-        if qt_version_info >= (5,):
-            file_name = file_name[0]
+        file_name = file_name[0]
         if file_name:
             self.set_window_title(file_name)
             self.network_area.load_script(file_name)
@@ -1015,8 +1015,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def save_script(self):
         file_name = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Save file', self.script_file, 'Python scripts (*.py)')
-        if qt_version_info >= (5,):
-            file_name = file_name[0]
+        file_name = file_name[0]
         if file_name:
             self.set_window_title(file_name)
             self.network_area.save_script(
@@ -1053,7 +1052,7 @@ class MainWindow(QtWidgets.QMainWindow):
 def main():
     # let PyQt handle its options (need at least one argument after options)
     sys.argv.append('xxx')
-    QtWidgets.QApplication.setAttribute(Qt.AA_X11InitThreads)
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
     app = QtWidgets.QApplication(sys.argv)
     del sys.argv[-1]
     # get command args
