@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016  Pyctools contributors
+#  Copyright (C) 2016-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -206,6 +206,8 @@ class GammaCorrect(Transformer):
         audit = func_frame.metadata.get('audit')
         audit += 'data = GammaFunction({})\n'.format(self.config['gamma'])
         func_frame.metadata.set('audit', audit)
+        func_frame.metadata.set(
+            'labels', str(['gamma curve', self.config['gamma']]))
         self.send('function', func_frame)
 
     def eval_hybrid_log(self, v_in):
