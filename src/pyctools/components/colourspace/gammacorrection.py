@@ -90,13 +90,13 @@ class GammaCorrect(Transformer):
     outputs = ['output', 'function']
     gamma_toe = OrderedDict([
         # name          gamma          toe    threshold  "a"
-        ('linear',     (1.0,           1.0,   0.0 ,      0.0)),
+        ('linear',     (1.0,           1.0,   0.0,       0.0)),
         ('bt709',      (0.45,          4.5,   0.018,     0.099)),
         ('srgb',       (1.0 / 2.4,     12.92, 0.0031308, 0.055)),
-        ('adobe_rgb',  (256.0 / 563.0, 0.0,   0.0,       0.0)),
-        ('hybrid_log', (None,          0.0,   0.0,       0.0)),
-        ('S-Log',      (None,          0.0,   0.0,       0.0)),
-        ('Canon-Log',  (None,          0.0,  -0.0452664, 0.0)),
+        ('adobe_rgb',  (256.0 / 563.0, None,  0.0,       0.0)),
+        ('hybrid_log', (None,          None,  0.0,       0.0)),
+        ('S-Log',      (None,          None,  0.0,       0.0)),
+        ('Canon-Log',  (None,          None, -0.0452664, 0.0)),
         ])
     __doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in gamma_toe]))
 
@@ -114,6 +114,9 @@ class GammaCorrect(Transformer):
     def adjust_params(self):
         self.initialised = True
         self.gamma, toe, threshold, self.a = self.gamma_toe[self.config['gamma']]
+        knee = self.config['knee']
+        knee_point = self.config['knee_point']
+        knee_slope = self.config['knee_slope']
         # threshold for switch from toe to exponential gamma
         if threshold is None:
             # first approximate value, ignoring extra scaling factor a
@@ -136,22 +139,7 @@ class GammaCorrect(Transformer):
         if self.a is None:
             self.a = (1.0 - self.gamma) * (threshold ** self.gamma)
             self.a = self.a / (1.0 - self.a)
-        # make list of in and out values
-        in_val = []
-        out_val = []
-        knee = self.config['knee']
-        knee_point = self.config['knee_point']
-        knee_slope = self.config['knee_slope']
-        # toe section just needs two end points
-        v_in = -0.1
-        v_out = v_in * toe
-        in_val.append(v_in)
-        out_val.append(v_out)
-        v_in = threshold
-        v_out = v_in * toe
-        in_val.append(v_in)
-        out_val.append(v_out)
-        # complicated section needs many points
+        # choose function to evaluate
         if self.config['gamma'] == 'hybrid_log':
             func = self.eval_hybrid_log
         elif self.config['gamma'] == 'S-Log':
@@ -160,6 +148,24 @@ class GammaCorrect(Transformer):
             func = self.eval_canon_log
         else:
             func = self.eval_gamma
+        # make list of in and out values
+        in_val = []
+        out_val = []
+        if toe is None:
+            # compute first point
+            v_in = threshold
+            v_out = func(v_in)
+        else:
+            # toe section just needs two end points
+            v_in = threshold - 0.1
+            v_out = v_in * toe
+            in_val.append(v_in)
+            out_val.append(v_out)
+            v_in = threshold
+            v_out = v_in * toe
+        in_val.append(v_in)
+        out_val.append(v_out)
+        # complicated section needs many points
         x_step = 0.01
         while v_in < 10.0:
             v_in += x_step
