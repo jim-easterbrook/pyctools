@@ -916,6 +916,9 @@ class ComponentList(QtWidgets.QTreeView):
             # try to find out if module needs Qt
             self.needs_qt[name] = False
             for item in dir(mod):
+                if item in ('QtEventLoop', 'QtThreadEventLoop'):
+                    self.needs_qt[name] = True
+                    break
                 if not 'Qt' in item:
                     continue
                 item = getattr(mod, item)
