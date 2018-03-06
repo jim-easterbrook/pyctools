@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016  Pyctools contributors
+#  Copyright (C) 2016-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -18,6 +18,11 @@
 
 __all__ = ['PlotData']
 __docformat__ = 'restructuredtext en'
+
+# matplotlib and pyctools.core.frame both import GObject, but pyctools
+# will load pgi if available. pgi has to be set up before importing
+# GObject, so import pyctools.core.frame before matplotlib
+import pyctools.core.frame
 
 import matplotlib.pyplot as plt
 
