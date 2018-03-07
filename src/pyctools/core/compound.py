@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-17  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@ __docformat__ = 'restructuredtext en'
 import logging
 import six
 
-from .config import ConfigGrandParent
+from .config import ConfigParent, ConfigGrandParent
 
 class Compound(object):
     """Encapsulate several components into one.
@@ -37,25 +37,26 @@ class Compound(object):
     to a :py:class:`~pyctools.components.interp.resize.Resize` as
     follows::
 
-        def ImageResizer(x_up=1, x_down=1, y_up=1, y_down=1, config={}):
-            xaperture = 1
-            if x_up != 1 or x_down != 1:
-                xaperture = 16
-            yaperture = 1
-            if y_up != 1 or y_down != 1:
-                yaperture = 16
-            filgen = FilterGenerator(
-                xup=x_up, xdown=x_down, xaperture=xaperture,
-                yup=y_up, ydown=y_down, yaperture=yaperture)
-            resize = Resize(xup=x_up, xdown=x_down, yup=y_up, ydown=y_down)
+        def ImageResizer(config={}, **kwds):
+            cfg = {'aperture': 16}
+            cfg.update(kwds)
+            cfg.update(config)
             return Compound(
-                config = config,
-                filgen = filgen,
-                resize = resize,
+                filgen = FilterGenerator(),
+                resize = Resize(),
+                config = cfg,
+                config_map = {
+                    'filgen': (('up', 'xup'), ('down', 'xdown'),
+                               ('aperture', 'xaperture'),
+                               ('up', 'yup'), ('down', 'ydown'),
+                               ('aperture', 'yaperture')),
+                    'resize': (('up', 'xup'), ('down', 'xdown'),
+                               ('up', 'yup'), ('down', 'ydown')),
+                    },
                 linkages = {
                     ('self',   'input')  : ('resize', 'input'),
                     ('filgen', 'output') : ('resize', 'filter'),
-                    ('resize', 'output') : ('self',   'output'),
+                    ('resize', 'output') : ('self',    'output'),
                     }
                 )
 
@@ -64,15 +65,32 @@ class Compound(object):
     directly to the child components with no runtime overhead. There is
     no performance disadvantage from using compound objects.
 
-    The child components' configuration objects are gathered into one
-    :py:class:`~.config.ConfigGrandParent`. The child names are used
-    to index the :py:class:`~.config.ConfigGrandParent`'s value dict.
-    For example, if you wanted to change the filter aperture of the
-    image resizer shown above (even while it's running!) you might do
-    this::
+    The ``config_map`` allows multiple child components to be controlled
+    by one configuration item. For each configurable child there is a
+    list of ``name`` and ``child name`` pairs. For example, to change
+    the scaling factor of the image resizer shown above (even while it's
+    running!) you might do this::
 
         cfg = image_resizer.get_config()
-        cfg['filgen']['xaperture'] = 8
+        cfg['up'] = 3
+        cfg['down'] = 8
+        image_resizer.set_config(cfg)
+
+    If no ``config_map`` is supplied then all the child components'
+    configuration objects are gathered into one
+    :py:class:`~.config.ConfigGrandParent`. The child names are used to
+    index the :py:class:`~.config.ConfigGrandParent`'s value dict. This
+    gives total control, but with more verbosity::
+
+        cfg = image_resizer.get_config()
+        cfg['filgen']['xup'] = 3
+        cfg['filgen']['xdown'] = 8
+        cfg['filgen']['yup'] = 3
+        cfg['filgen']['ydown'] = 8
+        cfg['resize']['xup'] = 3
+        cfg['resize']['xdown'] = 8
+        cfg['resize']['yup'] = 3
+        cfg['resize']['ydown'] = 8
         image_resizer.set_config(cfg)
 
     This allows compound components to be nested to any depth whilst
@@ -80,7 +98,7 @@ class Compound(object):
 
     You can also adjust the configuration when the compound component is
     created by passing a :py:class:`dict` containing additional values.
-    This allows the component user to over-ride the default values.
+    This allows the component's user to over-ride the default values.
 
     :keyword Component name: Add ``Component`` to the network as
         ``name``. Can be repeated with different values of ``name``.
@@ -88,13 +106,17 @@ class Compound(object):
     :keyword dict linkages: A mapping from component outputs to
         component inputs.
 
-    :keyword dict config: Additional config to be applied to the
+    :keyword dict config: Additional configuration to be applied to the
         components before they are connected.
 
+    :keyword dict config_map: Mapping of top level configuration names
+        to child component configuration names.
+
     """
-    def __init__(self, config={}, linkages={}, **kw):
+    def __init__(self, config={}, config_map={}, linkages={}, **kw):
         super(Compound, self).__init__()
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.config_map = config_map
         self.inputs = []
         self.outputs = []
         # get child components
@@ -102,11 +124,19 @@ class Compound(object):
         for key, value in kw.items():
             self._compound_children[key] = value
         # apply config
-        for key, value in config.items():
-            cnf = self._compound_children[key].get_config()
-            for k, v in value.items():
-                cnf[k] = v
-            self._compound_children[key].set_config(cnf)
+        if not config:
+            pass
+        elif self.config_map:
+            cnf = self.get_config()
+            for key, value in config.items():
+                cnf[key] = value
+            self.set_config(cnf)
+        else:
+            for key, value in config.items():
+                cnf = self._compound_children[key].get_config()
+                for k, v in value.items():
+                    cnf[k] = v
+                self._compound_children[key].set_config(cnf)
         # set up linkages
         self._compound_linkages = linkages
         self._compound_outputs = {}
@@ -156,16 +186,31 @@ class Compound(object):
 
     def get_config(self):
         """See :py:meth:`pyctools.core.config.ConfigMixin.get_config`."""
-        config = ConfigGrandParent()
-        for name, child in self._compound_children.items():
-            child_config = child.get_config()
-            config[name] = child_config
+        if self.config_map:
+            config = ConfigParent()
+            for name in self.config_map:
+                child_config = self._compound_children[name].get_config()
+                for parent_item, child_item in self.config_map[name]:
+                    if parent_item not in config.get():
+                        config[parent_item] = child_config.value[child_item]
+        else:
+            config = ConfigGrandParent()
+            for name, child in self._compound_children.items():
+                child_config = child.get_config()
+                config[name] = child_config
         return config
 
     def set_config(self, config):
         """See :py:meth:`pyctools.core.config.ConfigMixin.set_config`."""
-        for name, child_config in config.value.items():
-            self._compound_children[name].set_config(child_config)
+        if self.config_map:
+            for child_name in self.config_map:
+                child_config = self._compound_children[child_name].get_config()
+                for parent_item, child_item in self.config_map[child_name]:
+                    child_config[child_item] = config[parent_item]
+                self._compound_children[child_name].set_config(child_config)
+        else:
+            for name, child_config in config.value.items():
+                self._compound_children[name].set_config(child_config)
 
     def go(self):
         """Guild compatible version of :py:meth:`start`."""
