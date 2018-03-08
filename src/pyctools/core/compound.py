@@ -79,8 +79,8 @@ class Compound(object):
     If no ``config_map`` is supplied then all the child components'
     configuration objects are gathered into one
     :py:class:`~.config.ConfigGrandParent`. The child names are used to
-    index the :py:class:`~.config.ConfigGrandParent`'s value dict. This
-    gives total control, but with more verbosity::
+    index the :py:class:`~.config.ConfigGrandParent`'s dict. This gives
+    total control, but with more verbosity::
 
         cfg = image_resizer.get_config()
         cfg['filgen']['xup'] = 3
@@ -123,20 +123,20 @@ class Compound(object):
         self._compound_children = {}
         for key, value in kw.items():
             self._compound_children[key] = value
-        # apply config
-        if not config:
-            pass
-        elif self.config_map:
-            cnf = self.get_config()
-            for key, value in config.items():
-                cnf[key] = value
-            self.set_config(cnf)
+        # set config
+        if self.config_map:
+            self.config = ConfigParent()
+            for name in self.config_map:
+                child_config = self._compound_children[name].get_config()
+                for parent_item, child_item in self.config_map[name]:
+                    if parent_item not in self.config.get():
+                        self.config[parent_item] = child_config[child_item]
         else:
-            for key, value in config.items():
-                cnf = self._compound_children[key].get_config()
-                for k, v in value.items():
-                    cnf[k] = v
-                self._compound_children[key].set_config(cnf)
+            self.config = ConfigGrandParent()
+            for name, child in self._compound_children.items():
+                self.config[name] = child.get_config()
+        if config:
+            self.set_config(config)
         # set up linkages
         self._compound_linkages = linkages
         self._compound_outputs = {}
@@ -186,31 +186,20 @@ class Compound(object):
 
     def get_config(self):
         """See :py:meth:`pyctools.core.config.ConfigMixin.get_config`."""
-        if self.config_map:
-            config = ConfigParent()
-            for name in self.config_map:
-                child_config = self._compound_children[name].get_config()
-                for parent_item, child_item in self.config_map[name]:
-                    if parent_item not in config.get():
-                        config[parent_item] = child_config.value[child_item]
-        else:
-            config = ConfigGrandParent()
-            for name, child in self._compound_children.items():
-                child_config = child.get_config()
-                config[name] = child_config
-        return config
+        return self.config
 
     def set_config(self, config):
         """See :py:meth:`pyctools.core.config.ConfigMixin.set_config`."""
+        self.config.update(config)
         if self.config_map:
             for child_name in self.config_map:
                 child_config = self._compound_children[child_name].get_config()
                 for parent_item, child_item in self.config_map[child_name]:
-                    child_config[child_item] = config[parent_item]
+                    child_config[child_item] = self.config[parent_item]
                 self._compound_children[child_name].set_config(child_config)
         else:
-            for name, child_config in config.value.items():
-                self._compound_children[name].set_config(child_config)
+            for name, child in self._compound_children.items():
+                child.set_config(self.config[name])
 
     def go(self):
         """Guild compatible version of :py:meth:`start`."""

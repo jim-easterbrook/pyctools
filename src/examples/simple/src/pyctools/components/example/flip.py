@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -31,7 +31,7 @@ from pyctools.core.config import ConfigEnum
 
 class Flip(Transformer):
     def initialise(self):
-        self.config['direction'] = ConfigEnum(('vertical', 'horizontal'))
+        self.config['direction'] = ConfigEnum(choices=('vertical', 'horizontal'))
 
     def transform(self, in_frame, out_frame):
         self.update_config()

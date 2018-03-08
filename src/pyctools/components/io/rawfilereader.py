@@ -69,7 +69,7 @@ class RawFileReader(Component):
 
     def initialise(self):
         self.config['path'] = ConfigPath()
-        self.config['looping'] = ConfigEnum(('off', 'repeat', 'reverse'))
+        self.config['looping'] = ConfigEnum(choices=('off', 'repeat', 'reverse'))
 
     def on_start(self):
         # set metadata

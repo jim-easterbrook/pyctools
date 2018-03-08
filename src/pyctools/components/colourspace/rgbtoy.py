@@ -47,8 +47,8 @@ class RGBtoY(Transformer):
     mat_709 = RGBtoYUV.mat_709[0:1]
 
     def initialise(self):
-        self.config['matrix'] = ConfigEnum(('auto', '601', '709'))
-        self.config['range'] = ConfigEnum(('studio', 'computer'))
+        self.config['matrix'] = ConfigEnum(choices=('auto', '601', '709'))
+        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
         self.last_frame_type = None
 
     def transform(self, in_frame, out_frame):

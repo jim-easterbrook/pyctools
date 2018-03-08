@@ -134,7 +134,7 @@ class ZonePlateGenerator(Component):
         self.config['xlen'] = ConfigInt(value=720, min_value=1)
         self.config['ylen'] = ConfigInt(value=576, min_value=1)
         self.config['zlen'] = ConfigInt(value=100, min_value=1)
-        self.config['looping'] = ConfigEnum(('off', 'repeat'))
+        self.config['looping'] = ConfigEnum(choices=('off', 'repeat'))
         # store sine wave in a lookup table
         self.phases = 1024
         self.waveform = numpy.ndarray([self.phases], dtype=numpy.float32)

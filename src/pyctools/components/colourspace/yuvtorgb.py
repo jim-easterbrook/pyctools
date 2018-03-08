@@ -67,8 +67,8 @@ class YUVtoRGB(Component):
     inputs = ['input_Y', 'input_UV']
 
     def initialise(self):
-        self.config['matrix'] = ConfigEnum(('auto', '601', '709'))
-        self.config['range'] = ConfigEnum(('studio', 'computer'))
+        self.config['matrix'] = ConfigEnum(choices=('auto', '601', '709'))
+        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
         self.last_frame_type = None
 
     def process_frame(self):

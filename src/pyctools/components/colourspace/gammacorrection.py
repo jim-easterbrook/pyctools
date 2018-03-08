@@ -101,8 +101,8 @@ class GammaCorrect(Transformer):
     __doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in gamma_toe]))
 
     def initialise(self):
-        self.config['range'] = ConfigEnum(('studio', 'computer'))
-        self.config['gamma'] = ConfigEnum(list(self.gamma_toe.keys()))
+        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
+        self.config['gamma'] = ConfigEnum(choices=(self.gamma_toe.keys()))
         self.config['black'] = ConfigFloat(value=0.0, decimals=2)
         self.config['white'] = ConfigFloat(value=255.0, decimals=2)
         self.config['inverse'] = ConfigBool()

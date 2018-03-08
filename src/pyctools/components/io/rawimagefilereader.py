@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-17  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -77,12 +77,13 @@ class RawImageFileReader(Component):
         self.config['path'] = ConfigPath()
         self.config['16bit'] = ConfigBool(value=True)
         self.config['brightness'] = ConfigFloat(value=1.0, decimals=2)
-        self.config['highlight_mode'] = ConfigEnum(highlight_modes._fields)
-        self.config['gamma'] = ConfigEnum(gamma_curves._fields)
+        self.config['highlight_mode'] = ConfigEnum(
+            choices=highlight_modes._fields)
+        self.config['gamma'] = ConfigEnum(choices=gamma_curves._fields)
         self.config['colourspace'] = ConfigEnum(
-            colorspaces._fields, value='srgb')
+            choices=colorspaces._fields, value='srgb')
         self.config['interpolation'] = ConfigEnum(
-            interpolation._fields, value='ahd')
+            choices=interpolation._fields, value='ahd')
         self.config['noise_threshold'] = ConfigFloat(value=0, decimals=0)
         self.config['wb_auto'] = ConfigBool(value=False)
         self.config['wb_camera'] = ConfigBool(value=True)

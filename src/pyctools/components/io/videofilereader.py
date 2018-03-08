@@ -59,8 +59,8 @@ class VideoFileReader(Component):
         self.frame_no = 0
         self.generator = None
         self.config['path'] = ConfigPath()
-        self.config['looping'] = ConfigEnum(('off', 'repeat'))
-        self.config['type'] = ConfigEnum(('RGB', 'Y'))
+        self.config['looping'] = ConfigEnum(choices=('off', 'repeat'))
+        self.config['type'] = ConfigEnum(choices=('RGB', 'Y'))
         self.config['16bit'] = ConfigBool()
 
     @contextmanager

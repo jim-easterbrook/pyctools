@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-17  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -24,7 +24,7 @@ import os
 from setuptools import setup, Extension
 import sys
 
-version = '0.3.0'
+version = '0.4.0'
 
 # find packages
 packages = ['pyctools']

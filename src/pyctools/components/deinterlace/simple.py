@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -41,7 +41,7 @@ class SimpleDeinterlace(Component):
     """
 
     def initialise(self):
-        self.config['mode'] = ConfigEnum(('insertzero', 'repeatline'))
+        self.config['mode'] = ConfigEnum(choices=('insertzero', 'repeatline'))
         self.config['inverse'] = ConfigBool()
         self.config['topfirst'] = ConfigBool(value=True)
         self.first_field = True

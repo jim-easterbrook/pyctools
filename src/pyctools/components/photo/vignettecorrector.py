@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016  Pyctools contributors
+#  Copyright (C) 2016-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -65,7 +65,7 @@ class VignetteCorrector(Transformer):
     """
 
     def initialise(self):
-        self.config['range'] = ConfigEnum(('studio', 'computer'))
+        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
         self.config['r2'] = ConfigFloat(decimals=4)
         self.config['r4'] = ConfigFloat(decimals=4)
         self.config['r6'] = ConfigFloat(decimals=4)
@@ -138,7 +138,7 @@ class AnalyseVignette(Transformer):
     outputs = ['output', 'function']
 
     def initialise(self):
-        self.config['range'] = ConfigEnum(('studio', 'computer'))
+        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
         self.config['order'] = ConfigInt(value=3, min_value=1)
         self.config['log_eps'] = ConfigFloat(value=-4, decimals=1)
 

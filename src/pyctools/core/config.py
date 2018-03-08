@@ -28,7 +28,7 @@ a component's initialisation you should create the required
 configuration nodes like this::
 
     self.config['zlen'] = ConfigInt(value=100, min_value=1)
-    self.config['looping'] = ConfigEnum(('off', 'repeat'))
+    self.config['looping'] = ConfigEnum(choices=('off', 'repeat'))
 
 Subsequently the config object behaves more like a dictionary::
 
@@ -79,7 +79,7 @@ import os.path
 import six
 
 class ConfigLeafNode(object):
-    """Base class for configuration nodes.
+    """Mixin class for configuration nodes.
 
     :keyword object value: Initial value of the node.
 
@@ -90,81 +90,58 @@ class ConfigLeafNode(object):
         where it's relevant.
 
     """
-    def __init__(self, value=None, min_value=None, max_value=None, **kwds):
-        super(ConfigLeafNode, self).__init__(**kwds)
-        self.value = value
-        self.min_value = min_value
-        self.max_value = max_value
-        if value is not None and self.validate(value):
-            self.value = value
-        self.default = self.value
-
     def parser_add(self, parser, key):
-        parser.add_argument('--' + key, default=self.value, **self.parser_kw)
+        parser.add_argument('--' + key, default=self, **self.parser_kw)
 
     def get(self):
         """Return the config item's current value."""
-        return self.value
+        return self
 
-    def set(self, value):
-        """Set the config item's value."""
-        if not self.validate(value):
-            raise ValueError(str(value))
-        self.value = value
-
-    def clip(self, value):
-        """Return a limited value, for types that have maximum or
-        minimum values.
-
-        This method does not affect the config item's current value.
-
-        """
-        if self.max_value is not None:
-            value = min(value, self.max_value)
-        if self.min_value is not None:
-            value = max(value, self.min_value)
-        return value
-
-    def __repr__(self):
-        return repr(self.value)
+    def update(self, value):
+        """Adjust the config item's value."""
+        kwds = dict(self.__dict__)
+        if 'parser_kw' in kwds:
+            del(kwds['parser_kw'])
+        return self.__class__(value, **kwds)
 
 
-class ConfigPath(ConfigLeafNode):
-    """File pathname configuration node.
-
-    """
-    parser_kw = {'metavar' : 'path'}
-
-    def __init__(self, exists=True, **kw):
-        self.exists = exists
-        super(ConfigPath, self).__init__(**kw)
-
-    def validate(self, value):
-        if not isinstance(value, six.string_types):
-            return False
-        value = os.path.abspath(value)
-        if self.exists:
-            return os.path.isfile(value)
-        return os.path.isdir(os.path.dirname(value))
-
-
-class ConfigInt(ConfigLeafNode):
+class ConfigInt(ConfigLeafNode, int):
     """Integer configuration node.
 
     """
     parser_kw = {'type' : int, 'metavar' : 'n'}
 
-    def __init__(self, **kw):
-        super(ConfigInt, self).__init__(**kw)
-        if self.value is None:
-            self.value = self.clip(0)
-            self.default = self.value
+    def __new__(cls, value=0, min_value=None, max_value=None):
+        if min_value is not None and value < min_value:
+            value = min_value
+        if max_value is not None and value > max_value:
+            value = max_value
+        self = super(ConfigInt, cls).__new__(cls, value)
+        self.min_value = min_value
+        self.max_value = max_value
+        return self
 
-    def validate(self, value):
-        return isinstance(value, int) and self.clip(value) == value
+    def __getnewargs__(self):
+        return int(self), self.min_value, self.max_value
 
 
-class ConfigFloat(ConfigLeafNode):
+class ConfigBool(ConfigInt):
+    """Boolean configuration node.
+
+    """
+    parser_kw = {'type' : bool, 'metavar' : 'b'}
+
+    def __new__(cls, value=False, *args, **kwds):
+        if value == 'on':
+            value = True
+        elif value == 'off':
+            value = False
+        else:
+            value = bool(value)
+        return super(ConfigBool, cls).__new__(cls, value, *args, **kwds)
+
+
+class ConfigFloat(ConfigLeafNode, float):
     """Float configuration node.
 
     :keyword int decimals: How many decimal places to use when
@@ -176,60 +153,61 @@ class ConfigFloat(ConfigLeafNode):
     """
     parser_kw = {'type' : float, 'metavar' : 'x'}
 
-    def __init__(self, decimals=8, wrapping=False, **kw):
-        super(ConfigFloat, self).__init__(**kw)
+    def __new__(cls, value=0.0, min_value=None, max_value=None,
+                decimals=8, wrapping=False):
+        if min_value is not None and value < min_value:
+            value = min_value
+        if max_value is not None and value > max_value:
+            value = max_value
+        self = super(ConfigFloat, cls).__new__(cls, value)
+        self.min_value = min_value
+        self.max_value = max_value
         self.decimals = decimals
         self.wrapping = wrapping
-        if self.value is None:
-            self.value = self.clip(0.0)
-            self.default = self.value
+        return self
 
-    def validate(self, value):
-        return isinstance(value, (float, int)) and self.clip(value) == value
-
-
-class ConfigBool(ConfigLeafNode):
-    """Boolean configuration node.
-
-    """
-    parser_kw = {'type' : bool, 'metavar' : 'b'}
-
-    def __init__(self, **kw):
-        super(ConfigBool, self).__init__(**kw)
-        if self.value is None:
-            self.value = False
-            self.default = self.value
-
-    def validate(self, value):
-        return isinstance(value, (bool, int)) or value in ('off', 'on')
-
-    def set(self, value):
-        super(ConfigBool, self).set(value)
-        if self.value == 'on':
-            self.value = True
-        elif self.value == 'off':
-            self.value = False
-        else:
-            self.value = bool(self.value)
+    def __getnewargs__(self):
+        return (float(self), self.min_value, self.max_value,
+                self.decimals, self.wrapping)
 
 
-class ConfigStr(ConfigLeafNode):
+class ConfigStr(ConfigLeafNode, six.text_type):
     """String configuration node.
 
     """
     parser_kw = {'metavar' : 'str'}
 
-    def __init__(self, **kw):
-        super(ConfigStr, self).__init__(**kw)
-        if self.value is None:
-            self.value = ''
-            self.default = self.value
-
-    def validate(self, value):
-        return isinstance(value, six.string_types)
+    def __new__(cls, value=''):
+        return super(ConfigStr, cls).__new__(cls, value)
+        return self
 
 
-class ConfigEnum(ConfigLeafNode):
+class ConfigPath(ConfigStr):
+    """File pathname configuration node.
+
+    """
+    parser_kw = {'metavar' : 'path'}
+
+    def __new__(cls, value='', exists=True):
+        if value:
+            value = os.path.abspath(value)
+            if exists:
+                if not os.path.isfile(value):
+                    value = ''
+            else:
+                if not os.path.isdir(os.path.dirname(value)):
+                    value = ''
+        else:
+            value = ''
+        self = super(ConfigPath, cls).__new__(cls, value)
+        self.exists = exists
+        return self
+
+    def __getnewargs__(self):
+        return six.text_type(self), self.exists
+
+
+class ConfigEnum(ConfigStr):
     """'Enum' configuration node.
 
     The value can be one of a list of choices.
@@ -242,38 +220,43 @@ class ConfigEnum(ConfigLeafNode):
         setting new values.
 
     """
-    def __init__(self, choices, extendable=False, **kw):
-        self.choices = list(choices)
+    def __new__(cls, value=None, choices=[], extendable=False):
+        choices = list(choices)
+        if not value:
+            value = choices[0]
+        elif value not in choices:
+            if extendable:
+                choices.append(value)
+            else:
+                raise ValueError(str(value))
+        self = super(ConfigEnum, cls).__new__(cls, value)
+        self.choices = choices
         self.extendable = extendable
         self.parser_kw = {'metavar' : 'str'}
         if not self.extendable:
             self.parser_kw['choices'] = self.choices
-        if 'value' not in kw:
-            kw['value'] = choices[0]
-        super(ConfigEnum, self).__init__(**kw)
+        return self
 
-    def validate(self, value):
-        if self.extendable and value not in self.choices:
-            self.choices.append(value)
-        return value in self.choices
+    def __getnewargs__(self):
+        return six.text_type(self), self.choices, self.extendable
 
 
-class ConfigParent(ConfigLeafNode):
+class ConfigParent(ConfigLeafNode, collections.OrderedDict):
     """Parent configuration node.
 
     Stores a set of child nodes in a :py:class:`dict`.
 
     """
-    def __init__(self, **kwds):
-        super(ConfigParent, self).__init__(value={}, **kwds)
-
-    def validate(self, value):
-        return isinstance(value, dict)
+    def __repr__(self):
+        result = {}
+        for key, value in self.items():
+            result[key] = value
+        return repr(result)
 
     def parser_add(self, parser, prefix=''):
         if prefix:
             prefix += '.'
-        for key, value in self.value.items():
+        for key, value in self.items():
             value.parser_add(parser, prefix + key)
 
     def parser_set(self, args):
@@ -283,30 +266,22 @@ class ConfigParent(ConfigLeafNode):
                 value = {parts[-1] : value}
                 del parts[-1]
             key = parts[0]
-            self.value[key].set(value)
-
-    def set(self, value):
-        """Set the config item's value."""
-        if not self.validate(value):
-            raise ValueError(str(value))
-        for k, v in value.items():
-            self.value[k].set(v)
-
-    def __repr__(self):
-        result = {}
-        for key, value in self.value.items():
-            if value.value != value.default:
-                result[key] = value
-        return repr(result)
-
-    def __getitem__(self, key):
-        return self.value[key].get()
+            self[key] = value
 
     def __setitem__(self, key, value):
-        if isinstance(value, ConfigLeafNode):
-            self.value[key] = value
-        else:
-            self.value[key].set(value)
+        if not isinstance(value, ConfigLeafNode):
+            value = self[key].update(value)
+        super(ConfigParent, self).__setitem__(key, value)
+
+    def update(self, other=[], **kw):
+        if isinstance(other, dict):
+            other = other.items()
+        if other:
+            for key, value in other:
+                self[key] = value
+        for key, value in kw.items():
+            self[key] = value
+        return self
 
 
 class ConfigGrandParent(ConfigParent):
@@ -316,12 +291,13 @@ class ConfigGrandParent(ConfigParent):
     :py:class:`dict`.
 
     """
-    def __repr__(self):
-        result = {}
-        for key, value in self.value.items():
-            if repr(value) != '{}':
-                result[key] = value
-        return repr(result)
+    pass
+##    def __repr__(self):
+##        result = {}
+##        for key, value in self.value.items():
+##            if repr(value) != '{}':
+##                result[key] = value
+##        return repr(result)
 
 
 class ConfigMixin(object):
@@ -382,6 +358,7 @@ class ConfigMixin(object):
         """
         result = False
         while self._configmixin_queue:
-            self.config = self._configmixin_queue.popleft()
+            config = self._configmixin_queue.popleft()
+            self.config.update(config)
             result = True
         return result

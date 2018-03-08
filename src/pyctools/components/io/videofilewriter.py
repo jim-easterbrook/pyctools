@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -62,13 +62,13 @@ class VideoFileWriter(Transformer):
     def initialise(self):
         self.generator = None
         self.config['path'] = ConfigPath(exists=False)
-        self.config['encoder'] = ConfigEnum(
-            ('-c:v ffv1 -pix_fmt bgr0',
-             '-c:v ffv1 -pix_fmt gray',
-             '-c:v ffv1 -pix_fmt gray16le',
-             '-c:v libx264 -pix_fmt yuv444p -qp 0',
-             '-c:v libx264 -pix_fmt yuv444p -qp 0 -preset veryslow',
-             ), extendable=True)
+        self.config['encoder'] = ConfigEnum(choices=(
+            '-c:v ffv1 -pix_fmt bgr0',
+            '-c:v ffv1 -pix_fmt gray',
+            '-c:v ffv1 -pix_fmt gray16le',
+            '-c:v libx264 -pix_fmt yuv444p -qp 0',
+            '-c:v libx264 -pix_fmt yuv444p -qp 0 -preset veryslow',
+            ), extendable=True)
         self.config['fps'] = ConfigInt(value=25)
         self.config['16bit'] = ConfigBool()
 

@@ -58,7 +58,7 @@ class FFT(Transformer):
         self.config['xtile'] = ConfigInt(min_value=0)
         self.config['ytile'] = ConfigInt(min_value=0)
         self.config['inverse'] = ConfigBool()
-        self.config['output'] = ConfigEnum(('complex', 'real'))
+        self.config['output'] = ConfigEnum(choices=('complex', 'real'))
 
     def transform(self, in_frame, out_frame):
         self.update_config()

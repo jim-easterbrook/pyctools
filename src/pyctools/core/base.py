@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -205,7 +205,7 @@ class Component(ConfigMixin):
         self.input_buffer = {}
         self.outframe_pool = {}
         if self.with_outframe_pool:
-            self.config['outframe_pool_len'] = ConfigInt(min_value=2, value=3)
+            self.config['outframe_pool_len'] = ConfigInt(3, min_value=2)
         # final initialisation
         self.initialise()
         for key, value in kwds.items():
