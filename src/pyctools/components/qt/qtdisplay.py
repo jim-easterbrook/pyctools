@@ -340,9 +340,9 @@ class QtDisplay(Transformer, QtWidgets.QWidget):
         self.last_frame_type = None
 
     def initialise(self):
-        self.config['title'] = ConfigStr(dynamic=True)
-        self.config['shrink'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['expand'] = ConfigInt(min_value=1, dynamic=True)
+        self.config['title'] = ConfigStr()
+        self.config['shrink'] = ConfigInt(min_value=1)
+        self.config['expand'] = ConfigInt(min_value=1)
         self.config['framerate'] = ConfigInt(min_value=1, value=25)
         self.config['sync'] = ConfigBool(value=True)
         self.config['repeat'] = ConfigBool(value=True)

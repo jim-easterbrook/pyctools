@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-17  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -55,10 +55,10 @@ class FFT(Transformer):
 
     """
     def initialise(self):
-        self.config['xtile'] = ConfigInt(min_value=0, dynamic=True)
-        self.config['ytile'] = ConfigInt(min_value=0, dynamic=True)
+        self.config['xtile'] = ConfigInt(min_value=0)
+        self.config['ytile'] = ConfigInt(min_value=0)
         self.config['inverse'] = ConfigBool()
-        self.config['output'] = ConfigEnum(('complex', 'real'), dynamic=True)
+        self.config['output'] = ConfigEnum(('complex', 'real'))
 
     def transform(self, in_frame, out_frame):
         self.update_config()

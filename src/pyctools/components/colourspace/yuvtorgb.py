@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -67,8 +67,8 @@ class YUVtoRGB(Component):
     inputs = ['input_Y', 'input_UV']
 
     def initialise(self):
-        self.config['matrix'] = ConfigEnum(('auto', '601', '709'), dynamic=True)
-        self.config['range'] = ConfigEnum(('studio', 'computer'), dynamic=True)
+        self.config['matrix'] = ConfigEnum(('auto', '601', '709'))
+        self.config['range'] = ConfigEnum(('studio', 'computer'))
         self.last_frame_type = None
 
     def process_frame(self):

@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -105,48 +105,36 @@ class ZonePlateGenerator(Component):
 
     def initialise(self):
         self.config['k0'] = ConfigFloat(
-            value=0.0, min_value=-1.0, max_value=1.0, decimals=4,
-            wrapping=True, dynamic=True)
+            value=0.0, min_value=-1.0, max_value=1.0, decimals=4, wrapping=True)
         self.config['kx'] = ConfigFloat(
-            value=0.0, min_value=-1.0, max_value=1.0, decimals=4,
-            wrapping=True, dynamic=True)
+            value=0.0, min_value=-1.0, max_value=1.0, decimals=4, wrapping=True)
         self.config['ky'] = ConfigFloat(
-            value=0.0, min_value=-1.0, max_value=1.0, decimals=4,
-            wrapping=True, dynamic=True)
+            value=0.0, min_value=-1.0, max_value=1.0, decimals=4, wrapping=True)
         self.config['kt'] = ConfigFloat(
-            value=0.0, min_value=-1.0, max_value=1.0, decimals=4,
-            wrapping=True, dynamic=True)
+            value=0.0, min_value=-1.0, max_value=1.0, decimals=4, wrapping=True)
         self.config['kx2'] = ConfigFloat(
-            value=0.0, min_value=-100.0, max_value=100.0, decimals=4,
-            dynamic=True)
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=4)
         self.config['kxy'] = ConfigFloat(
-            value=0.0, min_value=-100.0, max_value=100.0, decimals=4,
-            dynamic=True)
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=4)
         self.config['kxt'] = ConfigFloat(
-            value=0.0, min_value=-100.0, max_value=100.0, decimals=4,
-            dynamic=True)
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=4)
         self.config['kyx'] = ConfigFloat(
-            value=0.0, min_value=-100.0, max_value=100.0, decimals=4,
-            dynamic=True)
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=4)
         self.config['ky2'] = ConfigFloat(
             value=0.0, min_value=-100.0, max_value=100.0, decimals=4,
-            wrapping=True, dynamic=True)
+            wrapping=True)
         self.config['kyt'] = ConfigFloat(
-            value=0.0, min_value=-100.0, max_value=100.0, decimals=4,
-            dynamic=True)
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=4)
         self.config['ktx'] = ConfigFloat(
-            value=0.0, min_value=-100.0, max_value=100.0, decimals=4,
-            dynamic=True)
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=4)
         self.config['kty'] = ConfigFloat(
-            value=0.0, min_value=-100.0, max_value=100.0, decimals=4,
-            dynamic=True)
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=4)
         self.config['kt2'] = ConfigFloat(
-            value=0.0, min_value=-100.0, max_value=100.0, decimals=4,
-            dynamic=True)
-        self.config['xlen'] = ConfigInt(value=720, min_value=1, dynamic=True)
-        self.config['ylen'] = ConfigInt(value=576, min_value=1, dynamic=True)
-        self.config['zlen'] = ConfigInt(value=100, min_value=1, dynamic=True)
-        self.config['looping'] = ConfigEnum(('off', 'repeat'), dynamic=True)
+            value=0.0, min_value=-100.0, max_value=100.0, decimals=4)
+        self.config['xlen'] = ConfigInt(value=720, min_value=1)
+        self.config['ylen'] = ConfigInt(value=576, min_value=1)
+        self.config['zlen'] = ConfigInt(value=100, min_value=1)
+        self.config['looping'] = ConfigEnum(('off', 'repeat'))
         # store sine wave in a lookup table
         self.phases = 1024
         self.waveform = numpy.ndarray([self.phases], dtype=numpy.float32)

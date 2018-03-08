@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-15  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -76,8 +76,8 @@ class WindowBase(Component):
     with_outframe_pool = False
 
     def initialise(self):
-        self.config['xtile'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['ytile'] = ConfigInt(min_value=1, dynamic=True)
+        self.config['xtile'] = ConfigInt(min_value=1)
+        self.config['ytile'] = ConfigInt(min_value=1)
 
     def on_connect(self, output_name):
         # send first window
@@ -138,7 +138,7 @@ class Blackman(WindowBase):
     """
     def initialise(self):
         super(Blackman, self).initialise()
-        self.config['alpha'] = ConfigFloat(value=0.16, dynamic=True)
+        self.config['alpha'] = ConfigFloat(value=0.16)
 
     def make_window(self):
         self.update_config()
@@ -162,7 +162,7 @@ class Kaiser(WindowBase):
     """
     def initialise(self):
         super(Kaiser, self).initialise()
-        self.config['alpha'] = ConfigFloat(value=3.0, dynamic=True)
+        self.config['alpha'] = ConfigFloat(value=3.0)
 
     def make_window(self):
         self.update_config()
@@ -282,12 +282,11 @@ class InverseWindow(Component):
     with_outframe_pool = False
 
     def initialise(self):
-        self.config['xtile'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['ytile'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['xoff'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['yoff'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['fade'] = ConfigEnum(choices=(
-            'switch', 'linear', 'minsnr'), dynamic=True)
+        self.config['xtile'] = ConfigInt(min_value=1)
+        self.config['ytile'] = ConfigInt(min_value=1)
+        self.config['xoff'] = ConfigInt(min_value=1)
+        self.config['yoff'] = ConfigInt(min_value=1)
+        self.config['fade'] = ConfigEnum(choices=('switch', 'linear', 'minsnr'))
 
     def process_frame(self):
         self.update_config()

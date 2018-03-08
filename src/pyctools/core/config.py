@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-17  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -83,9 +83,6 @@ class ConfigLeafNode(object):
 
     :keyword object value: Initial value of the node.
 
-    :keyword bool dynamic: Whether the value can be changed while the
-        component is running. Not currently used anywhere.
-
     :keyword object min_value: Minimum value of the node, for types
         where it's relevant.
 
@@ -93,11 +90,9 @@ class ConfigLeafNode(object):
         where it's relevant.
 
     """
-    def __init__(self, value=None, dynamic=False,
-                 min_value=None, max_value=None, **kwds):
+    def __init__(self, value=None, min_value=None, max_value=None, **kwds):
         super(ConfigLeafNode, self).__init__(**kwds)
         self.value = value
-        self.dynamic = dynamic
         self.min_value = min_value
         self.max_value = max_value
         if value is not None and self.validate(value):

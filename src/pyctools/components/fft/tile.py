@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -51,10 +51,10 @@ class Tile(Transformer):
 
     """
     def initialise(self):
-        self.config['xtile'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['ytile'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['xoff'] = ConfigInt(min_value=1, dynamic=True)
-        self.config['yoff'] = ConfigInt(min_value=1, dynamic=True)
+        self.config['xtile'] = ConfigInt(min_value=1)
+        self.config['ytile'] = ConfigInt(min_value=1)
+        self.config['xoff'] = ConfigInt(min_value=1)
+        self.config['yoff'] = ConfigInt(min_value=1)
 
     def transform(self, in_frame, out_frame):
         self.update_config()

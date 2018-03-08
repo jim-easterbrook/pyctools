@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -69,8 +69,7 @@ class RawFileReader(Component):
 
     def initialise(self):
         self.config['path'] = ConfigPath()
-        self.config['looping'] = ConfigEnum(
-            ('off', 'repeat', 'reverse'), dynamic=True)
+        self.config['looping'] = ConfigEnum(('off', 'repeat', 'reverse'))
 
     def on_start(self):
         # set metadata

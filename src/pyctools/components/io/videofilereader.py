@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -59,7 +59,7 @@ class VideoFileReader(Component):
         self.frame_no = 0
         self.generator = None
         self.config['path'] = ConfigPath()
-        self.config['looping'] = ConfigEnum(('off', 'repeat'), dynamic=True)
+        self.config['looping'] = ConfigEnum(('off', 'repeat'))
         self.config['type'] = ConfigEnum(('RGB', 'Y'))
         self.config['16bit'] = ConfigBool()
 
