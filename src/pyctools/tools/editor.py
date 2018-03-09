@@ -417,7 +417,6 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
             ('Delete',    self.delete_self),
             ('Configure', self.do_config),
             ]
-        self.draw_icon()
 
     def draw_icon(self):
         # name label
@@ -509,6 +508,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
             self.scene().update_scene_rect(no_shrink=True)
         return super(BasicComponentIcon, self).itemChange(change, value)
 
+
 class ComponentIcon(BasicComponentIcon):
     def draw_icon(self):
         super(ComponentIcon, self).draw_icon()
@@ -520,8 +520,8 @@ class ComponentIcon(BasicComponentIcon):
                                          QtCore.QPointF(0, 0)]))
 
 class CompoundIcon(BasicComponentIcon):
-    def __init__(self, name, klass, obj, **kwds):
-        self.expanded = False
+    def __init__(self, name, klass, obj, expanded=False, **kwds):
+        self.expanded = expanded
         self.child_comps = {}
         super(CompoundIcon, self).__init__(name, klass, obj, **kwds)
         self.context_menu_actions.append(
@@ -546,6 +546,15 @@ class CompoundIcon(BasicComponentIcon):
             if pos.y() >= y + self.height:
                 child.moveBy(0, delta_y)
 
+    def back_link(self, target):
+        for key in self.obj._compound_linkages:
+            connections = self.obj._compound_linkages[key]
+            if isinstance(connections[0], six.string_types):
+                connections = zip(connections[0::2], connections[1::2])
+            if target in connections:
+                return key
+        return None
+
     def draw_icon(self):
         # delete previous version
         for child in self.childItems():
@@ -553,38 +562,67 @@ class CompoundIcon(BasicComponentIcon):
         self.child_comps = {}
         if self.expanded:
             # position components according to linkages
-            pos = {}
-            # give all components the same start position
-            for name in self.obj._compound_children:
-                pos[name] = [50, 50]
-            # move components down and/or right according to linkages
-            for i in range(len(self.obj._compound_children) ** 2):
-                no_move = True
-                for source in self.obj._compound_linkages:
-                    src, outbox = source
-                    if src == 'self':
+            # start with components connected to compound inputs and outputs
+            pos = {'self': [-100, 50]}
+            allocation_queue = []
+            for input_name in self.obj.inputs:
+                key = ('self', input_name)
+                if key in self.obj._compound_linkages:
+                    connections = self.obj._compound_linkages[key]
+                    if isinstance(connections[0], six.string_types):
+                        connections = zip(connections[0::2], connections[1::2])
+                    for connection in connections:
+                        connected = connection[0]
+                        if connected not in allocation_queue:
+                            allocation_queue.append(connected)
+            for output_name in self.obj.outputs:
+                key = self.back_link(('self', output_name))
+                if key:
+                    connected = key[0]
+                    if connected not in allocation_queue:
+                        allocation_queue.append(connected)
+            # allocate components and put their connected components on queue
+            while allocation_queue:
+                component_name = allocation_queue.pop(0)
+                # consider component's inputs
+                for input_name in self.obj._compound_children[component_name].inputs:
+                    key = self.back_link((component_name, input_name))
+                    if not key:
                         continue
-                    targets = self.obj._compound_linkages[source]
-                    if isinstance(targets[0], six.string_types):
-                        # not a list of pairs, so make it into one
-                        targets = zip(targets[0::2], targets[1::2])
-                    x = pos[src][0] + 150
-                    connection_no = self.obj._compound_children[src].outputs.index(outbox)
-                    for dest, inbox in targets:
-                        if dest == 'self':
+                    connected = key[0]
+                    if connected not in pos:
+                        if connected not in allocation_queue:
+                            allocation_queue.insert(0, connected)
+                        continue
+                    new_pos = [pos[connected][0] + 150, pos[connected][1]]
+                    while new_pos in pos.values():
+                        new_pos[1] += 200
+                    pos[component_name] = new_pos
+                # consider component's outputs
+                ins_pos = 0
+                y_offset = 0
+                for output_name in self.obj._compound_children[component_name].outputs:
+                    key = component_name, output_name
+                    if key not in self.obj._compound_linkages:
+                        continue
+                    connections = self.obj._compound_linkages[key]
+                    if isinstance(connections[0], six.string_types):
+                        connections = zip(connections[0::2], connections[1::2])
+                    for connection in connections:
+                        connected = connection[0]
+                        if connected not in pos:
+                            if connected not in allocation_queue:
+                                allocation_queue.insert(ins_pos, connected)
+                            ins_pos += 1
                             continue
-                        if pos[dest][0] < x:
-                            pos[dest][0] = x
-                            no_move = False
-                        y = pos[src][1] + (150 * (
-                            connection_no -
-                            self.obj._compound_children[dest].inputs.index(inbox)))
-                        if pos[dest][1] < y:
-                            pos[dest][1] = y
-                            no_move = False
-                        connection_no += 1
-                if no_move:
-                    break
+                        if component_name not in pos:
+                            new_pos = [pos[connected][0] - 150,
+                                       pos[connected][1] + y_offset]
+                            while new_pos in pos.values():
+                                new_pos[1] += 200
+                            pos[component_name] = new_pos
+                        y_offset += 200
+            del pos['self']
             x_min, y_min = pos[list(pos.keys())[0]]
             x_max, y_max = x_min, y_min
             for i in pos:
@@ -703,22 +741,21 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         if name:
             self.new_component(name, klass, position)
 
-    def new_component(self, name, klass, position,
+    def new_component(self, name, klass, position, expanded=False,
                       parent=None, obj=None, config={}):
         if not obj:
             obj = klass(config=config)
         elif config:
-            cnf = obj.get_config()
-            for key, value in config.items():
-                cnf[key] = value
-            obj.set_config(cnf)
+            obj.set_config(config)
         if isinstance(obj, Compound):
-            component = CompoundIcon(name, klass, obj, parent=parent)
+            component = CompoundIcon(
+                name, klass, obj, parent=parent, expanded=expanded)
         else:
             component = ComponentIcon(name, klass, obj, parent=parent)
         component.setPos(position)
         if not parent:
             self.addItem(component)
+        component.draw_icon()
         self.update_scene_rect()
         return component
 
@@ -786,9 +823,11 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         network = local_vars['Network']()
         comps = {}
         for name, comp in network.components.items():
+            kw = {'config': eval(comp['config'])}
+            if 'expanded' in comp:
+                kw['expanded'] = comp['expanded']
             comps[name] = self.new_component(
-                name, eval(comp['class']), QtCore.QPointF(*comp['pos']),
-                config=eval(comp['config']))
+                name, eval(comp['class']), QtCore.QPointF(*comp['pos']), **kw)
         for source in network.linkages:
             src, outbox = source
             targets = network.linkages[source]
@@ -820,6 +859,8 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                     'config' : repr(child.obj.get_config()),
                     'pos' : (child.pos().x(), child.pos().y()),
                     }
+                if isinstance(child, CompoundIcon):
+                    components[child.name]['expanded'] = child.expanded
                 if mod not in modules:
                     modules.append(mod)
                     with_qt = with_qt or needs_qt[mod]
