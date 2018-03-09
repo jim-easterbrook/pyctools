@@ -50,6 +50,10 @@ with the :py:meth:`~ConfigMixin.get_config` and
     cfg['xdown'] = 4
     resize.set_config(cfg)
 
+Or, more simply::
+
+    resize.set_config({'xup': 3, 'xdown': 4})
+
 Note that these methods are thread-safe and make a copy of the
 configuration tree. This ensures that all your configuration changes
 are applied together, some time after calling
@@ -292,12 +296,6 @@ class ConfigGrandParent(ConfigParent):
 
     """
     pass
-##    def __repr__(self):
-##        result = {}
-##        for key, value in self.value.items():
-##            if repr(value) != '{}':
-##                result[key] = value
-##        return repr(result)
 
 
 class ConfigMixin(object):

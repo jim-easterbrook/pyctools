@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -50,9 +50,7 @@ class FilterGenerator(Component):
         ...
         start(..., filgen, resize, ...)
         ...
-        cfg = filgen.get_config()
-        cfg['xaperture'] = 8
-        filgen.set_config(cfg)
+        filgen.set_config({'xaperture': 8})
         ...
 
     If you don't need to change the configuration after creating the
