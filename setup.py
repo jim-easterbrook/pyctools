@@ -26,31 +26,15 @@ import sys
 
 version = '0.4.0'
 
+with open(os.path.join('src', 'pyctools', 'setup.py')) as f:
+    exec(f.read())
+
 # find packages
-packages = ['pyctools']
-for root, dirs, files in os.walk(os.path.join('src', 'pyctools')):
-    package = '.'.join(root.split(os.sep)[1:])
-    for name in dirs:
-        packages.append(package + '.' + name)
+packages = find_packages()
 
-# make sure each package is a "namespace package"
-init_text = """__import__('pkg_resources').declare_namespace(__name__)
-
-try:
-    from .__doc__ import __doc__
-except ImportError:
-    pass
-"""
-for package in packages:
-    path = os.path.join('src', package.replace('.', os.sep), '__init__.py')
-    if os.path.exists(path):
-        with open(path) as f:
-            old_text = f.read()
-    else:
-        old_text = ''
-    if old_text != init_text:
-        with open(path, 'w') as f:
-            f.write(init_text)
+# Make sure each package is a "pkgutil-style namespace package"
+# See https://packaging.python.org/guides/packaging-namespace-packages/
+write_init_files(packages)
 
 console_scripts = []
 for name in os.listdir(os.path.join('src', 'pyctools', 'tools')):
@@ -152,13 +136,12 @@ setup(name = 'pyctools.core',
       license = 'GNU GPL',
       platforms = ['POSIX', 'MacOS'],
       packages = packages,
-      namespace_packages = packages,
       ext_modules = ext_modules,
       package_dir = {'' : 'src'},
       entry_points = {
           'console_scripts' : console_scripts,
           },
-      install_requires = ['cython', 'numpy'],
+      install_requires = ['cython', 'numpy', 'setuptools'],
       cmdclass = cmdclass,
       command_options = command_options,
       zip_safe = False,
