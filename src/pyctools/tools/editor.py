@@ -403,9 +403,11 @@ class OutputIcon(IOIcon):
 
 
 py_class = re.compile(':py:class:`(~[\w\.]*\.)?(.*?)`')
+py_meth = re.compile(':py:meth:`(.*?)`')
 
 def strip_sphinx_domains(text):
     text = py_class.sub(r'`\2`', text)
+    text = py_meth.sub(r'`\1`', text)
     return text
 
 class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
@@ -621,6 +623,7 @@ class CompoundIcon(BasicComponentIcon):
             while allocation_queue:
                 component_name = allocation_queue.pop(0)
                 # consider component's inputs
+                ins_pos = 0
                 for input_name in self.obj._compound_children[component_name].inputs:
                     key = self.back_link((component_name, input_name))
                     if not key:
@@ -628,7 +631,8 @@ class CompoundIcon(BasicComponentIcon):
                     connected = key[0]
                     if connected not in pos:
                         if connected not in allocation_queue:
-                            allocation_queue.insert(0, connected)
+                            allocation_queue.insert(ins_pos, connected)
+                            ins_pos += 1
                         continue
                     new_pos = [pos[connected][0] + dx, pos[connected][1]]
                     while new_pos in pos.values():
@@ -649,7 +653,7 @@ class CompoundIcon(BasicComponentIcon):
                         if connected not in pos:
                             if connected not in allocation_queue:
                                 allocation_queue.insert(ins_pos, connected)
-                            ins_pos += 1
+                                ins_pos += 1
                             continue
                         if component_name not in pos:
                             new_pos = [pos[connected][0] - dx,
@@ -704,7 +708,7 @@ class CompoundIcon(BasicComponentIcon):
                         source_pos = self.in_pos(outbox, None)
                         dest_pos = self.child_comps[dest].in_pos(inbox, source_pos)
                     elif dest == 'self':
-                        dest_pos = self.out_pos(outbox, None)
+                        dest_pos = self.out_pos(inbox, None)
                         source_pos = self.child_comps[src].out_pos(outbox, dest_pos)
                     else:
                         source_pos = self.child_comps[src].out_pos(outbox, None)
