@@ -58,6 +58,7 @@ import pkgutil
 import sys
 import types
 
+import docutils.core
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 import pyctools.components
@@ -401,6 +402,12 @@ class OutputIcon(IOIcon):
         return pos
 
 
+py_class = re.compile(':py:class:`(~[\w\.]*\.)?(.*?)`')
+
+def strip_sphinx_domains(text):
+    text = py_class.sub(r'`\2`', text)
+    return text
+
 class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
     width = 100
 
@@ -413,6 +420,11 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.klass = klass
         self.obj = obj
         self.config_dialog = None
+        help_text = strip_sphinx_domains(self.klass.__doc__)
+        help_text = docutils.core.publish_parts(
+            help_text, writer_name='html')['html_body']
+        help_text = '<h4>{}()</h4>\n{}'.format(self.klass.__name__, help_text)
+        self.setToolTip(help_text)
         # context menu actions
         self.context_menu_actions = [
             ('Rename',    self.rename_self),
@@ -428,17 +440,22 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.name_label.setFont(font)
         self.name_label.setPos(8, 8)
         # type label
-        text = QtWidgets.QGraphicsSimpleTextItem(
-            self.klass.__name__ + '()', self)
+        text = QtWidgets.QGraphicsSimpleTextItem(self)
         font = text.font()
         font.setPointSizeF(font.pointSize() * 0.8)
         font.setItalic(True)
         text.setFont(font)
-        if self.width < 150:
-            text.setPos(8, 30)
+        max_width = self.width - 10
+        if self.width > 120:
+            # expanded compound component, put type on same line
+            max_width -= self.name_label.boundingRect().width() + 5
+        text.setText(QtGui.QFontMetrics(font).elidedText(
+            self.klass.__name__ + '()', QtCore.Qt.ElideMiddle, max_width))
+        text_width = text.boundingRect().width()
+        if self.width > 120:
+            text.setPos((self.width - 5) - text_width, 9)
         else:
-            bounds = text.boundingRect()
-            text.setPos((self.width - bounds.width()) // 2, 9)
+            text.setPos(5, 30)
         # inputs
         self.inputs = {}
         for idx, name in enumerate(self.obj.inputs):
