@@ -434,7 +434,11 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         font.setPointSizeF(font.pointSize() * 0.8)
         font.setItalic(True)
         text.setFont(font)
-        text.setPos(8, 30)
+        if self.width < 150:
+            text.setPos(8, 30)
+        else:
+            bounds = text.boundingRect()
+            text.setPos((self.width - bounds.width()) // 2, 9)
         # inputs
         self.inputs = {}
         for idx, name in enumerate(self.obj.inputs):
@@ -499,7 +503,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.config_dialog.activateWindow()
 
     def itemChange(self, change, value):
-        if change == QtWidgets.QGraphicsItem.ItemPositionChange:
+        if self.isEnabled() and change == QtWidgets.QGraphicsItem.ItemPositionChange:
             if isinstance(value, QtCore.QVariant):
                 value = value.toPointF()
             value.setX(value.x() + 25 - ((value.x() + 25) % 50))
@@ -516,11 +520,11 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
 class ComponentIcon(BasicComponentIcon):
     def draw_icon(self):
         super(ComponentIcon, self).draw_icon()
-        height = 100 + (max(2, len(self.inputs), len(self.outputs)) * 20)
+        self.height = 100 + (max(2, len(self.inputs), len(self.outputs)) * 20)
         self.setPolygon(QtGui.QPolygonF([QtCore.QPointF(0, 0),
                                          QtCore.QPointF(self.width, 0),
-                                         QtCore.QPointF(self.width, height),
-                                         QtCore.QPointF(0, height),
+                                         QtCore.QPointF(self.width, self.height),
+                                         QtCore.QPointF(0, self.height),
                                          QtCore.QPointF(0, 0)]))
 
 
@@ -566,9 +570,19 @@ class CompoundIcon(BasicComponentIcon):
             self.scene().removeItem(child)
         self.child_comps = {}
         if self.expanded:
+            # create components and get max size
+            dx, dy = 0, 0
+            for name, obj in self.obj._compound_children.items():
+                child = self.scene().new_component(
+                    name, obj.__class__, QtCore.QPointF(0, 0),
+                    parent=self, obj=obj)
+                child.setEnabled(False)
+                dx = max(dx, child.width + 40)
+                dy = max(dy, child.height + 20)
+                self.child_comps[name] = child
             # position components according to linkages
             # start with components connected to compound inputs and outputs
-            pos = {'self': [-100, 50]}
+            pos = {'self': [0, 0]}
             allocation_queue = []
             for input_name in self.obj.inputs:
                 key = ('self', input_name)
@@ -599,9 +613,9 @@ class CompoundIcon(BasicComponentIcon):
                         if connected not in allocation_queue:
                             allocation_queue.insert(0, connected)
                         continue
-                    new_pos = [pos[connected][0] + 150, pos[connected][1]]
+                    new_pos = [pos[connected][0] + dx, pos[connected][1]]
                     while new_pos in pos.values():
-                        new_pos[1] += 200
+                        new_pos[1] += dy
                     pos[component_name] = new_pos
                 # consider component's outputs
                 ins_pos = 0
@@ -621,12 +635,12 @@ class CompoundIcon(BasicComponentIcon):
                             ins_pos += 1
                             continue
                         if component_name not in pos:
-                            new_pos = [pos[connected][0] - 150,
+                            new_pos = [pos[connected][0] - dx,
                                        pos[connected][1] + y_offset]
                             while new_pos in pos.values():
-                                new_pos[1] += 200
+                                new_pos[1] += dy
                             pos[component_name] = new_pos
-                        y_offset += 200
+                        y_offset += dy
             del pos['self']
             x_min, y_min = pos[list(pos.keys())[0]]
             x_max, y_max = x_min, y_min
@@ -636,17 +650,13 @@ class CompoundIcon(BasicComponentIcon):
                 x_max = max(x_max, pos[i][0])
                 y_max = max(y_max, pos[i][1])
             for i in pos:
-                pos[i][0] = 50 + pos[i][0] - x_min
-                pos[i][1] = 50 + pos[i][1] - y_min
-            # draw components
-            for name, obj in self.obj._compound_children.items():
-                child = self.scene().new_component(
-                    name, obj.__class__, QtCore.QPointF(*pos[name]),
-                    parent=self, obj=obj)
-                child.setEnabled(False)
-                self.child_comps[name] = child
-            self.width = (x_max - x_min) + 200
-            self.height = (y_max - y_min) + 230
+                pos[i][0] += 40 - x_min
+                pos[i][1] += 30 - y_min
+            # reposition components
+            for name in self.child_comps:
+                self.child_comps[name].setPos(*pos[name])
+            self.width = (x_max - x_min) + dx + 40
+            self.height = (y_max - y_min) + dy + 30
         else:
             self.width = 100
             self.height = 100 + (
