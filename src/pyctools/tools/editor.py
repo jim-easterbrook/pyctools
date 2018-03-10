@@ -443,12 +443,12 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.inputs = {}
         for idx, name in enumerate(self.obj.inputs):
             self.inputs[name] = InputIcon(name, parent=self)
-            self.inputs[name].setPos(0, 100 + (idx * 20))
+            self.inputs[name].setPos(0, 60 + (idx * 20))
         # outputs
         self.outputs = {}
         for idx, name in enumerate(self.obj.outputs):
             self.outputs[name] = OutputIcon(name, parent=self)
-            self.outputs[name].setPos(self.width, 100 + (idx * 20))
+            self.outputs[name].setPos(self.width, 60 + (idx * 20))
 
     def rename(self, name):
         self.name = name
@@ -503,11 +503,11 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.config_dialog.activateWindow()
 
     def itemChange(self, change, value):
-        if self.isEnabled() and change == QtWidgets.QGraphicsItem.ItemPositionChange:
+        if change == QtWidgets.QGraphicsItem.ItemPositionChange:
             if isinstance(value, QtCore.QVariant):
                 value = value.toPointF()
-            value.setX(value.x() + 25 - ((value.x() + 25) % 50))
-            value.setY(value.y() + 25 - ((value.y() + 25) % 50))
+            value.setX(value.x() + 5 - ((value.x() + 5) % 10))
+            value.setY(value.y() + 5 - ((value.y() + 5) % 10))
             return value
         if change == QtWidgets.QGraphicsItem.ItemPositionHasChanged and self.scene():
             for link in self.scene().matching_items(ComponentLink):
@@ -520,7 +520,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
 class ComponentIcon(BasicComponentIcon):
     def draw_icon(self):
         super(ComponentIcon, self).draw_icon()
-        self.height = 100 + (max(2, len(self.inputs), len(self.outputs)) * 20)
+        self.height = 60 + (max(2, len(self.inputs), len(self.outputs)) * 20)
         self.setPolygon(QtGui.QPolygonF([QtCore.QPointF(0, 0),
                                          QtCore.QPointF(self.width, 0),
                                          QtCore.QPointF(self.width, self.height),
@@ -659,7 +659,7 @@ class CompoundIcon(BasicComponentIcon):
             self.height = (y_max - y_min) + dy + 30
         else:
             self.width = 100
-            self.height = 100 + (
+            self.height = 60 + (
                 20 * max(2, len(self.obj.inputs), len(self.obj.outputs)))
         # draw boundary
         self.setPolygon(QtGui.QPolygonF([QtCore.QPointF(0, 0),
