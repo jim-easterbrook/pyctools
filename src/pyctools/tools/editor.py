@@ -400,8 +400,10 @@ class OutputIcon(IOIcon):
         pos.setX(pos.x() + 6)
         return pos
 
+
 class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
     width = 100
+
     def __init__(self, name, klass, obj, **kwds):
         super(BasicComponentIcon, self).__init__(**kwds)
         self.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable |
@@ -470,6 +472,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.obj.set_config(config)
 
     def contextMenuEvent(self, event):
+        event.accept()
         menu = QtWidgets.QMenu()
         actions = {}
         for label, method in self.context_menu_actions:
@@ -477,6 +480,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         action = menu.exec_(event.screenPos())
         if action:
             actions[action]()
+        self.ungrabMouse()
 
     def rename_self(self):
         self.scene().rename_component(self)
@@ -518,6 +522,7 @@ class ComponentIcon(BasicComponentIcon):
                                          QtCore.QPointF(self.width, height),
                                          QtCore.QPointF(0, height),
                                          QtCore.QPointF(0, 0)]))
+
 
 class CompoundIcon(BasicComponentIcon):
     def __init__(self, name, klass, obj, expanded=False, **kwds):
@@ -681,6 +686,7 @@ class CompoundIcon(BasicComponentIcon):
                     line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(
                         self.mapFromScene(source_pos), self.mapFromScene(dest_pos)
                         ), self)
+        self.scene().update_scene_rect(no_shrink=True)
 
 
 class NetworkArea(QtWidgets.QGraphicsScene):
