@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014  Jim Easterbrook  jim@jim-easterbrook.me.uk
+   Copyright (C) 2014-18  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -40,6 +40,7 @@ A zone plate generator component has now been added to the graph area.
 .. image:: /images/editor_3.png
 
 You can move the component around by clicking and dragging it.
+"Hovering" your mouse over the component should display a "tool tip" popup with the component's documentation.
 Clicking on the component selects it and its border is shown dashed.
 Selected components can be deleted with the computer's ``delete`` key.
 
@@ -62,19 +63,19 @@ Component configuration
 
 Double click on the ZonePlateGenerator, or right-click on it and select ``configure`` from the pop-up menu.
 This opens the component's configuration dialog, as shown below.
-(You should move the dialog so it won't be hidden by the main window.)
+(You can move the dialog to any convenient position.)
 
 .. image:: /images/editor_6.png
 
 Set the following values in the configuration dialog:
 
 * ``kx`` 0.5
-* ``kx2`` 1.0
 * ``ky`` 0.5
+* ``kx2`` 1.0
 * ``ky2`` 1.0
-* ``looping`` repeat
 * ``xlen`` 200
 * ``ylen`` 200
+* ``looping`` repeat
 
 then click on the ``apply`` button.
 
@@ -89,7 +90,7 @@ This is the classic "static circular" zone plate test pattern.
 
 .. image:: /images/editor_8.png
 
-Bring the configuration dialog to the foreground again (by double clicking on the ZonePlateGenerator component) and set the ``kt`` value to 0.1, then click on the ``apply`` button.
+Using the zone plate configuration window, set the ``kt`` value to 0.1, then click on the ``apply`` button.
 Now the zone plate should show some movement.
 Hopefully your computer is powerful enough to generate a smoothly moving video.
 
