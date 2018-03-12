@@ -412,11 +412,13 @@ class OutputIcon(IOIcon):
 py_class = re.compile(':py:class:`(~[\w\.]*\.)?(.*?)`')
 py_meth = re.compile(':py:meth:`(.*?)`')
 py_mod = re.compile(':py:mod:`(.*?)\W*<[\w\.]*>`')
+py_obj = re.compile(':py:obj:`(.*?)`')
 
 def strip_sphinx_domains(text):
     text = py_class.sub(r'`\2`', text)
     text = py_meth.sub(r'`\1`', text)
     text = py_mod.sub(r'`\1`', text)
+    text = py_obj.sub(r'`\1`', text)
     return text
 
 class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
@@ -431,9 +433,12 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.klass = klass
         self.obj = obj
         self.config_dialog = None
-        help_text = strip_sphinx_domains(self.klass.__doc__)
-        help_text = docutils.core.publish_parts(
-            help_text, writer_name='html')['html_body']
+        if self.klass.__doc__:
+            help_text = strip_sphinx_domains(self.klass.__doc__)
+            help_text = docutils.core.publish_parts(
+                help_text, writer_name='html')['html_body']
+        else:
+            help_text = '<p>Undocumented</p>'
         help_text = '<h4>{}()</h4>\n{}'.format(self.klass.__name__, help_text)
         self.setToolTip(help_text)
         # context menu actions
