@@ -566,13 +566,16 @@ class CompoundIcon(BasicComponentIcon):
         x = pos.x()
         y = pos.y()
         for child in self.scene().matching_items(BasicComponentIcon):
-            if child == self or child in self.child_comps.values():
+            if child == self or not child.isEnabled():
                 continue
             pos = child.scenePos()
-            if pos.x() >= x:
-                child.moveBy(delta_x, 0)
-            if pos.y() >= y + self.height:
-                child.moveBy(0, delta_y)
+            move = [0, 0]
+            if pos.x() >= x + old_w:
+                move[0] = delta_x
+            if pos.y() >= y + old_h:
+                move[1] = delta_y
+            if move != [0, 0]:
+                child.moveBy(*move)
 
     def back_link(self, target):
         for key in self.obj._compound_linkages:
