@@ -18,6 +18,26 @@
 
 import os
 
+import numpy
+from setuptools import Extension
+
+def find_ext_modules():
+    ext_modules = []
+    for root, dirs, files in os.walk(os.path.join('src', 'pyctools')):
+        for name in files:
+            base, ext = os.path.splitext(name)
+            if ext != '.pyx':
+                continue
+            ext_modules.append(Extension(
+                '.'.join(root.split(os.sep)[1:] + [base]),
+                [os.path.join(root, name)],
+                include_dirs = [numpy.get_include()],
+                extra_compile_args = [
+                    '-fopenmp', '-Wno-maybe-uninitialized', '-Wno-unused-function'],
+                extra_link_args = ['-fopenmp'],
+                ))
+    return ext_modules
+
 def find_packages():
     """Walk source directory tree and convert each sub directory to a
     package name.

@@ -24,7 +24,7 @@ import os
 from setuptools import setup, Extension
 import sys
 
-version = '0.4.0'
+version = '0.4.1'
 
 with open(os.path.join('src', 'pyctools', 'setup.py')) as f:
     exec(f.read())
@@ -44,20 +44,7 @@ for name in os.listdir(os.path.join('src', 'pyctools', 'tools')):
     console_scripts.append(
         'pyctools-{name} = pyctools.tools.{name}:main'.format(name=base))
 
-ext_modules = []
-for root, dirs, files in os.walk(os.path.join('src', 'pyctools')):
-    for name in files:
-        base, ext = os.path.splitext(name)
-        if ext != '.pyx':
-            continue
-        ext_modules.append(Extension(
-            '.'.join(root.split(os.sep)[1:] + [base]),
-            [os.path.join(root, name)],
-            include_dirs = [numpy.get_include()],
-            extra_compile_args = [
-                '-fopenmp', '-Wno-maybe-uninitialized', '-Wno-unused-function'],
-            extra_link_args = ['-fopenmp'],
-            ))
+ext_modules = find_ext_modules()
 
 # Use Cython version of 'build_ext' command
 cmdclass = {'build_ext': build_ext}
