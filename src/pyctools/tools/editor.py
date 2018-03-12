@@ -410,15 +410,13 @@ class OutputIcon(IOIcon):
 
 
 py_class = re.compile(':py:class:`(~[\w\.]*\.)?(.*?)`')
-py_meth = re.compile(':py:meth:`(.*?)`')
-py_mod = re.compile(':py:mod:`(.*?)\W*<[\w\.]*>`')
-py_obj = re.compile(':py:obj:`(.*?)`')
+py_mod = re.compile(':py:mod:`\.*(\w*)(\W*<[\w\.]*>)?`')
+py_other = re.compile(':py:(data|meth|obj):`(.*?)`')
 
 def strip_sphinx_domains(text):
     text = py_class.sub(r'`\2`', text)
-    text = py_meth.sub(r'`\1`', text)
     text = py_mod.sub(r'`\1`', text)
-    text = py_obj.sub(r'`\1`', text)
+    text = py_other.sub(r'`\2`', text)
     return text
 
 class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
