@@ -452,7 +452,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
             # expanded compound component, put type on same line
             max_width -= self.name_label.boundingRect().width() + 5
         text.setText(QtGui.QFontMetrics(font).elidedText(
-            self.klass.__name__ + '()', QtCore.Qt.ElideMiddle, max_width))
+            self.klass.__name__ + '()', QtCore.Qt.ElideRight, max_width))
         text_width = text.boundingRect().width()
         if self.width > 120:
             text.setPos((self.width - 5) - text_width, 9)
@@ -588,7 +588,7 @@ class CompoundIcon(BasicComponentIcon):
         for child in self.childItems():
             self.scene().removeItem(child)
         self.child_comps = {}
-        if self.expanded:
+        if self.expanded and self.obj._compound_children:
             # create components and get max size
             dx, dy = 0, 0
             for name, obj in self.obj._compound_children.items():
@@ -600,69 +600,76 @@ class CompoundIcon(BasicComponentIcon):
                 dy = max(dy, child.height + 20)
                 self.child_comps[name] = child
             # position components according to linkages
-            # start with components connected to compound inputs and outputs
-            pos = {'self': [0, 0]}
+            pos = {}
             allocation_queue = []
-            for input_name in self.obj.inputs:
-                key = ('self', input_name)
-                if key in self.obj._compound_linkages:
-                    connections = self.obj._compound_linkages[key]
-                    if isinstance(connections[0], six.string_types):
-                        connections = zip(connections[0::2], connections[1::2])
-                    for connection in connections:
-                        connected = connection[0]
-                        if connected not in allocation_queue:
-                            allocation_queue.append(connected)
-            for output_name in self.obj.outputs:
-                key = self.back_link(('self', output_name))
-                if key:
-                    connected = key[0]
-                    if connected not in allocation_queue:
-                        allocation_queue.append(connected)
+            # limit number of reallocations to prevent infinite loops
+            reallocations = len(self.child_comps) + 1
             # allocate components and put their connected components on queue
-            while allocation_queue:
+            while True:
+                if not allocation_queue:
+                    # choose an arbitrary unpositioned component
+                    for name in self.child_comps:
+                        if name not in pos:
+                            allocation_queue.append(name)
+                            break
+                    else:
+                        break
                 component_name = allocation_queue.pop(0)
+                new_pos = None
                 # consider component's inputs
                 ins_pos = 0
-                for input_name in self.obj._compound_children[component_name].inputs:
-                    key = self.back_link((component_name, input_name))
-                    if not key:
-                        continue
-                    connected = key[0]
-                    if connected not in pos:
-                        if connected not in allocation_queue:
-                            allocation_queue.insert(ins_pos, connected)
-                            ins_pos += 1
-                        continue
-                    new_pos = [pos[connected][0] + dx, pos[connected][1]]
-                    while new_pos in pos.values():
-                        new_pos[1] += dy
-                    pos[component_name] = new_pos
+                in_no = 0
+                for src, dst in self.obj.input_connections(component_name):
+                    connected = src[0]
+                    if connected == 'self':
+                        pass
+                    elif connected in pos:
+                        if new_pos:
+                            new_pos[0] = max(new_pos[0], pos[connected][0] + dx)
+                        else:
+                            out_no = 0
+                            for s, d in self.obj.output_connections(connected):
+                                if d[0] == component_name:
+                                    break
+                                out_no += 1
+                            new_pos = [pos[connected][0] + dx,
+                                       pos[connected][1] + (dy * (out_no - in_no))]
+                    elif connected not in allocation_queue:
+                        allocation_queue.insert(ins_pos, connected)
+                        ins_pos += 1
+                    in_no += 1
                 # consider component's outputs
                 ins_pos = 0
-                y_offset = 0
-                for output_name in self.obj._compound_children[component_name].outputs:
-                    key = component_name, output_name
-                    if key not in self.obj._compound_linkages:
-                        continue
-                    connections = self.obj._compound_linkages[key]
-                    if isinstance(connections[0], six.string_types):
-                        connections = zip(connections[0::2], connections[1::2])
-                    for connection in connections:
-                        connected = connection[0]
-                        if connected not in pos:
-                            if connected not in allocation_queue:
-                                allocation_queue.insert(ins_pos, connected)
-                                ins_pos += 1
-                            continue
-                        if component_name not in pos:
+                out_no = 0
+                for src, dst in self.obj.output_connections(component_name):
+                    connected = dst[0]
+                    if connected == 'self':
+                        pass
+                    elif connected in pos:
+                        if not new_pos:
+                            in_no = 0
+                            for s, d in self.obj.input_connections(connected):
+                                if s[0] == component_name:
+                                    break
+                                in_no += 1
                             new_pos = [pos[connected][0] - dx,
-                                       pos[connected][1] + y_offset]
-                            while new_pos in pos.values():
-                                new_pos[1] += dy
-                            pos[component_name] = new_pos
-                        y_offset += dy
-            del pos['self']
+                                       pos[connected][1] - (dy * (out_no - in_no))]
+                        elif reallocations and new_pos[0] > pos[connected][0] - dx:
+                            # reallocate connected
+                            del pos[connected]
+                            allocation_queue.insert(ins_pos, connected)
+                            ins_pos += 1
+                            reallocations -= 1
+                    elif connected not in allocation_queue:
+                        allocation_queue.insert(ins_pos, connected)
+                        ins_pos += 1
+                    out_no += 1
+                if not new_pos:
+                    new_pos = [0, 0]
+                # avoid any already allocated components
+                while new_pos in pos.values():
+                    new_pos[1] += dy
+                pos[component_name] = new_pos
             x_min, y_min = pos[list(pos.keys())[0]]
             x_max, y_max = x_min, y_min
             for i in pos:
@@ -674,7 +681,7 @@ class CompoundIcon(BasicComponentIcon):
                 pos[i][0] += 40 - x_min
                 pos[i][1] += 30 - y_min
             # reposition components
-            for name in self.child_comps:
+            for name in pos:
                 self.child_comps[name].setPos(*pos[name])
             self.width = (x_max - x_min) + dx + 40
             self.height = (y_max - y_min) + dy + 30
@@ -706,9 +713,11 @@ class CompoundIcon(BasicComponentIcon):
                 for dest, inbox in targets:
                     if src == 'self':
                         source_pos = self.in_pos(outbox, None)
+                        source_pos.setX(source_pos.x() + 6)
                         dest_pos = self.child_comps[dest].in_pos(inbox, source_pos)
                     elif dest == 'self':
                         dest_pos = self.out_pos(inbox, None)
+                        dest_pos.setX(dest_pos.x() - 6)
                         source_pos = self.child_comps[src].out_pos(outbox, dest_pos)
                     else:
                         source_pos = self.child_comps[src].out_pos(outbox, None)

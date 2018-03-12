@@ -231,3 +231,38 @@ class Compound(object):
                 continue
             self.logger.debug('join %s (%s)', name, child.__class__.__name__)
             child.join()
+
+    def input_connections(self, name):
+        """Yield ordered list of connections to one child.
+
+        Each result is a ((component, output), (component, input)) tuple.
+
+        :param string name: the component whose input connections are
+            wanted.
+
+        """
+        for input_name in self._compound_children[name].inputs:
+            dest = name, input_name
+            for src, dests in self._compound_linkages.items():
+                if isinstance(dests[0], six.string_types):
+                    dests = zip(dests[0::2], dests[1::2])
+                if dest in dests:
+                    yield src, dest
+
+    def output_connections(self, name):
+        """Yield ordered list of connections to one child.
+
+        Each result is a ((component, output), (component, input)) tuple.
+
+        :param string name: the component whose output connections are
+            wanted.
+
+        """
+        for output_name in self._compound_children[name].outputs:
+            src = name, output_name
+            if src in self._compound_linkages:
+                dests = self._compound_linkages[src]
+                if isinstance(dests[0], six.string_types):
+                    dests = zip(dests[0::2], dests[1::2])
+                for dest in dests:
+                    yield src, dest
