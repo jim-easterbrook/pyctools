@@ -201,20 +201,27 @@ class ConfigEnumWidget(QtWidgets.QComboBox):
 class ConfigParentWidget(QtWidgets.QWidget):
     def __init__(self, config, **kwds):
         super(ConfigParentWidget, self).__init__(**kwds)
-        self.setLayout(QtWidgets.QFormLayout())
+        self.setLayout(QtWidgets.QHBoxLayout())
+        self.child_widgets = {}
+        column_count = 1
+        while True:
+            row_count = len(config) // column_count
+            if row_count <= 10:
+                break
+            column_count += 1
+        row = 0
         for name, child in config.items():
-            widget = config_widget[type(child)](child)
-            self.layout().addRow(name, widget)
+            if row == 0:
+                column = QtWidgets.QFormLayout()
+                self.layout().addLayout(column)
+            self.child_widgets[name] = config_widget[type(child)](child)
+            column.addRow(name, self.child_widgets[name])
+            row = (row + 1) % row_count
 
     def get_value(self):
         result = {}
-        for n in range(self.layout().rowCount()):
-            widget = self.layout().itemAt(
-                n, QtWidgets.QFormLayout.FieldRole).widget()
-            name = self.layout().itemAt(
-                n, QtWidgets.QFormLayout.LabelRole).widget().text()
-            name = name.replace('&', '')
-            result[name] = widget.get_value()
+        for name in self.child_widgets:
+            result[name] = self.child_widgets[name].get_value()
         return result
 
 
@@ -404,10 +411,12 @@ class OutputIcon(IOIcon):
 
 py_class = re.compile(':py:class:`(~[\w\.]*\.)?(.*?)`')
 py_meth = re.compile(':py:meth:`(.*?)`')
+py_mod = re.compile(':py:mod:`(.*?)\W*<[\w\.]*>`')
 
 def strip_sphinx_domains(text):
     text = py_class.sub(r'`\2`', text)
     text = py_meth.sub(r'`\1`', text)
+    text = py_mod.sub(r'`\1`', text)
     return text
 
 class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
