@@ -410,7 +410,7 @@ class OutputIcon(IOIcon):
 
 
 py_class = re.compile(':py:class:`(~[\w\.]*\.)?(.*?)`')
-py_mod = re.compile(':py:mod:`\.*(\w*)(\W*<[\w\.]*>)?`')
+py_mod = re.compile(':py:mod:`\.*(\S*)(\s*<[\w\.]*>)?`')
 py_other = re.compile(':py:(data|meth|obj):`(.*?)`')
 
 def strip_sphinx_domains(text):
@@ -874,7 +874,10 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         local_vars = {}
         with open(file_name) as f:
             code = compile(f.read(), file_name, 'exec')
-            exec(code, global_vars, local_vars)
+            try:
+                exec(code, global_vars, local_vars)
+            except ImportError as ex:
+                logger.error(str(ex))
         if 'Network' not in local_vars:
             # not a recognised script
             logger.error('Script not recognised')
