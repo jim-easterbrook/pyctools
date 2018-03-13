@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -34,7 +34,7 @@ for gexiv2_vsn in ('0.10', '0.4'):
         break
     except ValueError:
         pass
-from gi.repository import GObject, GExiv2
+from gi.repository import GExiv2, GLib
 import numpy
 import PIL.Image
 
@@ -218,7 +218,7 @@ class Metadata(object):
             md = GExiv2.Metadata()
             try:
                 md.open_path(xmp_path)
-            except GObject.GError:
+            except GLib.GError:
                 continue
             for tag in (md.get_exif_tags() +
                         md.get_iptc_tags() + md.get_xmp_tags()):
@@ -245,13 +245,20 @@ class Metadata(object):
         md = GExiv2.Metadata()
         try:
             md.open_path(md_path)
-        except GObject.Error:
+        except GLib.GError:
             # file type does not support metadata so use XMP sidecar
             md_path = xmp_path
             # create empty XMP file
             with open(md_path, 'w') as of:
-                of.write('<x:xmpmeta x:xmptk="XMP Core 4.4.0-Exiv2" ')
-                of.write('xmlns:x="adobe:ns:meta/">\n</x:xmpmeta>')
+                of.write('''<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="XMP Core 4.4.0-Exiv2">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+    xmlns:xmp="http://ns.adobe.com/xap/1.0/"
+   xmp:CreatorTool=""/>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>''')
             md = GExiv2.Metadata()
             md.open_path(md_path)
         # add our namespace
