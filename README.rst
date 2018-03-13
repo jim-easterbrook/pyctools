@@ -6,7 +6,7 @@ A picture processing algorithm development kit.
 Pyctools is a collection of picture processing primitive components that you can easily interconnect to make complex algorithm simulations.
 It works with stills or video, and utilises popular libraries such as `Python Imaging Library <http://www.pythonware.com/products/pil/>`_, `NumPy <http://www.numpy.org/>`_ and `OpenCV <http://opencv.org/>`_.
 
-.. image:: http://pyctools.readthedocs.io/en/latest/_images/editor_8.png
+.. image:: http://pyctools.readthedocs.io/en/latest/_images/editor_81.png
 
 Example projects using pyctools include `pyctools-pal <https://github.com/jim-easterbrook/pyctools-pal>`_ (a simulation of the `Transform PAL decoder <http://www.jim-easterbrook.me.uk/pal/>`_) and `pyctools-demo <https://github.com/jim-easterbrook/pyctools-demo>`_ (demonstrations of some simple processing).
 
