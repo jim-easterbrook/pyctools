@@ -6,7 +6,7 @@ A picture processing algorithm development kit.
 Pyctools is a collection of picture processing primitive components that you can easily interconnect to make complex algorithm simulations.
 It works with stills or video, and utilises popular libraries such as `Python Imaging Library <http://www.pythonware.com/products/pil/>`_, `NumPy <http://www.numpy.org/>`_ and `OpenCV <http://opencv.org/>`_.
 
-.. image:: http://pyctools.readthedocs.io/en/latest/_images/editor_81.png
+.. image:: http://pyctools.readthedocs.io/en/latest/_images/editor_8.png
 
 Example projects using pyctools include `pyctools-pal <https://github.com/jim-easterbrook/pyctools-pal>`_ (a simulation of the `Transform PAL decoder <http://www.jim-easterbrook.me.uk/pal/>`_) and `pyctools-demo <https://github.com/jim-easterbrook/pyctools-demo>`_ (demonstrations of some simple processing).
 
@@ -19,16 +19,24 @@ If you install additional components you should build a local copy of the docume
 Requirements
 ------------
 
+Essential
+^^^^^^^^^
+
 * `Python <https://www.python.org/>`_ version 2.7 or 3.x.
 * `NumPy <http://www.numpy.org/>`_ for its powerful multi-dimensional array object.
 * `Python Imaging Library <http://www.pythonware.com/products/pil/>`_ for image file reading and writing. (The `pillow <http://python-pillow.github.io/>`_ fork of PIL is recommended.)
 * `Cython <http://cython.org/>`_ to build fast extensions for Python.
 * `gexiv2 <https://wiki.gnome.org/Projects/gexiv2>`_ to handle metadata.
-* `OpenCV <http://opencv.org/>`_ python bindings (optional) for advanced image processing.
-* `FFmpeg <https://www.ffmpeg.org/>`_ (optional) to read and write video files.
-* `rawkit <https://rawkit.readthedocs.io/>`_ (optional) to read raw image files.
-* `PyQt5 <https://riverbankcomputing.com/software/pyqt/intro>`_ and `PyOpenGL <http://pyopengl.sourceforge.net/>`_ (optional) graphic toolkit used by the Pyctools visual editor and the Qt display components.
-* `Sphinx <http://sphinx-doc.org/>`_ and `mock <https://github.com/testing-cabal/mock>`_ (optional) to build local documentation.
+* `pgi <https://github.com/pygobject/pgi>`_ **or** `PyGObject <https://pygobject.readthedocs.io/>`_ Python wrapper for gexiv2.
+
+Optional
+^^^^^^^^
+
+* `OpenCV <http://opencv.org/>`_ python bindings for advanced image processing.
+* `FFmpeg <https://www.ffmpeg.org/>`_ to read and write video files.
+* `rawkit <https://rawkit.readthedocs.io/>`_ to read raw image files.
+* `PyQt5 <https://riverbankcomputing.com/software/pyqt/intro>`_ and `PyOpenGL <http://pyopengl.sourceforge.net/>`_ graphic toolkit used by the Pyctools visual editor and the Qt display components.
+* `Sphinx <http://sphinx-doc.org/>`_ and `mock <https://github.com/testing-cabal/mock>`_ to build local documentation.
 
 Installation
 ------------
