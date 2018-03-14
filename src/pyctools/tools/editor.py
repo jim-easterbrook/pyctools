@@ -48,6 +48,7 @@ __docformat__ = 'restructuredtext en'
 
 import argparse
 from collections import defaultdict
+import inspect
 import logging
 import os
 import pprint
@@ -431,13 +432,15 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.klass = klass
         self.obj = obj
         self.config_dialog = None
-        if self.klass.__doc__:
-            help_text = strip_sphinx_domains(self.klass.__doc__)
+        help_text = inspect.getdoc(self.klass)
+        if help_text:
+            help_text = strip_sphinx_domains(help_text)
             help_text = docutils.core.publish_parts(
                 help_text, writer_name='html')['html_body']
         else:
             help_text = '<p>Undocumented</p>'
-        help_text = '<h4>{}()</h4>\n{}'.format(self.klass.__name__, help_text)
+        help_text = '<h4>{}()</h4>\n{}\n<p>File: {}</p>'.format(
+            self.klass.__name__, help_text, inspect.getfile(self.klass))
         self.setToolTip(help_text)
         # context menu actions
         self.context_menu_actions = [
