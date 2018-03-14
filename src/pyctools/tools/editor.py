@@ -411,12 +411,12 @@ class OutputIcon(IOIcon):
 
 py_class = re.compile(':py:class:`(~[\w\.]*\.)?(.*?)`')
 py_mod = re.compile(':py:mod:`\.*(\S*)(\s*<[\w\.]*>)?`')
-py_other = re.compile(':py:(data|meth|obj):`(.*?)`')
+py_other = re.compile(':py:(data|func|meth|obj):`(.*?)`')
 
 def strip_sphinx_domains(text):
-    text = py_class.sub(r'`\2`', text)
-    text = py_mod.sub(r'`\1`', text)
-    text = py_other.sub(r'`\2`', text)
+    text = py_class.sub(r'*\2*', text)
+    text = py_mod.sub(r'*\1*', text)
+    text = py_other.sub(r'*\2*', text)
     return text
 
 class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
@@ -541,10 +541,20 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
             value.setY(value.y() + 5 - ((value.y() + 5) % 10))
             return value
         if change == QtWidgets.QGraphicsItem.ItemPositionHasChanged and self.scene():
+            if isinstance(value, QtCore.QVariant):
+                value = value.toPointF()
+            self.scene().parent().status.setText(
+                'position: {}, {}'.format(value.x(), value.y()))
             for link in self.scene().matching_items(ComponentLink):
                 if link.source == self or link.dest == self:
                     link.redraw()
             self.scene().update_scene_rect(no_shrink=True)
+        if change == QtWidgets.QGraphicsItem.ItemSelectedHasChanged and self.scene():
+            if value:
+                self.scene().parent().status.setText('position: {}, {}'.format(
+                    self.scenePos().x(), self.scenePos().y()))
+            else:
+                self.scene().parent().status.clear()
         return super(BasicComponentIcon, self).itemChange(change, value)
 
 
@@ -756,13 +766,21 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             return super(NetworkArea, self).dragEnterEvent(event)
         event.acceptProposedAction()
 
+    def dragLeaveEvent(self, event):
+        if not event.mimeData().hasFormat(_COMP_MIMETYPE):
+            return super(NetworkArea, self).dragMoveEvent(event)
+        self.parent().status.clear()
+
     def dragMoveEvent(self, event):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
             return super(NetworkArea, self).dragMoveEvent(event)
+        self.parent().status.setText('position: {}, {}'.format(
+            event.scenePos().x(), event.scenePos().y()))
 
     def dropEvent(self, event):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
             return super(NetworkArea, self).dropEvent(event)
+        self.parent().status.clear()
         data = event.mimeData().data(_COMP_MIMETYPE).data()
         klass = cPickle.loads(data)
         self.add_component(klass, event.scenePos())
@@ -1125,6 +1143,9 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter.addWidget(self.view)
         splitter.setStretchFactor(1, 1)
         grid.addWidget(splitter, 0, 0, 1, 5)
+        # status or other information
+        self.status = QtWidgets.QLabel()
+        grid.addWidget(self.status, 1, 0, 1, 3)
         # buttons
         run_button = QtWidgets.QPushButton('run graph')
         run_button.clicked.connect(self.network_area.run_graph)
