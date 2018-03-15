@@ -432,7 +432,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.klass = klass
         self.obj = obj
         self.config_dialog = None
-        help_text = inspect.getdoc(self.klass)
+        help_text = inspect.getdoc(self.obj)
         if help_text:
             help_text = strip_sphinx_domains(help_text)
             help_text = docutils.core.publish_parts(
@@ -575,7 +575,6 @@ class ComponentIcon(BasicComponentIcon):
 class CompoundIcon(BasicComponentIcon):
     def __init__(self, name, klass, obj, expanded=False, **kwds):
         self.expanded = expanded
-        self.child_comps = {}
         super(CompoundIcon, self).__init__(name, klass, obj, **kwds)
         self.context_menu_actions.append(
             ('Expand/contract', self.expand_contract))
@@ -602,20 +601,71 @@ class CompoundIcon(BasicComponentIcon):
             if move != [0, 0]:
                 child.moveBy(*move)
 
-    def back_link(self, target):
-        for key in self.obj._compound_linkages:
-            connections = self.obj._compound_linkages[key]
-            if isinstance(connections[0], six.string_types):
-                connections = zip(connections[0::2], connections[1::2])
-            if target in connections:
-                return key
-        return None
+    def position_component(self, component_name, pos, dx, dy):
+        if component_name == 'self':
+            return
+        if component_name in self.positioning:
+            return
+        self.positioning.append(component_name)
+        # find "ideal" position based on components connected to inputs
+        new_pos = None
+        in_no = 0
+        for src, dst in self.obj.input_connections(component_name):
+            connected = src[0]
+            if connected in pos:
+                out_no = 0
+                for s, d in self.obj.output_connections(connected):
+                    if d[0] == component_name:
+                        break
+                    out_no += 1
+                x = pos[connected][0] + dx
+                y = pos[connected][1] + (dy * (out_no - in_no))
+                if new_pos:
+                    new_pos = [max(new_pos[0], x), min(new_pos[1], y)]
+                else:
+                    new_pos = [x, y]
+            in_no += 1
+        # if no connected input, use connected outputs
+        if not new_pos:
+            out_no = 0
+            for src, dst in self.obj.output_connections(component_name):
+                connected = dst[0]
+                if connected in pos:
+                    in_no = 0
+                    for s, d in self.obj.input_connections(connected):
+                        if s[0] == component_name:
+                            break
+                        in_no += 1
+                    x = pos[connected][0] - dx
+                    y = pos[connected][1] - (dy * (out_no - in_no))
+                    if new_pos:
+                        new_pos = [min(new_pos[0], x), max(new_pos[1], y)]
+                    else:
+                        new_pos = [x, y]
+                out_no += 1
+        # if no connected output, use origin
+        if not new_pos:
+            new_pos = [0, 0]
+        pos[component_name] = new_pos
+        # position components connected to inputs
+        for src, dst in self.obj.input_connections(component_name):
+            self.position_component(src[0], pos, dx, dy)
+        # position components connected to outputs
+        for src, dst in self.obj.output_connections(component_name):
+            self.position_component(dst[0], pos, dx, dy)
+        # final check for collisions
+        new_pos = pos[component_name]
+        del pos[component_name]
+        while new_pos in pos.values():
+            new_pos[1] += dy
+        pos[component_name] = new_pos
+        self.positioning.remove(component_name)
 
     def draw_icon(self):
         # delete previous version
         for child in self.childItems():
             self.scene().removeItem(child)
-        self.child_comps = {}
+        child_comps = {}
         if self.expanded and self.obj._compound_children:
             # create components and get max size
             dx, dy = 0, 0
@@ -626,78 +676,15 @@ class CompoundIcon(BasicComponentIcon):
                 child.setEnabled(False)
                 dx = max(dx, child.width + 40)
                 dy = max(dy, child.height + 20)
-                self.child_comps[name] = child
+                child_comps[name] = child
             # position components according to linkages
             pos = {}
-            allocation_queue = []
-            # limit number of reallocations to prevent infinite loops
-            reallocations = len(self.child_comps) + 1
-            # allocate components and put their connected components on queue
-            while True:
-                if not allocation_queue:
-                    # choose an arbitrary unpositioned component
-                    for name in self.child_comps:
-                        if name not in pos:
-                            allocation_queue.append(name)
-                            break
-                    else:
+            self.positioning = []
+            while len(pos) < len(child_comps):
+                for name in child_comps:
+                    if name not in pos:
+                        self.position_component(name, pos, dx, dy)
                         break
-                component_name = allocation_queue.pop(0)
-                new_pos = None
-                # consider component's inputs
-                ins_pos = 0
-                in_no = 0
-                for src, dst in self.obj.input_connections(component_name):
-                    connected = src[0]
-                    if connected == 'self':
-                        pass
-                    elif connected in pos:
-                        if new_pos:
-                            new_pos[0] = max(new_pos[0], pos[connected][0] + dx)
-                        else:
-                            out_no = 0
-                            for s, d in self.obj.output_connections(connected):
-                                if d[0] == component_name:
-                                    break
-                                out_no += 1
-                            new_pos = [pos[connected][0] + dx,
-                                       pos[connected][1] + (dy * (out_no - in_no))]
-                    elif connected not in allocation_queue:
-                        allocation_queue.insert(ins_pos, connected)
-                        ins_pos += 1
-                    in_no += 1
-                # consider component's outputs
-                ins_pos = 0
-                out_no = 0
-                for src, dst in self.obj.output_connections(component_name):
-                    connected = dst[0]
-                    if connected == 'self':
-                        pass
-                    elif connected in pos:
-                        if not new_pos:
-                            in_no = 0
-                            for s, d in self.obj.input_connections(connected):
-                                if s[0] == component_name:
-                                    break
-                                in_no += 1
-                            new_pos = [pos[connected][0] - dx,
-                                       pos[connected][1] - (dy * (out_no - in_no))]
-                        elif reallocations and new_pos[0] > pos[connected][0] - dx:
-                            # reallocate connected
-                            del pos[connected]
-                            allocation_queue.insert(ins_pos, connected)
-                            ins_pos += 1
-                            reallocations -= 1
-                    elif connected not in allocation_queue:
-                        allocation_queue.insert(ins_pos, connected)
-                        ins_pos += 1
-                    out_no += 1
-                if not new_pos:
-                    new_pos = [0, 0]
-                # avoid any already allocated components
-                while new_pos in pos.values():
-                    new_pos[1] += dy
-                pos[component_name] = new_pos
             x_min, y_min = pos[list(pos.keys())[0]]
             x_max, y_max = x_min, y_min
             for i in pos:
@@ -710,7 +697,7 @@ class CompoundIcon(BasicComponentIcon):
                 pos[i][1] += 30 - y_min
             # reposition components
             for name in pos:
-                self.child_comps[name].setPos(*pos[name])
+                child_comps[name].setPos(*pos[name])
             self.width = (x_max - x_min) + dx + 40
             self.height = (y_max - y_min) + dy + 30
         else:
@@ -742,15 +729,15 @@ class CompoundIcon(BasicComponentIcon):
                     if src == 'self':
                         source_pos = self.in_pos(outbox, None)
                         source_pos.setX(source_pos.x() + 6)
-                        dest_pos = self.child_comps[dest].in_pos(inbox, source_pos)
+                        dest_pos = child_comps[dest].in_pos(inbox, source_pos)
                     elif dest == 'self':
                         dest_pos = self.out_pos(inbox, None)
                         dest_pos.setX(dest_pos.x() - 6)
-                        source_pos = self.child_comps[src].out_pos(outbox, dest_pos)
+                        source_pos = child_comps[src].out_pos(outbox, dest_pos)
                     else:
-                        source_pos = self.child_comps[src].out_pos(outbox, None)
-                        dest_pos = self.child_comps[dest].in_pos(inbox, source_pos)
-                        source_pos = self.child_comps[src].out_pos(outbox, dest_pos)
+                        source_pos = child_comps[src].out_pos(outbox, None)
+                        dest_pos = child_comps[dest].in_pos(inbox, source_pos)
+                        source_pos = child_comps[src].out_pos(outbox, dest_pos)
                     line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(
                         self.mapFromScene(source_pos), self.mapFromScene(dest_pos)
                         ), self)
