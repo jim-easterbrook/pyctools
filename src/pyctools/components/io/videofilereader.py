@@ -79,12 +79,6 @@ class VideoFileReader(Component):
         """Generator process to read file"""
         self.update_config()
         path = self.config['path']
-        self.metadata = Metadata().from_file(path)
-        audit = self.metadata.get('audit')
-        audit += 'data = %s\n' % path
-        audit += '    type: %s, 16bit: %s\n' % (
-            self.config['type'], self.config['16bit'])
-        self.metadata.set('audit', audit)
         # open file to get dimensions
         with self.subprocess(
                 ['ffmpeg', '-v', 'info', '-y', '-an', '-vn', '-i', path, '-'],
@@ -98,15 +92,20 @@ class VideoFileReader(Component):
             else:
                 self.logger.critical('Failed to open %s', path)
                 return
+        # read file repeatedly to allow looping
         while True:
+            # can change config once per outer loop
+            self.update_config()
             bit16 = self.config['16bit']
             self.frame_type = self.config['type']
-            if self.frame_type == 'RGB':
-                bps = 3
-                pix_fmt = ('rgb24', 'rgb48le')[bit16]
-            else:
-                bps = 1
-                pix_fmt = ('gray', 'gray16le')[bit16]
+            self.metadata = Metadata().from_file(path)
+            audit = self.metadata.get('audit')
+            audit += 'data = %s\n' % path
+            audit += '    type: %s, 16bit: %s\n' % (self.frame_type, bit16)
+            self.metadata.set('audit', audit)
+            bps = {'RGB': 3, 'Y': 1}[self.frame_type]
+            pix_fmt = {'RGB': ('rgb24', 'rgb48le'),
+                       'Y':   ('gray', 'gray16le')}[self.frame_type][bit16]
             bytes_per_line = xlen * ylen * bps
             if bit16:
                 bytes_per_line *= 2
