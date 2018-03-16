@@ -16,7 +16,7 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-__all__ = ['Resize']
+__all__ = ['Resize', 'FilterResponse']
 __docformat__ = 'restructuredtext en'
 
 import sys
@@ -50,6 +50,10 @@ class Resize(Transformer):
     The core method :py:meth:`resize_frame` is written in Cython,
     allowing real-time image resizing on a typical computer.
 
+    The ``filter`` output forwards the filter frame whenever it changes.
+    It can be connected to a :py:class:`FilterResponse` component to
+    compute the (new) frequency response.
+
     Config:
 
     =========  ===  ====
@@ -61,6 +65,7 @@ class Resize(Transformer):
 
     """
     inputs = ['input', 'filter']
+    outputs = ['output', 'filter']
 
     def initialise(self):
         self.config['xup'] = ConfigInt(min_value=1)
@@ -75,11 +80,12 @@ class Resize(Transformer):
             return False
         if new_filter == self.filter_frame:
             return True
+        self.send('filter', new_filter)
         filter_coefs = new_filter.as_numpy(dtype=numpy.float32)
         if filter_coefs.ndim != 3:
             self.logger.warning('Filter input must be 3 dimensional')
             return False
-        ylen, xlen = filter_coefs.shape[0:2]
+        ylen, xlen = filter_coefs.shape[:2]
         if (xlen % 2) != 1 or (ylen % 2) != 1:
             self.logger.warning('Filter input must have odd width & height')
             return False
@@ -113,5 +119,56 @@ class Resize(Transformer):
             audit += '    y_up: %d, y_down: %d\n' % (y_up, y_down)
         audit += '    filter: {\n%s}\n' % (
             self.filter_frame.metadata.get('audit'))
+        out_frame.metadata.set('audit', audit)
+        return True
+
+
+class FilterResponse(Transformer):
+    """Compute frequency response of a 1-D filter.
+
+    The filter is padded to a power of 2 (e.g. 1024) before computing
+    the Fourier transform. The magnitude of the positive frequency half
+    is output in a form suitable for the
+    :py:class:`~pyctools.components.io.plotdata.PlotData` component.
+
+    """
+    inputs = ['filter']
+    outputs = ['response']
+
+    def transform(self, in_frame, out_frame):
+        filter_coefs = in_frame.as_numpy(dtype=numpy.float32)
+        if filter_coefs.ndim != 3:
+            self.logger.warning('Filter frame must be 3 dimensional')
+            return False
+        ylen, xlen, comps = filter_coefs.shape
+        if xlen > 1 and ylen > 1:
+            return False
+        responses = []
+        pad_len = 1024
+        if xlen > 1:
+            while pad_len < xlen:
+                pad_len *= 2
+            padded = numpy.zeros(pad_len)
+            for c in range(comps):
+                padded[0:xlen] = filter_coefs[0, :, c]
+                responses.append(numpy.absolute(numpy.fft.rfft(padded)))
+        elif ylen > 1:
+            while pad_len < ylen:
+                pad_len *= 2
+            padded = numpy.zeros(pad_len)
+            for c in range(comps):
+                padded[0:ylen] = filter_coefs[:, 0, c]
+                responses.append(numpy.absolute(numpy.fft.rfft(padded)))
+        responses.insert(0, numpy.linspace(0.0, 0.5, responses[0].shape[0]))
+        # generate output frame
+        out_frame.data = numpy.stack(responses)
+        out_frame.type = 'resp'
+        labels = ['normalised frequency']
+        if comps > 1:
+            for c in range(comps):
+                labels.append('component {}'.format(c))
+        out_frame.metadata.set('labels', repr(labels))
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = FilterResponse(data)\n'
         out_frame.metadata.set('audit', audit)
         return True
