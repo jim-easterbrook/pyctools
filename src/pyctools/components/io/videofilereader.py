@@ -25,6 +25,7 @@ from contextlib import contextmanager
 import logging
 import os
 import re
+import signal
 import subprocess
 import sys
 
@@ -69,7 +70,7 @@ class VideoFileReader(Component):
             sp = subprocess.Popen(*arg, **kw)
             yield sp
         finally:
-            sp.terminate()
+            sp.send_signal(signal.SIGINT)
             sp.stdout.close()
             sp.stderr.close()
             sp.wait()
@@ -88,7 +89,7 @@ class VideoFileReader(Component):
         with self.subprocess(
                 ['ffmpeg', '-v', 'info', '-y', '-an', '-vn', '-i', path, '-'],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                universal_newlines=True) as sp:
+                stdin=open(os.devnull), universal_newlines=True) as sp:
             for line in sp.stderr.read().splitlines():
                 match = re.search('(\d{2,})x(\d{2,})', line)
                 if match:
@@ -115,7 +116,7 @@ class VideoFileReader(Component):
                      '-f', 'image2pipe', '-pix_fmt', pix_fmt,
                      '-c:v', 'rawvideo', '-'],
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                    bufsize=bytes_per_line) as sp:
+                    stdin=open(os.devnull), bufsize=bytes_per_line) as sp:
                 while True:
                     try:
                         raw_data = sp.stdout.read(bytes_per_line)
