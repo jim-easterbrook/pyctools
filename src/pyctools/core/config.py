@@ -144,6 +144,9 @@ class ConfigBool(ConfigInt):
             value = bool(value)
         return super(ConfigBool, cls).__new__(cls, value, *args, **kwds)
 
+    def __str__(self):
+        return str(bool(self))
+
 
 class ConfigFloat(ConfigLeafNode, float):
     """Float configuration node.
