@@ -454,11 +454,13 @@ class Transformer(Component):
         :py:meth:`transform`.
 
         """
-        in_frame = self.input_buffer['input'].get()
-        out_frame = self.outframe_pool['output'].get()
+        input_name = self.inputs[0]
+        output_name = self.outputs[0]
+        in_frame = self.input_buffer[input_name].get()
+        out_frame = self.outframe_pool[output_name].get()
         out_frame.initialise(in_frame)
         if self.transform(in_frame, out_frame):
-            self.send('output', out_frame)
+            self.send(output_name, out_frame)
         else:
             self.stop()
 
