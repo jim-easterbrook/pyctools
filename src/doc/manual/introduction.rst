@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-17  Pyctools contributors
+   Copyright (C) 2014-18  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -54,7 +54,7 @@ Pyctools makes it easy to encapsulate OpenCV (and other library) functions in co
 If a function isn't available from one of these libraries it is quite easy to write one using `Cython <http://cython.org/>`_.
 This Python-like compiled language can run much faster than pure Python.
 For example, the :py:mod:`Resize <pyctools.components.interp.resize>` component can resize an image using a user supplied filter -- something that NumPy and OpenCV can't do (as far as I can tell).
-I initially wrote it in Python, to prove my algorithm worked, then moved the core function into a Cython module.
+I initially wrote it in Python, to prove my algorithm worked, then moved the core functionality into a Cython module.
 
 Metadata
 ^^^^^^^^
@@ -65,7 +65,7 @@ This often proved useful when seeking to find out what a particular file was sup
 
 Pyctools uses XMP "sidecar" files to store metadata like this.
 Using sidecar files means we won't need to restrict the video or still image file formats to those that support metadata.
-`PyGObject <https://wiki.gnome.org/Projects/PyGObject>`_ and `gexiv2 <https://wiki.gnome.org/Projects/gexiv2>`_ are used to read and write these metadata files.
+`PyGObject <https://wiki.gnome.org/Projects/PyGObject>`_ (or `pgi <https://github.com/pygobject/pgi>`_) and `gexiv2 <https://wiki.gnome.org/Projects/gexiv2>`_ are used to read and write these metadata files.
 
 Extensibility
 ^^^^^^^^^^^^^

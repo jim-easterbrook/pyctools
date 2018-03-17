@@ -64,7 +64,7 @@ Alternatively it can be installed with ``pip``::
 `GExiv2 <https://wiki.gnome.org/Projects/gexiv2>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If GExiv2 has been correctly installed, the command ``python -c 'from gi.repository import GObject, GExiv2'`` should run without error.
+If GExiv2 and `PyGObject <https://wiki.gnome.org/Projects/PyGObject>`_ (or `pgi <https://github.com/pygobject/pgi>`_) have been correctly installed, the command ``python -c 'from gi.repository import GObject, GExiv2'`` (or ``python -c 'from pgi.repository import GObject, GExiv2'``) should run without error.
 
 GExiv2 should be installable with your system's package manager.
 You need to install the "introspection" bindings as well as the core library.
@@ -175,10 +175,18 @@ Pyctools extras
 ---------------
 
 It is hoped that there will be an increasing number of extra Pyctools packages to expand the range of components available.
-At present there is only one -- a PAL coder / decoder simulation package that I've created to demonstrate how Pyctools can be extended.
-It is installed in the usual way::
+So far I've written a PAL coder / decoder simulation package and a package of extra components that probably aren't general enough to include in the core distribution.
+These packages also demonstrate how Pyctools can be extended.
+They are installed in the usual way::
 
   git clone https://github.com/jim-easterbrook/pyctools-pal.git
   cd pyctools-pal
+  python setup.py build
+  sudo python setup.py install
+
+::
+
+  git clone https://github.com/jim-easterbrook/pyctools-jim.git
+  cd pyctools-jim
   python setup.py build
   sudo python setup.py install

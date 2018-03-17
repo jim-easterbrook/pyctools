@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-17  Pyctools contributors
+   Copyright (C) 2014-18  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -39,8 +39,6 @@ Namespaces
 ^^^^^^^^^^
 
 Python namespace packages allow the Python ``import`` statement to import modules in the same namespace hierarchy from different locations.
-(Unfortunately they're complicated and still changing.
-See `Python PEP 420 <https://www.python.org/dev/peps/pep-0420>`_.)
 For example, if you have installed both `pyctools <https://github.com/jim-easterbrook/pyctools>`_ and `pyctools-pal <https://github.com/jim-easterbrook/pyctools-pal>`_ on your computer then you should have Pyctools components in two different directories::
 
    jim@Brains:~$ ls -l /usr/lib64/python2.7/site-packages/pyctools.core-0.1.2-py2.7-linux-x86_64.egg/pyctools/components/
@@ -113,22 +111,22 @@ This listing shows all the active Python code:
 Line 1 is important.
 The module's ``__all__`` value is used by :py:mod:`pyctools-editor <pyctools.tools.editor>` to determine what components a module provides.
 
-The ``initialise`` method (lines 9-10) is called by the component's constructor.
+The :py:meth:`~pyctools.core.base.Component.initialise` method (lines 9-10) is called by the component's constructor.
 It is here that you add any configuration values that your component uses.
 
-The main part of the component is the ``transform`` method (lines 12-25).
+The main part of the component is the :py:meth:`~pyctools.core.base.Transformer.transform` method (lines 12-25).
 This is called each time there is some work to do, i.e. an input frame has arrived and an output frame is available from the :py:class:`~pyctools.core.base.ObjectPool`.
 
 A component's configuration can be changed while it is running.
 This is done via a threadsafe queue.
-The ``update_config`` method (line 13) gets any new configuration values from the queue so each time the component does any work it is using the most up-to-date config.
+The :py:meth:`~pyctools.core.config.ConfigMixin.update_config` method (line 13) gets any new configuration values from the queue so each time the component does any work it is using the most up-to-date config.
 
 The ``out_frame`` result is already initialised with a copy of the ``in_frame``'s metadata and a link to its image data.
-Line 19 gets the input image data.
-Because we're using a ``PIL.Image`` library method to transform the image data we use the ``in_frame.as_PIL`` method to convert the data to PIL format (if necessary).
+The :py:meth:`in_frame.as_PIL() <pyctools.core.frame.Frame.as_PIL>` call (line 19) gets the input image data as a :py:mod:`PIL:PIL.Image` object, converting it if necessary.
+(The frame's :py:meth:`~pyctools.core.frame.Frame.as_numpy` method could be used to get numpy data instead.)
 
 Line 20 sets the output frame data to a new PIL image.
-Note that you must never modify the input frame.
+Note that you must never modify the input frame's data.
 Because of the parallel nature of Pyctools that same input frame may also be used by another component.
 
 Finally lines 21-24 add some text to the output frame's "audit trail" metadata and line 25 returns ``True`` to indicate that processing was successful.
@@ -136,8 +134,7 @@ Finally lines 21-24 add some text to the output frame's "audit trail" metadata a
 "Passthrough" components
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Unlike some other image processing pipeline systems (such as Microsoft's `DirectShow <http://msdn.microsoft.com/en-us/library/windows/desktop/dd373390%28v=vs.85%29.aspx>`_) Pyctools doesn't have "sink" or "renderer" components that have an input but no output.
-Instead a transformer component is used in "passthrough" mode -- the input data is passed straight through to the output.
+Components that don't appear to need an output (e.g. a video display or file writer) are usually implemented as "passthrough" components -- the input data is passed straight through to the output.
 This conveniently allows a stream of frames to be simultaneously saved in a file and displayed in a window by pipelining a :py:mod:`VideoFileWriter <pyctools.components.io.videofilewriter>` with a :py:mod:`QtDisplay <pyctools.components.qt.qtdisplay>` component.
 
 The passthrough component's ``transform`` method saves or displays the input frame, but need not do anything else.
