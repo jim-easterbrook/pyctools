@@ -19,9 +19,12 @@
 __all__ = ['QtEventLoop', 'QtThreadEventLoop']
 __docformat__ = 'restructuredtext en'
 
-from collections import namedtuple
+from collections import deque, namedtuple
+import time
 
 from PyQt5 import QtCore
+
+from pyctools.core.base import BaseEventLoop
 
 qt_version_info = namedtuple(
     'qt_version_info', ('major', 'minor', 'micro'))._make(
@@ -36,46 +39,7 @@ class ActionEvent(QtCore.QEvent):
         self.command = command
 
 
-class CoreEventLoop(QtCore.QObject):
-    def event(self, event):
-        if event.type() != _queue_event:
-            return super(CoreEventLoop, self).event(event)
-        event.accept()
-        if event.command is None:
-            try:
-                self.owner.stop_event()
-            except Exception as ex:
-                self.owner.logger.exception(ex)
-            self._quit()
-            return True
-        try:
-            event.command()
-        except Exception as ex:
-            self.owner.logger.exception(ex)
-        return True
-
-    def _put_on_queue(self, command):
-        QtCore.QCoreApplication.postEvent(
-            self, ActionEvent(command), QtCore.Qt.LowEventPriority)
-
-    def start(self):
-        try:
-            self.owner.start_event()
-        except Exception as ex:
-            self.owner.logger.exception(ex)
-
-    def stop(self):
-        if self.running():
-            self._put_on_queue(None)
-
-    def new_frame(self):
-        self._put_on_queue(self.owner.new_frame_event)
-
-    def new_config(self):
-        self._put_on_queue(self.owner.new_config_event)
-
-
-class QtEventLoop(CoreEventLoop):
+class QtEventLoop(BaseEventLoop, QtCore.QObject):
     """Event loop using the Qt "main thread" (or "GUI thread").
 
     Use this event loop if your component is a Qt widget or needs to run
@@ -87,26 +51,61 @@ class QtEventLoop(CoreEventLoop):
     :py:class:`~.base.ThreadEventLoop` documentation.
 
     """
-    def __init__(self, owner, **kwds):
+    def __init__(self, **kwds):
         super(QtEventLoop, self).__init__(**kwds)
-        self.owner = owner
-        self.is_running = False
+        self._running = False
+        self._incoming = deque()
+
+    def event(self, event):
+        if event.type() != _queue_event:
+            return super(QtEventLoop, self).event(event)
+        event.accept()
+        if not self._do_command(event.command):
+            self._running = False
+            self._quit()
+        return True
+
+    def _put_on_queue(self, command):
+        if self._running:
+            # queue event normally
+            QtCore.QCoreApplication.postEvent(
+                self, ActionEvent(command), QtCore.Qt.LowEventPriority)
+        else:
+            # save event until we are started
+            self._incoming.append(command)
 
     def _quit(self):
-        self.is_running = False
-
-    def start(self):
-        self.is_running = True
-        super(QtEventLoop, self).start()
-
-    def join(self):
         pass
 
+    def start(self):
+        self._running = True
+        self._put_on_queue(self._do_start)
+        # process any events that arrived before we started
+        while self._incoming:
+            self._put_on_queue(self._incoming.popleft())
+
+    def join(self, timeout=3600):
+        """Wait until the event loop terminates.
+
+        This method is not meaningful unless called from the Qt "main
+        thread", which is almost certainly the thread in which the
+        component was created.
+
+        """
+        start = time.time()
+        while self._running:
+            now = time.time()
+            maxtime = timeout + start - now
+            if maxtime <= 0:
+                return
+            QCoreApplication.processEvents(
+                QEventLoop.AllEvents, int(maxtime * 1000))
+
     def running(self):
-        return self.is_running
+        return self._running
 
 
-class QtThreadEventLoop(CoreEventLoop):
+class QtThreadEventLoop(QtEventLoop):
     """Event loop using a Qt "worker thread".
 
     Use this event loop if your component is a Qt component that does
@@ -123,13 +122,18 @@ class QtThreadEventLoop(CoreEventLoop):
 
     """
     def __init__(self, owner, **kwds):
-        super(QtThreadEventLoop, self).__init__(**kwds)
-        self.owner = owner
+        super(QtThreadEventLoop, self).__init__(owner=owner, **kwds)
         # create thread and move to it
         self.thread = QtCore.QThread()
         self._quit = self.thread.quit
         self.start = self.thread.start
-        self.join = self.thread.wait
         self.running = self.thread.isRunning
         self.moveToThread(self.thread)
-        self.thread.started.connect(self.start)
+        self.thread.started.connect(self._on_start)
+
+    @QtCore.pyqtSlot()
+    def _on_start(self):
+        super(QtThreadEventLoop, self).start()
+
+    def join(self, timeout=3600):
+        self.thread.wait(int(timeout * 1000))

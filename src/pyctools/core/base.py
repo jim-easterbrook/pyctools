@@ -48,7 +48,59 @@ class InputBuffer(object):
         return self.queue.popleft()
 
 
-class ThreadEventLoop(threading.Thread):
+class BaseEventLoop(object):
+    """Base class/mixin for all Pyctools event loops.
+
+    :keyword Component owner: the :py:class:`Component` that is using
+        this event loop instance.
+
+    """
+    def __init__(self, owner=None, **kwds):
+        super(BaseEventLoop, self).__init__(**kwds)
+        self.owner = owner
+
+    def _do_start(self):
+        try:
+            self.owner.start_event()
+        except Exception as ex:
+            self.owner.logger.exception(ex)
+            return False
+        return True
+
+    def _do_command(self, command):
+        if command is None:
+            return False
+        try:
+            command()
+        except Exception as ex:
+            self.owner.logger.exception(ex)
+            return False
+        return command != self.owner.stop_event
+
+    def stop(self):
+        """Thread-safe method to stop the component."""
+        self._put_on_queue(self.owner.stop_event)
+
+    def new_frame(self):
+        """Thread-safe method to alert the component to a new input or
+        output frame.
+
+        Called by the component's input buffer(s) when an input frame
+        arrives, and by its output frame pool(s) when a new output frame
+        is available.
+
+        """
+        self._put_on_queue(self.owner.new_frame_event)
+
+    def new_config(self):
+        """Thread-safe method to alert the component to new config
+        values.
+
+        """
+        self._put_on_queue(self.owner.new_config_event)
+
+
+class ThreadEventLoop(BaseEventLoop, threading.Thread):
     """Event loop using :py:class:`threading.Thread`.
 
     This is the standard Pyctools event loop. It runs a component in a
@@ -62,26 +114,29 @@ class ThreadEventLoop(threading.Thread):
     calls in response to events: :py:meth:`~Component.start_event`,
     :py:meth:`~Component.stop_event`,
     :py:meth:`~Component.new_frame_event` &
-    :py:meth:`~Component.new_config_event`. It must also provide a
-    :py:attr:`~Component.logger` object.
-
-    :param Component owner: the Pyctools component that is using this
-        instance of :py:class:`ThreadEventLoop`.
+    :py:meth:`~Component.new_config_event`.
 
     .. automethod:: start()
 
     .. automethod:: join(timeout=None)
 
     """
-
-    # rename method from threading.Thread
-    running = threading.Thread.is_alive
-
-    def __init__(self, owner, **kwds):
+    def __init__(self, **kwds):
         super(ThreadEventLoop, self).__init__(**kwds)
         self.daemon = True
-        self.owner = owner
         self.incoming = deque()
+        # rename method from threading.Thread
+        self.running = self.is_alive
+
+    def _put_on_queue(self, command):
+        """Put a command on the queue to be called in the component's
+        thread.
+
+        :param callable command: the method to be invoked, e.g.
+            :py:meth:`~BaseEventLoop.new_frame`.
+
+        """
+        self.incoming.append(command)
 
     def run(self):
         """The actual event loop.
@@ -94,48 +149,13 @@ class ThreadEventLoop(threading.Thread):
         thread terminates.
 
         """
-        try:
-            self.owner.start_event()
-        except Exception as ex:
-            self.owner.logger.exception(ex)
-            return
-        while True:
-            while not self.incoming:
-                time.sleep(0.01)
-            command = self.incoming.popleft()
-            if command is None:
-                break
-            try:
-                command()
-            except Exception as ex:
-                self.owner.logger.exception(ex)
-                break
-        try:
-            self.owner.stop_event()
-        except Exception as ex:
-            self.owner.logger.exception(ex)
-
-    def stop(self):
-        """Thread-safe method to stop the component."""
-        self.incoming.append(None)
-
-    def new_frame(self):
-        """Thread-safe method to alert the component to a new input or
-        output frame.
-
-        Called by the component's input buffer(s) when an input frame
-        arrives, and by its output frame pool(s) when a new output frame
-        is available.
-
-        """
-        self.incoming.append(self.owner.new_frame_event)
-
-    def new_config(self):
-        """Thread-safe method to alert the component to new config
-        values.
-
-        """
-        self.incoming.append(self.owner.new_config_event)
+        if self._do_start():
+            while True:
+                while not self.incoming:
+                    time.sleep(0.01)
+                command = self.incoming.popleft()
+                if not self._do_command(command):
+                    break
 
 
 class Component(ConfigMixin):
@@ -193,14 +213,12 @@ class Component(ConfigMixin):
     def __init__(self, config={}, **kwds):
         super(Component, self).__init__()
         self.logger = logging.getLogger(self.__class__.__name__)    #:
-        # create event loop and adopt some of its methods
-        component_event_loop = self.event_loop(self)
-        self.start = component_event_loop.start
-        self.stop = component_event_loop.stop
-        self.running = component_event_loop.running
-        self.join = component_event_loop.join
-        self.new_frame = component_event_loop.new_frame
-        self.new_config = component_event_loop.new_config
+        # create event loop instance and adopt some of its methods
+        self._event_loop = self.event_loop(owner=self)
+        self.start = self._event_loop.start
+        self.stop = self._event_loop.stop
+        self.running = self._event_loop.running
+        self.join = self._event_loop.join
         # set up inputs and outputs
         self.input_buffer = {}
         self.outframe_pool = {}
@@ -214,12 +232,13 @@ class Component(ConfigMixin):
             self.config[key] = value
         # create a threadsafe buffer for each input and adopt its input method
         for name in self.inputs:
-            self.input_buffer[name] = InputBuffer(self.new_frame)
+            self.input_buffer[name] = InputBuffer(self._event_loop.new_frame)
             setattr(self, name, self.input_buffer[name].input)
         # create object pool for each output
         if self.with_outframe_pool:
             for name in self.outputs:
-                self.outframe_pool[name] = ObjectPool(Frame, self.new_frame)
+                self.outframe_pool[name] = ObjectPool(
+                                        Frame, self._event_loop.new_frame)
         # initialise output connections lists
         self._component_connections = {}
         for name in self.outputs:
@@ -317,7 +336,12 @@ class Component(ConfigMixin):
         Calls :py:meth:`on_start`, then starts any output frame pools.
 
         """
-        self.on_start()
+        try:
+            self.on_start()
+        except Exception as ex:
+            self.logger.exception(ex)
+            self.stop()
+            return
         if self.with_outframe_pool:
             self.update_config()
             for out_pool in self.outframe_pool.values():
@@ -331,7 +355,10 @@ class Component(ConfigMixin):
 
         """
         self.logger.debug('stopping')
-        self.on_stop()
+        try:
+            self.on_stop()
+        except Exception as ex:
+            self.logger.exception(ex)
         for name in self.outputs:
             self.send(name, None)
 
@@ -358,7 +385,11 @@ class Component(ConfigMixin):
         """Called by the event loop when new config is available.
 
         """
-        self.on_set_config()
+        try:
+            self.on_set_config()
+        except Exception as ex:
+            self.logger.exception(ex)
+            self.stop()
 
     def new_frame_event(self):
         """Called by the event loop when a new input or output frame is
@@ -418,7 +449,7 @@ class Component(ConfigMixin):
         # now have a full set of correlated inputs to process
         self.process_frame()
         # might be more on the queue, so run again (via event loop)
-        self.new_frame()
+        self._event_loop.new_frame()
 
     def process_frame(self):
         """Process an input frame (or set of frames).

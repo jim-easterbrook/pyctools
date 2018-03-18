@@ -345,7 +345,7 @@ class ConfigMixin(object):
         # put copy of config on queue for running component
         self._configmixin_queue.append(copy.deepcopy(config))
         # notify component, using thread safe method
-        self.new_config()
+        self._event_loop.new_config()
 
     def update_config(self):
         """Pull any changes made with :py:meth:`set_config`.
