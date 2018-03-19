@@ -24,8 +24,6 @@ import time
 
 from PyQt5 import QtCore
 
-from pyctools.core.base import BaseEventLoop
-
 qt_version_info = namedtuple(
     'qt_version_info', ('major', 'minor', 'micro'))._make(
         map(int, QtCore.QT_VERSION_STR.split('.')))
@@ -39,7 +37,7 @@ class ActionEvent(QtCore.QEvent):
         self.command = command
 
 
-class QtEventLoop(BaseEventLoop, QtCore.QObject):
+class QtEventLoop(QtCore.QObject):
     """Event loop using the Qt "main thread" (or "GUI thread").
 
     Use this event loop if your component is a Qt widget or needs to run
@@ -50,11 +48,10 @@ class QtEventLoop(BaseEventLoop, QtCore.QObject):
     Pyctools event loops are described in more detail in the
     :py:class:`~.base.ThreadEventLoop` documentation.
 
-    .. automethod:: stop()
-
     """
-    def __init__(self, **kwds):
+    def __init__(self, owner, **kwds):
         super(QtEventLoop, self).__init__(**kwds)
+        self._owner = owner
         self._running = False
         self._incoming = deque()
 
@@ -62,12 +59,13 @@ class QtEventLoop(BaseEventLoop, QtCore.QObject):
         if event.type() != _queue_event:
             return super(QtEventLoop, self).event(event)
         event.accept()
-        if not self._do_command(event.command):
+        if event.command is None or not event.command():
+            self._owner.stop_event()
             self._running = False
             self._quit()
         return True
 
-    def _put_on_queue(self, command):
+    def queue_command(self, command):
         if self._running:
             # queue event normally
             QtCore.QCoreApplication.postEvent(
@@ -82,12 +80,12 @@ class QtEventLoop(BaseEventLoop, QtCore.QObject):
     def start(self):
         if self._running:
             raise RuntimeError('Component {} is already running'.format(
-                self.owner.__class__.__name__))
+                self._owner.__class__.__name__))
         self._running = True
-        self._put_on_queue(self._do_start)
+        self.queue_command(self._owner.start_event)
         # process any events that arrived before we started
         while self._incoming:
-            self._put_on_queue(self._incoming.popleft())
+            self.queue_command(self._incoming.popleft())
 
     def join(self, timeout=3600):
         """Wait until the event loop terminates or ``timeout`` is
@@ -136,7 +134,7 @@ class QtThreadEventLoop(QtEventLoop):
 
     """
     def __init__(self, owner, **kwds):
-        super(QtThreadEventLoop, self).__init__(owner=owner, **kwds)
+        super(QtThreadEventLoop, self).__init__(owner, **kwds)
         # create thread and move to it
         self.thread = QtCore.QThread()
         self._quit = self.thread.quit
