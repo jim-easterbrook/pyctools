@@ -16,7 +16,8 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-__all__ = ['Component', 'Transformer', 'ObjectPool', 'ThreadEventLoop']
+__all__ = ['Component', 'Transformer', 'InputBuffer', 'ObjectPool',
+           'BaseEventLoop', 'ThreadEventLoop']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque
@@ -29,6 +30,12 @@ from .config import ConfigMixin, ConfigInt
 from .frame import Frame, Metadata
 
 class InputBuffer(object):
+    """Input object buffer.
+
+    Frame objects sent to the component are placed on a thread-safe
+    queue before notifying the component that an input is available.
+
+    """
     def __init__(self, notify, **kwds):
         super(InputBuffer, self).__init__(**kwds)
         self.notify = notify
@@ -51,8 +58,8 @@ class InputBuffer(object):
 class BaseEventLoop(object):
     """Base class/mixin for all Pyctools event loops.
 
-    :keyword Component owner: the :py:class:`Component` that is using
-        this event loop instance.
+    :keyword Component owner: the component that is using this event
+        loop instance.
 
     """
     def __init__(self, owner=None, **kwds):
@@ -118,15 +125,20 @@ class ThreadEventLoop(BaseEventLoop, threading.Thread):
 
     .. automethod:: start()
 
+    .. automethod:: stop()
+
+    .. automethod:: running()
+
     .. automethod:: join(timeout=None)
 
     """
+    # rename method from threading.Thread
+    running = threading.Thread.is_alive
+
     def __init__(self, **kwds):
         super(ThreadEventLoop, self).__init__(**kwds)
         self.daemon = True
         self.incoming = deque()
-        # rename method from threading.Thread
-        self.running = self.is_alive
 
     def _put_on_queue(self, command):
         """Put a command on the queue to be called in the component's
@@ -197,8 +209,8 @@ class Component(ConfigMixin):
 
     :cvar list ~Component.outputs: The component's outputs.
 
-    :cvar object ~Component.event_loop: The type of event loop to use.
-        Default is :py:class:`ThreadEventLoop`.
+    :cvar BaseEventLoop ~Component.event_loop: The type of event loop to
+        use. Default is :py:class:`ThreadEventLoop`.
 
     :ivar logging.Logger logger: logging object for the component.
 
@@ -403,8 +415,8 @@ class Component(ConfigMixin):
         correlated with other inputs, it is merely required to exist.
         This allows frame objects to be used as control inputs when
         processing video sequences. The derived class should use the
-        input buffer's ``peek`` method to get the frame without removing
-        it from the buffer. See the
+        input buffer's :py:meth:`~InputBuffer.peek` method to get the
+        frame without removing it from the buffer. See the
         :py:class:`~pyctools.components.colourspace.matrix.Matrix`
         component for an example.
 
@@ -459,10 +471,10 @@ class Component(ConfigMixin):
 
         It is called when all input buffers and all output frame pools
         have a frame available. The derived class should use the
-        buffers' and frame pools' ``get`` methods to get the input and
-        output frames, do its processing, and then call the output
-        methods to send the results to the next components in the
-        pipeline.
+        buffers' and frame pools' :py:meth:`~ObjectPool.get` methods to
+        get the input and output frames, do its processing, and then
+        call the output methods to send the results to the next
+        components in the pipeline.
 
         See the :py:class:`Transformer` base class for a typical
         implementation.
@@ -543,7 +555,7 @@ class ObjectPool(object):
         objects.
 
     :param callable notify: A function to call when a new object
-        is available, e.g. :py:meth:`ThreadEventLoop.new_frame`.
+        is available, e.g. :py:meth:`BaseEventLoop.new_frame`.
 
     """
     def __init__(self, factory, notify, **kwds):

@@ -50,6 +50,8 @@ class QtEventLoop(BaseEventLoop, QtCore.QObject):
     Pyctools event loops are described in more detail in the
     :py:class:`~.base.ThreadEventLoop` documentation.
 
+    .. automethod:: stop()
+
     """
     def __init__(self, **kwds):
         super(QtEventLoop, self).__init__(**kwds)
@@ -78,6 +80,9 @@ class QtEventLoop(BaseEventLoop, QtCore.QObject):
         pass
 
     def start(self):
+        if self._running:
+            raise RuntimeError('Component {} is already running'.format(
+                self.owner.__class__.__name__))
         self._running = True
         self._put_on_queue(self._do_start)
         # process any events that arrived before we started
@@ -85,11 +90,14 @@ class QtEventLoop(BaseEventLoop, QtCore.QObject):
             self._put_on_queue(self._incoming.popleft())
 
     def join(self, timeout=3600):
-        """Wait until the event loop terminates.
+        """Wait until the event loop terminates or ``timeout`` is
+        reached.
 
         This method is not meaningful unless called from the Qt "main
         thread", which is almost certainly the thread in which the
         component was created.
+
+        :keyword float timeout: timeout in seconds.
 
         """
         start = time.time()
@@ -120,6 +128,12 @@ class QtThreadEventLoop(QtEventLoop):
     Pyctools event loops are described in more detail in the
     :py:class:`~.base.ThreadEventLoop` documentation.
 
+    .. automethod:: start()
+
+    .. automethod:: stop()
+
+    .. automethod:: running()
+
     """
     def __init__(self, owner, **kwds):
         super(QtThreadEventLoop, self).__init__(owner=owner, **kwds)
@@ -136,4 +150,10 @@ class QtThreadEventLoop(QtEventLoop):
         super(QtThreadEventLoop, self).start()
 
     def join(self, timeout=3600):
+        """Wait until the event loop terminates or ``timeout`` is
+        reached.
+
+        :keyword float timeout: timeout in seconds.
+
+        """
         self.thread.wait(int(timeout * 1000))
