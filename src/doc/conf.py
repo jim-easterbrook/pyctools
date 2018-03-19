@@ -37,25 +37,27 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 # cludge to allow documentation to be compiled without installing some
 # dependencies
 
-import mock
+if sys.version_info >= (3, 3):
+    from unittest.mock import Mock
+else:
+    from mock import Mock
 
 for mod_name in ('cv2', 'pgi', 'gi', 'gi.repository', 'OpenGL',
                  'matplotlib', 'matplotlib.pyplot',
                  'scipy', 'scipy.signal', 'scipy.special', 'sip'):
-    sys.modules[mod_name] = mock.Mock()
+    sys.modules[mod_name] = Mock()
 
 # Qt stuff needs a bit more work as it's used as base classes
-class QtMock(mock.Mock):
+class QtMock(Mock):
     QT_VERSION_STR = '0.0.0'
-    QObject = mock.Mock
-    QWidget = mock.Mock
-    QGraphicsRectItem = mock.Mock
-    QGraphicsPolygonItem = mock.Mock
-    QGLWidget = mock.Mock
-    QOpenGLWidget = mock.Mock
+    QObject = object
+    QWidget = object
+    QGraphicsRectItem = object
+    QGraphicsPolygonItem = object
+    QGLWidget = object
+    QOpenGLWidget = object
 
-for mod_name in ('PyQt4', 'PyQt4.QtCore', 'PyQt4.QtGui', 'PyQt4.QtOpenGL',
-                 'PyQt4.QtWidgets', 'PyQt5', 'PyQt5.QtCore', 'PyQt5.QtGui',
+for mod_name in ('PyQt5', 'PyQt5.QtCore', 'PyQt5.QtGui',
                  'PyQt5.QtOpenGL', 'PyQt5.QtWidgets'):
     sys.modules[mod_name] = QtMock()
 
