@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -30,12 +30,13 @@ class Collator(Component):
     frame numbers are used to ensure that only co-timed frames are
     merged.
 
-    This component is redundant now that components can have multiple
-    inputs.
+    .. deprecated:: 0.2.1
+       This component is redundant now that components can have multiple
+       inputs.
 
     """
 
-    inputs = ['input1', 'input2']
+    inputs = ['input1', 'input2']   #:
 
     def initialise(self):
         self.logger.warning('Deprecation warning: Collator is no longer required')
