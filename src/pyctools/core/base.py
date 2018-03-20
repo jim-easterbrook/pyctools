@@ -17,7 +17,7 @@
 #  <http://www.gnu.org/licenses/>.
 
 __all__ = ['Component', 'Transformer', 'InputBuffer', 'ObjectPool',
-           'BaseEventLoop', 'ThreadEventLoop']
+           'ThreadEventLoop']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque
@@ -32,8 +32,12 @@ from .frame import Frame, Metadata
 class InputBuffer(object):
     """Input object buffer.
 
-    Frame objects sent to the component are placed on a thread-safe
-    queue before notifying the component that an input is available.
+    :py:class:`~pyctools.core.frame.Frame` objects sent to the component
+    are placed on a thread-safe queue before notifying the component
+    that an input is available.
+
+    :param callable notify: a thread-safe function to be called when an
+        input frame is available.
 
     """
     def __init__(self, notify, **kwds):
@@ -42,16 +46,42 @@ class InputBuffer(object):
         self.queue = deque()
 
     def input(self, frame):
+        """Put a frame object on the input queue (thread-safe).
+
+        :param object frame: the input
+            :py:class:`~pyctools.core.frame.Frame` object.
+
+        """
         self.queue.append(frame)
         self.notify()
 
     def available(self):
+        """Get length of input queue (thread-safe).
+
+        :rtype: int
+
+        """
         return len(self.queue)
 
     def peek(self, idx=0):
+        """Get a frame object from the input queue without removing it
+        from the queue (thread-safe).
+
+        :keyword int idx: the queue position to fetch. Defaults the 0,
+            the oldest frame in the queue.
+
+        :rtype: object
+
+        """
         return self.queue[idx]
 
     def get(self):
+        """Get the oldest frame object from the input queue, removing it
+        from the queue (thread-safe).
+
+        :rtype: object
+
+        """
         return self.queue.popleft()
 
 
@@ -95,7 +125,7 @@ class ThreadEventLoop(threading.Thread):
         thread.
 
         :param callable command: the method to be invoked, e.g.
-            :py:meth:`~Component.new_frame`.
+            :py:meth:`~Component.new_frame_event`.
 
         """
         self.incoming.append(command)
@@ -106,7 +136,7 @@ class ThreadEventLoop(threading.Thread):
         Calls the ``owner``'s :py:meth:`~Component.start_event` method,
         then calls its :py:meth:`~Component.new_frame_event` and
         :py:meth:`~Component.new_config_event` methods as required until
-        :py:meth:`stop` is called. Finally the ``owner``'s
+        :py:meth:`~Component.stop` is called. Finally the ``owner``'s
         :py:meth:`~Component.stop_event` method is called before the
         thread terminates.
 
@@ -132,7 +162,7 @@ class Component(ConfigMixin):
     component has different inputs and outputs.
 
     The base class creates a thread-safe input buffer for each of your
-    :py:attr:`~Component.inputs`. This allows each component to run in
+    :py:attr:`~Component.inputs`. This allows the component to run in
     its own thread.
 
     To help with load balancing, components usually have a limited size
@@ -150,8 +180,8 @@ class Component(ConfigMixin):
     Every component also has configuration methods. See
     :py:class:`~.config.ConfigMixin` for more information. The
     configuration can be initialised by passing appropriate (key, value)
-    pairs to a component's constructor. These values are applied after
-    calling :py:meth:`initialise`.
+    pairs or a ``config`` :py:class:`dict` to a component's constructor.
+    These values are applied after calling :py:meth:`initialise`.
 
     :cvar bool ~Component.with_outframe_pool: Whether to use an outframe
         pool.
@@ -160,7 +190,7 @@ class Component(ConfigMixin):
 
     :cvar list ~Component.outputs: The component's outputs.
 
-    :cvar BaseEventLoop ~Component.event_loop: The type of event loop to
+    :cvar class ~Component.event_loop: The type of event loop to
         use. Default is :py:class:`ThreadEventLoop`.
 
     :ivar logging.Logger logger: logging object for the component.
@@ -241,8 +271,9 @@ class Component(ConfigMixin):
         """Over ride this in your derived class if you need to do
         anything when the component is stopped.
 
-        This method is called before :py:data:`None` is sent to all
-        outputs, so you can use it to flush any remaining output.
+        This method is called before :py:data:`None` is sent to all the
+        component's outputs, so you can use it to flush any remaining
+        output.
 
         """
         pass
@@ -454,8 +485,8 @@ class Component(ConfigMixin):
         have a frame available. The derived class should use the
         buffers' and frame pools' :py:meth:`~ObjectPool.get` methods to
         get the input and output frames, do its processing, and then
-        call the output methods to send the results to the next
-        components in the pipeline.
+        call the output :py:meth:`send` methods to send the results to
+        the next components in the pipeline.
 
         See the :py:class:`Transformer` base class for a typical
         implementation.
@@ -520,7 +551,7 @@ class ObjectPool(object):
     balancing", to prevent the first component in the pipeline doing all
     its work before the next component starts. A simple way to do this
     is to use a limited size "pool" of objects. When the first component
-    has used up all of the objects in the pool it has to wait for the
+    has used up all of the objects in its pool it has to wait for the
     next component in the pipeline to consume and release an object thus
     ensuring the first component doesn't get too far ahead.
 

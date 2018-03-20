@@ -66,6 +66,13 @@ class QtEventLoop(QtCore.QObject):
         return True
 
     def queue_command(self, command):
+        """Put a command on the queue to be called in the component's
+        thread.
+
+        :param callable command: the method to be invoked, e.g.
+            :py:meth:`~Component.new_frame_event`.
+
+        """
         if self._running:
             # queue event normally
             QtCore.QCoreApplication.postEvent(
@@ -78,6 +85,17 @@ class QtEventLoop(QtCore.QObject):
         pass
 
     def start(self):
+        """Start the component's event loop (thread-safe).
+
+        After the event loop is started the Qt thread calls the
+        component's :py:meth:`~Component.start_event` method, then calls
+        its :py:meth:`~Component.new_frame_event` and
+        :py:meth:`~Component.new_config_event` methods as required until
+        :py:meth:`~Component.stop` is called. Finally the component's
+        :py:meth:`~Component.stop_event` method is called before the
+        event loop terminates.
+
+        """
         if self._running:
             raise RuntimeError('Component {} is already running'.format(
                 self._owner.__class__.__name__))
@@ -108,6 +126,11 @@ class QtEventLoop(QtCore.QObject):
                 QEventLoop.AllEvents, int(maxtime * 1000))
 
     def running(self):
+        """Is the event loop running.
+
+        :rtype: :py:class:`bool`
+
+        """
         return self._running
 
 
@@ -126,9 +149,9 @@ class QtThreadEventLoop(QtEventLoop):
     Pyctools event loops are described in more detail in the
     :py:class:`~.base.ThreadEventLoop` documentation.
 
-    .. automethod:: start()
+    .. automethod:: queue_command()
 
-    .. automethod:: stop()
+    .. automethod:: start()
 
     .. automethod:: running()
 
