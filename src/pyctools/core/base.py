@@ -106,8 +106,6 @@ class ThreadEventLoop(threading.Thread):
 
     .. automethod:: start()
 
-    .. automethod:: running()
-
     .. automethod:: join(timeout=None)
 
     """
@@ -198,9 +196,9 @@ class Component(ConfigMixin):
     :param dict config: Initial configuration values.
 
     """
-    with_outframe_pool = True
-    inputs = ['input']
-    outputs = ['output']
+    with_outframe_pool = True   #:
+    inputs = ['input']          #:
+    outputs = ['output']        #:
     event_loop = ThreadEventLoop
 
     def __init__(self, config={}, **kwds):
