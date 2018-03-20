@@ -436,8 +436,8 @@ class Component(ConfigMixin):
         for out_pool in self.outframe_pool.values():
             if not out_pool.available():
                 return True
-        # check input frames are available, and get current frame number
-        frame_no = 0
+        # check input frames are available, and get current frame numbers
+        frame_nos = {}
         for in_buff in self.input_buffer.values():
             if not in_buff.available():
                 return True
@@ -445,25 +445,23 @@ class Component(ConfigMixin):
             if in_frame is None:
                 return False
             if in_frame.frame_no >= 0:
-                frame_no = max(frame_no, in_frame.frame_no)
+                frame_nos[in_buff] = in_frame.frame_no
             else:
                 # discard any superseded 'static' input
                 while in_buff.available() > 1 and in_buff.peek(1) is not None:
                     in_buff.get()
-        # check for complete set of matching frame numbers
-        for in_buff in self.input_buffer.values():
-            in_frame = in_buff.peek()
-            if in_frame.frame_no < 0:
-                # 'static' input
-                continue
+        if frame_nos:
+            frame_no = max(frame_nos.values())
             # discard old frames that can never be used
-            while in_buff.available() > 1 and in_frame.frame_no < frame_no:
-                in_buff.get()
-                in_frame = in_buff.peek()
-                if in_frame is None:
-                    return False
-            # check for matching frame number
-            if in_frame.frame_no != frame_no:
+            for in_buff in frame_nos:
+                while frame_nos[in_buff] < frame_no and in_buff.available() > 1:
+                    in_buff.get()
+                    in_frame = in_buff.peek()
+                    if in_frame is None:
+                        return False
+                    frame_nos[in_buff] = in_frame.frame_no
+            # check for complete set of matching frame numbers
+            if min(frame_nos.values()) != max(frame_nos.values()):
                 return True
         # now have a full set of correlated inputs to process
         try:
