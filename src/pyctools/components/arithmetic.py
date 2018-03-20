@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -43,8 +43,8 @@ class Arithmetic(Transformer):
 
     Note the liberal use of :py:data:`~pyctools.core.types.pt_float` to
     coerce numbers to the Pyctools default floating point type
-    (:py:class:`numpy.float32`). NumPy will otherwise convert Python
-    :py:class:`float` to :py:class:`numpy.float64`.
+    (:py:class:`numpy:numpy.float32`). NumPy will otherwise convert
+    Python :py:class:`float` to :py:class:`numpy:numpy.float64`.
 
     """
 
@@ -66,13 +66,13 @@ class Arithmetic2(Component):
     """Do simple arithmetic with two inputs.
 
     Similar to :py:class:`Arithmetic`, but has two inputs. For example,
-    to subtract the second inout from the first you could do::
+    to subtract the second input from the first you could do::
 
         subtracter = Arithmetic2(func='data1 - data2')
 
     """
 
-    inputs = ['input1', 'input2']
+    inputs = ['input1', 'input2']   #:
 
     def initialise(self):
         self.config['func'] = ConfigStr(value='data1 + data2')
