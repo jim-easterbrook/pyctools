@@ -23,6 +23,7 @@ __docformat__ = 'restructuredtext en'
 import numpy
 
 from pyctools.core.base import Transformer
+from pyctools.core.types import pt_float
 
 class Modulate(Transformer):
     """Modulate or sample an image.
@@ -67,7 +68,8 @@ class Modulate(Transformer):
 
     def get_cell(self, in_data):
         cell_frame = self.input_buffer['cell'].peek()
-        if cell_frame == self.cell_frame:
+        if (cell_frame == self.cell_frame and
+                self.cell_data.shape[1:] == in_data.shape):
             return True
         cell_data = cell_frame.as_numpy()
         if cell_data.ndim != 4:
@@ -78,8 +80,11 @@ class Modulate(Transformer):
             self.logger.warning('Mismatch between %d cells and %d components',
                                 cell_data.shape[3], in_data.shape[2])
         # repeat cell to frame dimensions
-        repeated_cell = numpy.empty(
-            (cell_data.shape[0],) + in_data.shape, cell_data.dtype)
+        if in_data.dtype == cell_data.dtype:
+            dtype = cell_data.dtype
+        else:
+            dtype = pt_float
+        repeated_cell = numpy.empty((cell_data.shape[0],) + in_data.shape, dtype)
         d_k, d_j, d_i, d_c = cell_data.shape
         for k in range(d_k):
             for j in range(d_j):
