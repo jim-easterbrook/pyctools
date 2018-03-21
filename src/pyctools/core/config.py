@@ -104,7 +104,8 @@ class ConfigLeafNode(object):
         return self
 
     def parser_add(self, parser, key):
-        parser.add_argument('--' + key, default=self.default, **self.parser_kw)
+        parser.add_argument(
+            '--' + key, default=self, help=' ', **self.parser_kw())
 
     def get(self):
         """Return the config item's current value."""
@@ -112,18 +113,13 @@ class ConfigLeafNode(object):
 
     def update(self, value):
         """Adjust the config item's value."""
-        kwds = dict(self.__dict__)
-        if 'parser_kw' in kwds:
-            del(kwds['parser_kw'])
-        return self.__class__(value, **kwds)
+        return self.__class__(value, **self.__dict__)
 
 
 class ConfigInt(ConfigLeafNode, int):
     """Integer configuration node.
 
     """
-    parser_kw = {'type' : int, 'metavar' : 'n'}
-
     def __new__(cls, value=0, default=None, min_value=None, max_value=None):
         if min_value is not None and value < min_value:
             value = min_value
@@ -132,13 +128,14 @@ class ConfigInt(ConfigLeafNode, int):
         return super(ConfigInt, cls).__new__(
             cls, value, default, min_value=min_value, max_value=max_value)
 
+    def parser_kw(self):
+        return {'type' : int, 'metavar' : 'n'}
+
 
 class ConfigBool(ConfigInt):
     """Boolean configuration node.
 
     """
-    parser_kw = {'type' : bool, 'metavar' : 'b'}
-
     def __new__(cls, value=False, default=None, **kwds):
         if value == 'on':
             value = True
@@ -151,6 +148,9 @@ class ConfigBool(ConfigInt):
     def __str__(self):
         return str(bool(self))
 
+    def parser_kw(self):
+        return {'type' : bool, 'metavar' : 'b'}
+
 
 class ConfigFloat(ConfigLeafNode, float):
     """Float configuration node.
@@ -162,8 +162,6 @@ class ConfigFloat(ConfigLeafNode, float):
         incremented beyond max_value or *vice versa*.
 
     """
-    parser_kw = {'type' : float, 'metavar' : 'x'}
-
     def __new__(cls, value=0.0, default=None, min_value=None, max_value=None,
                 decimals=8, wrapping=False):
         if min_value is not None and value < min_value:
@@ -174,23 +172,25 @@ class ConfigFloat(ConfigLeafNode, float):
             cls, value, default, min_value=min_value, max_value=max_value,
             decimals=decimals, wrapping=wrapping)
 
+    def parser_kw(self):
+        return {'type' : float, 'metavar' : 'x'}
+
 
 class ConfigStr(ConfigLeafNode, six.text_type):
     """String configuration node.
 
     """
-    parser_kw = {'metavar' : 'str'}
-
     def __new__(cls, value='', default=None, **kwds):
         return super(ConfigStr, cls).__new__(cls, value, default, **kwds)
+
+    def parser_kw(self):
+        return {'metavar' : 'str'}
 
 
 class ConfigPath(ConfigStr):
     """File pathname configuration node.
 
     """
-    parser_kw = {'metavar' : 'path'}
-
     def __new__(cls, value='', default=None, exists=True):
         if value:
             value = os.path.abspath(value)
@@ -203,6 +203,9 @@ class ConfigPath(ConfigStr):
         else:
             value = ''
         return super(ConfigPath, cls).__new__(cls, value, default, exists=exists)
+
+    def parser_kw(self):
+        return {'metavar' : 'path'}
 
 
 class ConfigEnum(ConfigStr):
@@ -229,12 +232,14 @@ class ConfigEnum(ConfigStr):
                     choices.append(value)
                 else:
                     raise ValueError(str(value))
-        self = super(ConfigEnum, cls).__new__(
+        return super(ConfigEnum, cls).__new__(
             cls, value, default, choices=choices, extendable=extendable)
-        self.parser_kw = {'metavar' : 'str'}
+
+    def parser_kw(self):
+        result = {'metavar' : 'str'}
         if not self.extendable:
-            self.parser_kw['choices'] = self.choices
-        return self
+            result['choices'] = self.choices
+        return result
 
 
 class ConfigParent(ConfigLeafNode, collections.OrderedDict):
