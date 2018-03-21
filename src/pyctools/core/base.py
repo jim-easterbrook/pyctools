@@ -212,10 +212,10 @@ class Component(ConfigMixin):
         # set up inputs and outputs
         self.input_buffer = {}
         self.outframe_pool = {}
-        if self.with_outframe_pool:
-            self.config['outframe_pool_len'] = ConfigInt(3, min_value=2)
         # final initialisation
         self.initialise()
+        if self.with_outframe_pool:
+            self.config['outframe_pool_len'] = ConfigInt(3, min_value=2)
         for key, value in kwds.items():
             self.config[key] = value
         for key, value in config.items():
@@ -224,10 +224,6 @@ class Component(ConfigMixin):
         for name in self.inputs:
             self.input_buffer[name] = InputBuffer(self.new_frame)
             setattr(self, name, self.input_buffer[name].input)
-        # create object pool for each output
-        if self.with_outframe_pool:
-            for name in self.outputs:
-                self.outframe_pool[name] = ObjectPool(Frame, self.new_frame)
         # initialise output connections lists
         self._component_connections = {}
         for name in self.outputs:
@@ -323,18 +319,22 @@ class Component(ConfigMixin):
     def start_event(self):
         """Called by the event loop when it is started.
 
-        Calls :py:meth:`on_start`, then starts any output frame pools.
+        Creates the output frame pools (if used) then calls
+        :py:meth:`on_start`. Creating the output frame pools now allows
+        their size to be configured before starting the component.
 
         """
+        # create object pool for each output
+        if self.with_outframe_pool:
+            self.update_config()
+            for name in self.outputs:
+                self.outframe_pool[name] = ObjectPool(
+                    Frame, self.new_frame, self.config['outframe_pool_len'])
         try:
             self.on_start()
         except Exception as ex:
             self.logger.exception(ex)
             return False
-        if self.with_outframe_pool:
-            self.update_config()
-            for out_pool in self.outframe_pool.values():
-                out_pool.start(self.config['outframe_pool_len'])
         return True
 
     def stop(self):
@@ -565,25 +565,16 @@ class ObjectPool(object):
     :param callable notify: A function to call when a new object
         is available, e.g. :py:meth:`Component.new_frame`.
 
+    :param int size: The maximum number of objects allowed to exist at
+        any time.
+
     """
-    def __init__(self, factory, notify, **kwds):
+    def __init__(self, factory, notify, size, **kwds):
         super(ObjectPool, self).__init__(**kwds)
         self.factory = factory
         self.notify = notify
         self.ref_list = []
         self.obj_list = deque()
-
-    def start(self, size):
-        """Start the object pool.
-
-        Call this when the component is ready to run. Setting the pool
-        size here allows it to be part of the component's config,
-        adjusted after initialisation but before the component is run.
-
-        :param int size: The maximum number of objects allowed to exist
-            at any time.
-
-        """
         # create first objects
         for i in range(size):
             self._new_object()
