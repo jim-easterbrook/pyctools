@@ -132,9 +132,6 @@ class ConfigInt(ConfigLeafNode, int):
         return super(ConfigInt, cls).__new__(
             cls, value, default, min_value=min_value, max_value=max_value)
 
-    def __getnewargs__(self):
-        return int(self), self.default, self.min_value, self.max_value
-
 
 class ConfigBool(ConfigInt):
     """Boolean configuration node.
@@ -150,9 +147,6 @@ class ConfigBool(ConfigInt):
         else:
             value = bool(value)
         return super(ConfigBool, cls).__new__(cls, value, default)
-
-    def __getnewargs__(self):
-        return bool(self), self.default
 
     def __str__(self):
         return str(bool(self))
@@ -180,10 +174,6 @@ class ConfigFloat(ConfigLeafNode, float):
             cls, value, default, min_value=min_value, max_value=max_value,
             decimals=decimals, wrapping=wrapping)
 
-    def __getnewargs__(self):
-        return (float(self), self.default, self.min_value, self.max_value,
-                self.decimals, self.wrapping)
-
 
 class ConfigStr(ConfigLeafNode, six.text_type):
     """String configuration node.
@@ -193,9 +183,6 @@ class ConfigStr(ConfigLeafNode, six.text_type):
 
     def __new__(cls, value='', default=None, **kwds):
         return super(ConfigStr, cls).__new__(cls, value, default, **kwds)
-
-    def __getnewargs__(self):
-        return six.text_type(self), self.default
 
 
 class ConfigPath(ConfigStr):
@@ -217,9 +204,6 @@ class ConfigPath(ConfigStr):
             value = ''
         return super(ConfigPath, cls).__new__(cls, value, default, exists=exists)
 
-    def __getnewargs__(self):
-        return six.text_type(self), self.default, self.exists
-
 
 class ConfigEnum(ConfigStr):
     """'Enum' configuration node.
@@ -236,22 +220,21 @@ class ConfigEnum(ConfigStr):
     """
     def __new__(cls, value=None, default=None, choices=[], extendable=False):
         choices = list(choices)
-        if not value:
-            value = choices[0]
-        elif value not in choices:
-            if extendable:
-                choices.append(value)
-            else:
-                raise ValueError(str(value))
+        if choices:
+            # copy.deepcopy() sets choices & extendable later
+            if not value:
+                value = choices[0]
+            elif value not in choices:
+                if extendable:
+                    choices.append(value)
+                else:
+                    raise ValueError(str(value))
         self = super(ConfigEnum, cls).__new__(
             cls, value, default, choices=choices, extendable=extendable)
         self.parser_kw = {'metavar' : 'str'}
         if not self.extendable:
             self.parser_kw['choices'] = self.choices
         return self
-
-    def __getnewargs__(self):
-        return six.text_type(self), self.default, self.choices, self.extendable
 
 
 class ConfigParent(ConfigLeafNode, collections.OrderedDict):
@@ -335,8 +318,7 @@ class ConfigMixin(object):
         """
         # get any queued changes
         self.update_config()
-        # make copy to allow changes without affecting running
-        # component
+        # make copy to allow changes without affecting running component
         return copy.deepcopy(self.config)
 
     def set_config(self, config):
