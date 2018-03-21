@@ -18,10 +18,10 @@
 
 """Component configuration classes.
 
-The :py:class:`ConfigMixin` mixin class can be used with any component
-to provide a hierarchical tree of named configuration values. Each
-configuration value node has a fixed type and can be configured to
-have constraints such as maximum and minimum values.
+The :py:class:`ConfigMixin` mixin class is used with every component to
+provide a hierarchical tree of named configuration values. Each
+configuration value node has a fixed type and can be configured to have
+constraints such as maximum and minimum values.
 
 Configuration values are accessed in a dictionary-like manner. During
 a component's initialisation you should create the required
@@ -36,10 +36,11 @@ Subsequently the config object behaves more like a dictionary::
     ...
     zlen = self.config['zlen']
 
-Users of a component can initialise its configuration by passing
-key-value pairs to the component's constructor::
+Users of a component can initialise its configuration by passing a
+``config`` :py:class:`dict` or key-value pairs to the component's
+constructor::
 
-    resize = Resize(xup=xup, xdown=xdown)
+    resize = Resize(config={'xup': xup}, xdown=xdown)
 
 The configuration can be changed, even when the component is running,
 with the :py:meth:`~ConfigMixin.get_config` and
@@ -85,14 +86,6 @@ import six
 class ConfigLeafNode(object):
     """Mixin class for configuration nodes.
 
-    :keyword object value: Initial value of the node.
-
-    :keyword object min_value: Minimum value of the node, for types
-        where it's relevant.
-
-    :keyword object max_value: Maximum value of the node, for types
-        where it's relevant.
-
     """
     def __new__(cls, value, default, **kwds):
         self = super(ConfigLeafNode, cls).__new__(cls, value)
@@ -119,6 +112,14 @@ class ConfigLeafNode(object):
 class ConfigInt(ConfigLeafNode, int):
     """Integer configuration node.
 
+    :keyword object value: Initial value of the node.
+
+    :keyword int default: Default value of the node.
+
+    :keyword int min_value: Minimum permissible value.
+
+    :keyword int max_value: Maximum permissible value.
+
     """
     def __new__(cls, value=0, default=None, min_value=None, max_value=None):
         if min_value is not None and value < min_value:
@@ -134,6 +135,10 @@ class ConfigInt(ConfigLeafNode, int):
 
 class ConfigBool(ConfigInt):
     """Boolean configuration node.
+
+    :keyword object value: Initial value of the node.
+
+    :keyword bool default: Default value of the node.
 
     """
     def __new__(cls, value=False, default=None, **kwds):
@@ -154,6 +159,14 @@ class ConfigBool(ConfigInt):
 
 class ConfigFloat(ConfigLeafNode, float):
     """Float configuration node.
+
+    :keyword object value: Initial value of the node.
+
+    :keyword float default: Default value of the node.
+
+    :keyword float min_value: Minimum permissible value.
+
+    :keyword float max_value: Maximum permissible value.
 
     :keyword int decimals: How many decimal places to use when
         displaying the value.
@@ -179,6 +192,10 @@ class ConfigFloat(ConfigLeafNode, float):
 class ConfigStr(ConfigLeafNode, six.text_type):
     """String configuration node.
 
+    :keyword object value: Initial value of the node.
+
+    :keyword str default: Default value of the node.
+
     """
     def __new__(cls, value='', default=None, **kwds):
         return super(ConfigStr, cls).__new__(cls, value, default, **kwds)
@@ -189,6 +206,12 @@ class ConfigStr(ConfigLeafNode, six.text_type):
 
 class ConfigPath(ConfigStr):
     """File pathname configuration node.
+
+    :keyword object value: Initial value of the node.
+
+    :keyword str default: Default value of the node.
+
+    :keyword bool exists: If ``True``, value must be an existing file.
 
     """
     def __new__(cls, value='', default=None, exists=True):
@@ -213,9 +236,13 @@ class ConfigEnum(ConfigStr):
 
     The value can be one of a list of choices.
 
+    :keyword str value: Initial value of the node.
+
+    :keyword str default: Default value of the node.
+
     :keyword list choices: a list of strings that are the possible
-        values of the config item. Initial value is the first in the
-        list.
+        values of the config item. If value is unset the first in the
+        list is used.
 
     :keyword bool extendable: can the choices list be extended by
         setting new values.
