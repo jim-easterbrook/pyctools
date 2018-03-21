@@ -144,6 +144,8 @@ class ThreadEventLoop(threading.Thread):
                 while not self.incoming:
                     time.sleep(0.01)
                 command = self.incoming.popleft()
+                while self.incoming and self.incoming[0] == command:
+                    self.incoming.popleft()
                 if command is None or not command():
                     break
         self.owner.stop_event()
@@ -448,7 +450,7 @@ class Component(ConfigMixin):
                 # discard any superseded 'static' input
                 while in_buff.available() > 1 and in_buff.peek(1) is not None:
                     in_buff.get()
-        if frame_nos:
+        if len(frame_nos) > 1:
             frame_no = max(frame_nos.values())
             # discard old frames that can never be used
             for in_buff in frame_nos:
