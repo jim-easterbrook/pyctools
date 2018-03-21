@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -19,6 +19,8 @@
 
 __all__ = ['Modulate']
 __docformat__ = 'restructuredtext en'
+
+import numpy
 
 from pyctools.core.base import Transformer
 
@@ -58,7 +60,7 @@ class Modulate(Transformer):
 
     """
 
-    inputs = ['input', 'cell']
+    inputs = ['input', 'cell']  #:
 
     def initialise(self):
         self.cell_frame = None
@@ -67,31 +69,33 @@ class Modulate(Transformer):
         cell_frame = self.input_buffer['cell'].peek()
         if cell_frame == self.cell_frame:
             return True
-        self.cell_data = cell_frame.as_numpy()
-        if self.cell_data.ndim != 4:
+        cell_data = cell_frame.as_numpy()
+        if cell_data.ndim != 4:
             self.logger.error('Cell input must be 4 dimensional')
             self.input_buffer['cell'].get()
             return False
-        if self.cell_data.shape[3] not in (1, in_data.shape[2]):
+        if cell_data.shape[3] not in (1, in_data.shape[2]):
             self.logger.warning('Mismatch between %d cells and %d components',
-                                self.cell_data.shape[3], in_data.shape[2])
+                                cell_data.shape[3], in_data.shape[2])
+        # repeat cell to frame dimensions
+        repeated_cell = numpy.empty(
+            (cell_data.shape[0],) + in_data.shape, cell_data.dtype)
+        d_k, d_j, d_i, d_c = cell_data.shape
+        for k in range(d_k):
+            for j in range(d_j):
+                for i in range(d_i):
+                    for c in range(d_c):
+                        repeated_cell[k, j::d_j, i::d_i, c::d_c] = cell_data[k, j, i, c]
         self.cell_frame = cell_frame
+        self.cell_data = repeated_cell
         return True
 
     def transform(self, in_frame, out_frame):
-        data = in_frame.as_numpy(copy=True)
-        if not self.get_cell(data):
+        in_data = in_frame.as_numpy()
+        if not self.get_cell(in_data):
             return False
         k = in_frame.frame_no % self.cell_data.shape[0]
-        cell = self.cell_data[k]
-        ylen = min(cell.shape[0], data.shape[0])
-        xlen = min(cell.shape[1], data.shape[1])
-        comps = min(cell.shape[2], data.shape[2])
-        for j in range(ylen):
-            for i in range(xlen):
-                for c in range(comps):
-                    data[j::ylen, i::xlen, c::comps] *= cell[j, i, c]
-        out_frame.data = data
+        out_frame.data = in_data * self.cell_data[k]
         audit = out_frame.metadata.get('audit')
         audit += 'data = Modulate(data)\n'
         audit += '    cell: {\n%s}\n' % (
