@@ -139,15 +139,18 @@ class ThreadEventLoop(threading.Thread):
         thread terminates.
 
         """
-        if self.owner.start_event():
+        try:
+            self.owner.start_event()
             while True:
                 while not self.incoming:
                     time.sleep(0.01)
-                command = self.incoming.popleft()
-                while self.incoming and self.incoming[0] == command:
-                    self.incoming.popleft()
-                if command is None or not command():
-                    break
+                while self.incoming:
+                    command = self.incoming.popleft()
+                    if command is None:
+                        raise StopIteration()
+                    command()
+        except StopIteration:
+            pass
         self.owner.stop_event()
 
 
@@ -336,8 +339,7 @@ class Component(ConfigMixin):
             self.on_start()
         except Exception as ex:
             self.logger.exception(ex)
-            return False
-        return True
+            raise StopIteration()
 
     def stop(self):
         """Thread-safe method to stop the component."""
@@ -387,17 +389,12 @@ class Component(ConfigMixin):
     def new_config_event(self):
         """Called by the event loop when new config is available.
 
-        :return: Should processing continue.
-
-        :rtype: :py:class:`bool`
-
         """
         try:
             self.on_set_config()
         except Exception as ex:
             self.logger.exception(ex)
-            return False
-        return True
+            raise StopIteration()
 
     def new_frame(self):
         """Thread-safe method to alert the component to a new input or
@@ -427,23 +424,19 @@ class Component(ConfigMixin):
         :py:class:`~pyctools.components.colourspace.matrix.Matrix`
         component for an example.
 
-        :return: Should processing continue.
-
-        :rtype: :py:class:`bool`
-
         """
         # check output frames are available
         for out_pool in self.outframe_pool.values():
             if not out_pool.available():
-                return True
+                return
         # check input frames are available, and get current frame numbers
         frame_nos = {}
         for in_buff in self.input_buffer.values():
             if not in_buff.available():
-                return True
+                return
             in_frame = in_buff.peek()
             if in_frame is None:
-                return False
+                raise StopIteration()
             if in_frame.frame_no >= 0:
                 frame_nos[in_buff] = in_frame.frame_no
             else:
@@ -458,20 +451,19 @@ class Component(ConfigMixin):
                     in_buff.get()
                     in_frame = in_buff.peek()
                     if in_frame is None:
-                        return False
+                        raise StopIteration()
                     frame_nos[in_buff] = in_frame.frame_no
             # check for complete set of matching frame numbers
             if min(frame_nos.values()) != max(frame_nos.values()):
-                return True
+                return
         # now have a full set of correlated inputs to process
         try:
             self.process_frame()
+        except StopIteration:
+            raise
         except Exception as ex:
             self.logger.exception(ex)
-            return False
-        # might be more on the queue, so run again (via event loop)
-        self.new_frame()
-        return True
+            raise StopIteration()
 
     def process_frame(self):
         """Process an input frame (or set of frames).

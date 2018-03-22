@@ -59,7 +59,11 @@ class QtEventLoop(QtCore.QObject):
         if event.type() != _queue_event:
             return super(QtEventLoop, self).event(event)
         event.accept()
-        if event.command is None or not event.command():
+        try:
+            if event.command is None:
+                raise StopIteration()
+            event.command()
+        except StopIteration:
             self._owner.stop_event()
             self._running = False
             self._quit()
