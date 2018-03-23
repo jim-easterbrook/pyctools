@@ -72,7 +72,7 @@ needs_sphinx = '1.3'
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary',
 	      'sphinx.ext.viewcode', 'sphinx.ext.intersphinx']
 
-autoclass_content = 'both'
+autoclass_content = 'class'
 autodoc_member_order = 'bysource'
 autodoc_default_flags = ['members', 'show-inheritance']
 autosummary_generate = False
