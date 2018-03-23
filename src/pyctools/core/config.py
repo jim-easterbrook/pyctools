@@ -286,12 +286,33 @@ class ConfigParent(ConfigLeafNode, collections.OrderedDict):
         return repr(result)
 
     def parser_add(self, parser, prefix=''):
+        """Add config to an :py:class:`argparse.ArgumentParser` object.
+
+        The parser’s :py:meth:`~argparse.ArgumentParser.add_argument`
+        method is called for each config item. The argument name is
+        constructed from the parent and item names, with a dot
+        separator.
+
+        :param argparse.ArgumentParser parser: The argument parser object.
+
+        :keyword str prefix: The parent node name.
+
+        """
         if prefix:
             prefix += '.'
         for key, value in self.items():
             value.parser_add(parser, prefix + key)
 
     def parser_set(self, args):
+        """Set config from an :py:class:`argparse.Namespace` object.
+
+        Call this method with the return value from
+        :py:meth:`~argparse.ArgumentParser.parse_args`.
+
+        :param argparse.Namespace args: The populated
+            :py:class:`argparse.Namespace` object.
+
+        """
         for key, value in vars(args).items():
             parts = key.split('.')
             while len(parts) > 1:
