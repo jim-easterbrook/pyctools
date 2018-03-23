@@ -314,12 +314,10 @@ class ConfigParent(ConfigLeafNode, collections.OrderedDict):
 
         """
         for key, value in vars(args).items():
-            parts = key.split('.')
-            while len(parts) > 1:
-                value = {parts[-1] : value}
-                del parts[-1]
-            key = parts[0]
-            self[key] = value
+            self._parser_update(key, value)
+
+    def _parser_update(self, key, value):
+        self[key] = value
 
     def __setitem__(self, key, value):
         if key in self:
@@ -344,7 +342,9 @@ class ConfigGrandParent(ConfigParent):
     :py:class:`dict`.
 
     """
-    pass
+    def _parser_update(self, key, value):
+        child, sep, grandchild = key.partition('.')
+        self[child]._parser_update(grandchild, value)
 
 
 class ConfigMixin(object):
