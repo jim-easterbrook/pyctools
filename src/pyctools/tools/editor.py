@@ -942,6 +942,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         linkages = dict(linkages)
         components = pprint.pformat(components, indent=4)
         linkages = pprint.pformat(linkages, indent=4)
+        modules.sort()
         with open(file_name, 'w') as of:
             of.write("""#!/usr/bin/env python
 # File written by pyctools-editor. Do not edit.

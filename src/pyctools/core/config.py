@@ -279,11 +279,11 @@ class ConfigParent(ConfigLeafNode, collections.OrderedDict):
         return super(ConfigParent, cls).__new__(cls, value={}, default=None)
 
     def __repr__(self):
-        result = {}
+        result = []
         for key, value in self.items():
             if value != value.default:
-                result[key] = value
-        return repr(result)
+                result.append("'{}': {!r}".format(key, value))
+        return '{' + ', '.join(result) + '}'
 
     def parser_add(self, parser, prefix=''):
         """Add config to an :py:class:`argparse.ArgumentParser` object.
