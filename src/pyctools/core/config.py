@@ -80,8 +80,11 @@ __docformat__ = 'restructuredtext en'
 
 import collections
 import copy
+import logging
 import os.path
 import six
+
+logger = logging.getLogger(__name__)
 
 class ConfigLeafNode(object):
     """Mixin class for configuration nodes.
@@ -322,6 +325,9 @@ class ConfigParent(ConfigLeafNode, collections.OrderedDict):
     def __setitem__(self, key, value):
         if key in self:
             value = self[key].update(value)
+        elif not isinstance(value, ConfigLeafNode):
+            logger.error('unknown config item: %s, %s', key, value)
+            return
         super(ConfigParent, self).__setitem__(key, value)
 
     def update(self, other=[], **kw):
