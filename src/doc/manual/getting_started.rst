@@ -108,10 +108,28 @@ The ``file`` menu has ``load script`` and ``save script`` actions, with the usua
 Note that you can run your saved script directly, without running :py:mod:`pyctools-editor <pyctools.tools.editor>`.
 If you've saved it as ``zone-plate.py`` you can run it with the command ``python zone-plate.py``.
 
+Compound components
+-------------------
+
+The :py:class:`~pyctools.core.compound.Compound` component encapsulates a group of components.
+This allows a few simple components to be assembled into something a bit more complicated that can be treated as a single component.
+
+.. image:: /images/editor_10.png
+
+Compound components are shown on the graph area with a dashed outline.
+
+.. image:: /images/editor_11.png
+
+The compound component's context menu includes an extra item ``Expand/contract``.
+Expanding the component shows its internal components and linkages.
+In this case the component is an image resizer made by pipelining a vertical resizer and a horizontal resizer, each with their own filter generator.
+
+.. image:: /images/editor_12.png
+
 More components
 ---------------
 
-A graph can contain many more components than just the source and display shown above.
+A graph can contain many more components than in the simple examples shown above.
 Here's something a bit more complicated.
 
 .. image:: /images/transform_screenshot.png
