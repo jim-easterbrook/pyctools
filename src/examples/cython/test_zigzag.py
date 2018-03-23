@@ -4,30 +4,29 @@
 import argparse
 import logging
 from pyctools.core.compound import Compound
-import pyctools.components.io.imagedisplay
 import pyctools.components.example.zigzag
 import pyctools.components.io.dumpmetadata
+import pyctools.components.io.imagedisplay
 import pyctools.components.io.imagefilepil
 
 class Network(object):
     components = \
 {   'display': {   'class': 'pyctools.components.io.imagedisplay.ImageDisplay',
-                   'config': "{'outframe_pool_len': 3}",
+                   'config': '{}',
                    'pos': (400.0, 100.0)},
     'metadata': {   'class': 'pyctools.components.io.dumpmetadata.DumpMetadata',
-                    'config': "{'outframe_pool_len': 3, 'raw': 0}",
+                    'config': '{}',
                     'pos': (400.0, 210.0)},
     'reader': {   'class': 'pyctools.components.io.imagefilepil.ImageFileReaderPIL',
                   'config': "{'path': "
                             "'/home/jim/Documents/projects/pyctools/master/src/doc/images/editor_8.png'}",
                   'pos': (140.0, 100.0)},
     'zigzag': {   'class': 'pyctools.components.example.zigzag.Zigzag',
-                  'config': "{'outframe_pool_len': 3, 'amplitude': 10.0, "
-                            "'period': 100.0}",
+                  'config': '{}',
                   'pos': (270.0, 100.0)}}
     linkages = \
 {   ('reader', 'output'): [('zigzag', 'input')],
-    ('zigzag', 'output'): [('metadata', 'input'), ('display', 'input')]}
+    ('zigzag', 'output'): [('display', 'input'), ('metadata', 'input')]}
 
     def make(self):
         comps = {}
@@ -39,7 +38,8 @@ if __name__ == '__main__':
 
     comp = Network().make()
     cnf = comp.get_config()
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     cnf.parser_add(parser)
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help='increase verbosity of log messages')
