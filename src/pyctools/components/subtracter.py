@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-18  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -28,9 +28,11 @@ class Subtracter(Component):
 
         subtracter = Arithmetic2(func='data1 - data2')
 
+    .. deprecated:: 0.2.1
+
     """
 
-    inputs = ['input0', 'input1']
+    inputs = ['input0', 'input1']   #:
 
     def process_frame(self):
         in_frame1 = self.input_buffer['input0'].get()
