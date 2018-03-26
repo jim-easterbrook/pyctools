@@ -604,9 +604,9 @@ class CompoundIcon(BasicComponentIcon):
     def position_component(self, component_name, pos, dx, dy):
         if component_name == 'self':
             return
-        if component_name in self.positioning:
+        if self.recurse_depth[component_name] > 2:
             return
-        self.positioning.append(component_name)
+        self.recurse_depth[component_name] += 1
         # find "ideal" position based on components connected to inputs
         new_pos = None
         in_no = 0
@@ -659,7 +659,7 @@ class CompoundIcon(BasicComponentIcon):
         while new_pos in pos.values():
             new_pos[1] += dy
         pos[component_name] = new_pos
-        self.positioning.remove(component_name)
+        self.recurse_depth[component_name] -= 1
 
     def draw_icon(self):
         # delete previous version
@@ -679,7 +679,7 @@ class CompoundIcon(BasicComponentIcon):
                 child_comps[name] = child
             # position components according to linkages
             pos = {}
-            self.positioning = []
+            self.recurse_depth = defaultdict(int)
             while len(pos) < len(child_comps):
                 for name in child_comps:
                     if name not in pos:
