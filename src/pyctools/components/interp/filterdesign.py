@@ -31,7 +31,7 @@ from pyctools.core.frame import Frame
 from pyctools.core.types import pt_float, pt_complex
 
 class FilterDesign(Component):
-    """Generate a filter from an ideal response.
+    """Generate a 1-D filter from an ideal response.
 
     The response is specified as a series of normalised frequency values
     (in the range 0.0 to 0.5), corresponding gain values, usually in the
@@ -50,9 +50,8 @@ class FilterDesign(Component):
 
     The ``interp`` option selects the function used to convert the
     series of response points to a continuous function, before
-    calculating the filter coefficients.
-
-    .. _scipy: http://scipy.org/
+    calculating the filter coefficients. See
+    :py:class:`scipy:scipy.interpolate.interp1d` for more detail.
 
     ==============  =====  ====
     Config
@@ -65,7 +64,7 @@ class FilterDesign(Component):
     ==============  =====  ====
 
     """
-    inputs = []     #:
+    inputs = []
     outputs = ['filter', 'response']    #:
     with_outframe_pool = False
     interp_list = ('linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic')

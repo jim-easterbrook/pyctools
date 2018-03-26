@@ -81,6 +81,7 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
     'PIL': ('http://pillow.readthedocs.io/en/latest/', None),
+    'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
     }
 
 keep_warnings = True
