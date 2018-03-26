@@ -61,6 +61,7 @@ class FilterDesign(Component):
     ``weight``      str    List of corresponding weight values. Default is unity.
     ``aperture``    int    The number of filter coefficients.
     ``interp``      str    Interpolation function.  Possible values: {}
+    ``direction``   str    Direction of filter. Possible values: horizontal, vertical.
     ==============  =====  ====
 
     """
@@ -76,6 +77,7 @@ class FilterDesign(Component):
         self.config['weight'] = ConfigStr()
         self.config['aperture'] = ConfigInt(value=9, min_value=3)
         self.config['interp'] = ConfigEnum(choices=(self.interp_list))
+        self.config['direction'] = ConfigEnum(choices=('horizontal', 'vertical'))
 
     def on_connect(self, output_name):
         # send first filter coefs
@@ -153,7 +155,10 @@ class FilterDesign(Component):
                                    numpy.linalg.solve(L, MtR)).astype(pt_float)
         # send filter output
         fil_frame = Frame()
-        fil_frame.data = coefs
+        if self.config['direction'] == 'horizontal':
+            fil_frame.data = coefs.reshape((1, -1, 1))
+        else:
+            fil_frame.data = coefs.reshape((-1, 1, 1))
         fil_frame.type = 'fil'
         audit = fil_frame.metadata.get('audit')
         audit += 'data = FilterCoefficients()\n'
@@ -163,6 +168,7 @@ class FilterDesign(Component):
             audit += '    weight: {}\n'.format(self.config['weight'])
         audit += '    aperture: {}\n'.format(aperture)
         audit += '    interp: {}\n'.format(self.config['interp'])
+        audit += '    direction: {}\n'.format(self.config['direction'])
         fil_frame.metadata.set('audit', audit)
         self.send('filter', fil_frame)
         # compute actual response
@@ -186,7 +192,10 @@ class FilterDesign(Component):
         audit += 'data = FilterResponse()\n'
         audit += '    frequency: {}\n'.format(self.config['frequency'])
         audit += '    gain: {}\n'.format(self.config['gain'])
+        if self.config['weight']:
+            audit += '    weight: {}\n'.format(self.config['weight'])
         audit += '    aperture: {}\n'.format(aperture)
         audit += '    interp: {}\n'.format(self.config['interp'])
+        audit += '    direction: {}\n'.format(self.config['direction'])
         resp_frame.metadata.set('audit', audit)
         self.send('response', resp_frame)
