@@ -129,7 +129,7 @@ class Compound(object):
             for name in self.config_map:
                 child_config = self._compound_children[name].get_config()
                 for parent_item, child_item in self.config_map[name]:
-                    if parent_item not in self.config.get():
+                    if parent_item not in self.config:
                         self.config[parent_item] = child_config[child_item]
         else:
             self.config = ConfigGrandParent()

@@ -76,7 +76,7 @@ class ConfigPathWidget(QtWidgets.QPushButton):
     def __init__(self, config, **kwds):
         super(ConfigPathWidget, self).__init__(**kwds)
         self.config = config
-        self.show_value(self.config.get())
+        self.show_value(self.config)
         self.clicked.connect(self.set_value)
 
     def set_value(self):

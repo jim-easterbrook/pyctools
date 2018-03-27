@@ -103,10 +103,6 @@ class ConfigLeafNode(object):
         parser.add_argument(
             '--' + key, default=self, help=' ', **self.parser_kw())
 
-    def get(self):
-        """Return the config item's current value."""
-        return self
-
     def update(self, value):
         """Adjust the config item's value."""
         return self.__class__(value, **self.__dict__)
