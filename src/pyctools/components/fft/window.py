@@ -297,6 +297,14 @@ class InverseWindow(Component):
         fade = self.config['fade']
         in_frame = self.input_buffer['input'].get()
         self.send('window', in_frame)
+        # adjust config to suit actual window
+        in_data = in_frame.as_numpy(dtype=numpy.float32)
+        if in_data.shape[1] != y_tile:
+            y_off = y_off * in_data.shape[1] // y_tile
+            y_tile = in_data.shape[1]
+        if in_data.shape[2] != x_tile:
+            x_off = x_off * in_data.shape[2] // x_tile
+            x_tile = in_data.shape[2]
         out_frame = Frame()
         out_frame.initialise(in_frame)
         audit = out_frame.metadata.get('audit')
@@ -306,7 +314,6 @@ class InverseWindow(Component):
         audit += '    fade: %s\n' % fade
         out_frame.metadata.set('audit', audit)
 
-        in_data = in_frame.as_numpy(dtype=numpy.float32)
         result = numpy.empty(in_data.shape, dtype=numpy.float32)
         x_overlap = x_tile - x_off
         y_overlap = y_tile - y_off
