@@ -232,6 +232,12 @@ class Compound(object):
             self.logger.debug('join %s (%s)', name, child.__class__.__name__)
             child.join()
 
+    def is_pipe_end(self):
+        for src, outbox in self._compound_outputs.values():
+            if not self._compound_children[src].is_pipe_end():
+                return False
+        return True
+
     def input_connections(self, name):
         """Yield ordered list of connections to one child.
 
