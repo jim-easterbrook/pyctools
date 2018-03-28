@@ -79,7 +79,7 @@ class FilterDesign(Component):
         self.config['interp'] = ConfigEnum(choices=(self.interp_list))
         self.config['direction'] = ConfigEnum(choices=('horizontal', 'vertical'))
 
-    def on_start(self, output_name):
+    def on_start(self):
         # send first filter coefs
         self.make_filter()
 

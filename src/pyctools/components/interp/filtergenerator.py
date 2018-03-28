@@ -89,7 +89,7 @@ class FilterGenerator(Component):
         self.config['yaperture'] = ConfigInt(min_value=1)
         self.config['ycut'] = ConfigInt(min_value=1, value=100)
 
-    def on_start(self, output_name):
+    def on_start(self):
         # send first filter coefs
         self.make_filter()
 
