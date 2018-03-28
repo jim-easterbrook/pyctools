@@ -62,7 +62,7 @@ __docformat__ = 'restructuredtext en'
 
 import math
 import numpy
-import scipy.special
+import scipy.signal
 import sys
 if 'sphinx' in sys.modules:
     __all__ += ['HannCore', 'HammingCore', 'BlackmanCore', 'KaiserCore']
@@ -245,14 +245,7 @@ def BlackmanCore(x_tile=1, y_tile=1, alpha=0.16):
 
 def KaiserCore(x_tile=1, y_tile=1, alpha=3.0):
     def Kaiser_1D(tile, alpha):
-        result = numpy.ndarray([tile], dtype=numpy.float32)
-        d = scipy.special.i0(math.pi * alpha)
-        for i in range(tile):
-            f = float(i * 2) / float(tile - 1)
-            f = 1.0 - ((f - 1.0) ** 2.0)
-            f = math.sqrt(f)
-            result[i] = scipy.special.i0(math.pi * alpha * f) / d
-        return result
+        return scipy.signal.kaiser(tile, alpha)
 
     return Window2D('Kaiser', x_tile, y_tile, Kaiser_1D,
                     x_params={'alpha' : alpha}, y_params={'alpha' : alpha})
