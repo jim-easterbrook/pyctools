@@ -218,13 +218,14 @@ class ConfigPath(ConfigStr):
             value = os.path.abspath(value)
             if exists:
                 if not os.path.isfile(value):
-                    value = ''
+                    raise ValueError(value)
             else:
                 if not os.path.isdir(os.path.dirname(value)):
-                    value = ''
-        else:
-            value = ''
+                    raise ValueError(value)
         return super(ConfigPath, cls).__new__(cls, value, default, exists=exists)
+
+    def __getnewargs__(self):
+        return six.text_type(self), self.default, self.exists
 
     def parser_kw(self):
         return {'metavar' : 'path'}
@@ -249,17 +250,18 @@ class ConfigEnum(ConfigStr):
     """
     def __new__(cls, value=None, default=None, choices=[], extendable=False):
         choices = list(choices)
-        if choices:
-            # copy.deepcopy() sets choices & extendable later
-            if not value:
-                value = choices[0]
-            elif value not in choices:
-                if extendable:
-                    choices.append(value)
-                else:
-                    raise ValueError(str(value))
+        if not value:
+            value = choices[0]
+        elif value not in choices:
+            if extendable:
+                choices.append(value)
+            else:
+                raise ValueError(str(value))
         return super(ConfigEnum, cls).__new__(
             cls, value, default, choices=choices, extendable=extendable)
+
+    def __getnewargs__(self):
+        return six.text_type(self), self.default, self.choices, self.extendable
 
     def parser_kw(self):
         result = {'metavar' : 'str'}
