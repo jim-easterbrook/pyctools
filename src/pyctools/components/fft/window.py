@@ -79,7 +79,7 @@ class WindowBase(Component):
         self.config['xtile'] = ConfigInt(min_value=1)
         self.config['ytile'] = ConfigInt(min_value=1)
 
-    def on_connect(self, output_name):
+    def on_start(self, output_name):
         # send first window
         self.make_window()
 

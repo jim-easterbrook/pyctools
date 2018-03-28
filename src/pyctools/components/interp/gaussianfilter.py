@@ -75,7 +75,7 @@ class GaussianFilter(Component):
         self.config['xsigma'] = ConfigFloat(min_value=0.0)
         self.config['ysigma'] = ConfigFloat(min_value=0.0)
 
-    def on_connect(self, output_name):
+    def on_start(self, output_name):
         # send first filter coefs
         self.make_filter()
 
