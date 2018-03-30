@@ -62,7 +62,6 @@ __docformat__ = 'restructuredtext en'
 
 import math
 import numpy
-import scipy.signal
 import sys
 if 'sphinx' in sys.modules:
     __all__ += ['HannCore', 'HammingCore', 'BlackmanCore', 'KaiserCore']
@@ -150,6 +149,9 @@ class Blackman(WindowBase):
 
 class Kaiser(WindowBase):
     """Kaiser-Bessel window.
+
+    See :py:func:`numpy:numpy.kaiser` for more detail. The ``alpha``
+    config parameter is called ``beta`` in the NumPy documentation.
 
     ===========  =====  ====
     Config
@@ -245,7 +247,7 @@ def BlackmanCore(x_tile=1, y_tile=1, alpha=0.16):
 
 def KaiserCore(x_tile=1, y_tile=1, alpha=3.0):
     def Kaiser_1D(tile, alpha):
-        return scipy.signal.kaiser(tile, alpha)
+        return numpy.kaiser(tile, alpha)
 
     return Window2D('Kaiser', x_tile, y_tile, Kaiser_1D,
                     x_params={'alpha' : alpha}, y_params={'alpha' : alpha})
@@ -280,18 +282,27 @@ class InverseWindow(Component):
         self.config['xoff'] = ConfigInt(min_value=1)
         self.config['yoff'] = ConfigInt(min_value=1)
         self.config['fade'] = ConfigEnum(choices=('switch', 'linear', 'minsnr'))
+        self.in_frame = None
+
+    def on_set_config(self):
+        # send more windows if config changes
+        if self.in_frame:
+            self.make_window()
 
     def process_frame(self):
+        self.in_frame = self.input_buffer['input'].get()
+        self.send('window', self.in_frame)
+        self.make_window()
+
+    def make_window(self):
         self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
         x_off = self.config['xoff']
         y_off = self.config['yoff']
         fade = self.config['fade']
-        in_frame = self.input_buffer['input'].get()
-        self.send('window', in_frame)
         # adjust config to suit actual window
-        in_data = in_frame.as_numpy(dtype=numpy.float32)
+        in_data = self.in_frame.as_numpy(dtype=numpy.float32)
         if in_data.shape[1] != y_tile:
             y_off = y_off * in_data.shape[1] // y_tile
             y_tile = in_data.shape[1]
@@ -299,7 +310,7 @@ class InverseWindow(Component):
             x_off = x_off * in_data.shape[2] // x_tile
             x_tile = in_data.shape[2]
         out_frame = Frame()
-        out_frame.initialise(in_frame)
+        out_frame.initialise(self.in_frame)
         audit = out_frame.metadata.get('audit')
         audit += 'data = InverseWindow(data)\n'
         audit += '    size: %d x %d, offset: %d x %d\n' % (
