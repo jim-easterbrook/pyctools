@@ -44,12 +44,17 @@ class FFT(Transformer):
     The :py:class:`VisualiseFFT` component can be used to convert the
     (complex) Fourier transform of a picture into a viewable image.
 
+    The ``submean`` option can be used to reduce the amplitude of the
+    "zero frequency" output bin. This can reduce leakage that might mask
+    nearby low amplitude frequencies.
+
     ===========  ====  ====
     Config
     ===========  ====  ====
     ``xtile``    int   Horizontal tile size. If zero a single tile the width of the picture is used.
     ``ytile``    int   Vertical tile size. If zero a single tile the height of the picture is used.
     ``inverse``  bool  FFT or IFFT.
+    ``submean``  bool  Subtract mean value of each tile before computing FFT.
     ``output``   str   Can be set to ``complex`` or ``real``.
     ===========  ====  ====
 
@@ -58,6 +63,7 @@ class FFT(Transformer):
         self.config['xtile'] = ConfigInt(min_value=0)
         self.config['ytile'] = ConfigInt(min_value=0)
         self.config['inverse'] = ConfigBool()
+        self.config['submean'] = ConfigBool()
         self.config['output'] = ConfigEnum(choices=('complex', 'real'))
 
     def transform(self, in_frame, out_frame):
@@ -65,6 +71,7 @@ class FFT(Transformer):
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
         inverse = self.config['inverse']
+        submean = self.config['submean']
         out_type = self.config['output']
         in_data = in_frame.as_numpy()
         if not numpy.iscomplexobj(in_data):
@@ -83,6 +90,8 @@ class FFT(Transformer):
             in_data = numpy.pad(
                 in_data, ((0, y_pad), (0, x_pad), (0, 0)), 'constant')
         in_data = in_data.reshape(y_blk, y_tile, x_blk, x_tile, -1)
+        if submean:
+            in_data -= numpy.mean(in_data, axis=(1, 3), keepdims=True)
         out_data = (numpy.fft.fft2, numpy.fft.ifft2)[inverse](
             in_data, s=(y_tile, x_tile), axes=(1, 3))
         out_data = out_data.astype(pt_complex).reshape(y_len, x_len, -1)
@@ -93,6 +102,8 @@ class FFT(Transformer):
         audit = out_frame.metadata.get('audit')
         audit += 'data = %s\n' % operation
         audit += '    tile size: %d x %d\n' % (y_tile, x_tile)
+        if submean:
+            audit += '    mean subtracted before FT\n'
         out_frame.metadata.set('audit', audit)
         out_frame.data = out_data
         out_frame.type = 'FT'
