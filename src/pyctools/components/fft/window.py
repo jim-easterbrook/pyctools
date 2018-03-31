@@ -67,7 +67,7 @@ if 'sphinx' in sys.modules:
     __all__ += ['HannCore', 'HammingCore', 'BlackmanCore', 'KaiserCore']
 
 from pyctools.core.base import Component
-from pyctools.core.config import ConfigEnum, ConfigFloat, ConfigInt
+from pyctools.core.config import ConfigBool, ConfigEnum, ConfigFloat, ConfigInt
 from pyctools.core.frame import Frame
 
 class WindowBase(Component):
@@ -77,6 +77,7 @@ class WindowBase(Component):
     def initialise(self):
         self.config['xtile'] = ConfigInt(min_value=1)
         self.config['ytile'] = ConfigInt(min_value=1)
+        self.config['sym'] = ConfigBool(True)
 
     def on_start(self):
         # send first window
@@ -90,37 +91,41 @@ class WindowBase(Component):
 class Hann(WindowBase):
     """Hann window.
 
-    ===========  ===  ====
+    ===========  ====  ====
     Config
-    ===========  ===  ====
-    ``xtile``    int  Horizontal tile size.
-    ``ytile``    int  Vertical tile size.
-    ===========  ===  ====
+    ===========  ====  ====
+    ``xtile``    int   Horizontal tile size.
+    ``ytile``    int   Vertical tile size.
+    ``sym``      bool  When True (default), generates a symmetric window.
+    ===========  ====  ====
 
     """
     def make_window(self):
         self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
-        self.send('output', HannCore(x_tile=x_tile, y_tile=y_tile))
+        sym = self.config['sym']
+        self.send('output', HannCore(x_tile=x_tile, y_tile=y_tile, sym=sym))
 
 
 class Hamming(WindowBase):
     """Hamming window.
 
-    ===========  ===  ====
+    ===========  ====  ====
     Config
-    ===========  ===  ====
-    ``xtile``    int  Horizontal tile size.
-    ``ytile``    int  Vertical tile size.
-    ===========  ===  ====
+    ===========  ====  ====
+    ``xtile``    int   Horizontal tile size.
+    ``ytile``    int   Vertical tile size.
+    ``sym``      bool  When True (default), generates a symmetric window.
+    ===========  ====  ====
 
     """
     def make_window(self):
         self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
-        self.send('output', HammingCore(x_tile=x_tile, y_tile=y_tile))
+        sym = self.config['sym']
+        self.send('output', HammingCore(x_tile=x_tile, y_tile=y_tile, sym=sym))
 
 
 class Blackman(WindowBase):
@@ -131,6 +136,7 @@ class Blackman(WindowBase):
     ===========  =====  ====
     ``xtile``    int    Horizontal tile size.
     ``ytile``    int    Vertical tile size.
+    ``sym``      bool   When True (default), generates a symmetric window.
     ``alpha``    float  Window control parameter.
     ===========  =====  ====
 
@@ -143,8 +149,10 @@ class Blackman(WindowBase):
         self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
+        sym = self.config['sym']
         alpha = self.config['alpha']
-        self.send('output', BlackmanCore(x_tile=x_tile, y_tile=y_tile, alpha=alpha))
+        self.send('output', BlackmanCore(
+            x_tile=x_tile, y_tile=y_tile, sym=sym, alpha=alpha))
 
 
 class Kaiser(WindowBase):
@@ -159,6 +167,7 @@ class Kaiser(WindowBase):
     ===========  =====  ====
     ``xtile``    int    Horizontal tile size.
     ``ytile``    int    Vertical tile size.
+    ``sym``      bool   When True (default), generates a symmetric window.
     ``alpha``    float  Window control parameter.
     ===========  =====  ====
 
@@ -171,30 +180,34 @@ class Kaiser(WindowBase):
         self.update_config()
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
+        sym = self.config['sym']
         alpha = self.config['alpha']
-        self.send('output', KaiserCore(x_tile=x_tile, y_tile=y_tile, alpha=alpha))
+        self.send('output', KaiserCore(
+            x_tile=x_tile, y_tile=y_tile, sym=sym, alpha=alpha))
 
 
-def Window2D(name, x_tile, y_tile, function_1D, x_params={}, y_params={}):
+def Window2D(name, x_tile, y_tile, sym, function_1D, x_params={}, y_params={}):
     if x_tile == 1:
         x_win = numpy.array([1.0], dtype=numpy.float32)
-    else:
+    elif sym:
         x_win = function_1D(x_tile, **x_params)
+    else:
+        x_win = function_1D(x_tile + 1, **x_params)[:-1]
     if y_tile == 1:
         y_win = numpy.array([1.0], dtype=numpy.float32)
-    else:
+    elif sym:
         y_win = function_1D(y_tile, **y_params)
-    result = numpy.empty(
-        [1, y_win.shape[0], x_win.shape[0], 1], dtype=numpy.float32)
-    for y in range(result.shape[1]):
-        for x in range(result.shape[2]):
-            result[0, y, x, 0] = x_win[x] * y_win[y]
+    else:
+        y_win = function_1D(y_tile + 1, **y_params)[:-1]
+    x_win = x_win.reshape((1, 1, -1, 1))
+    y_win = y_win.reshape((1, -1, 1, 1))
     out_frame = Frame()
-    out_frame.data = result
+    out_frame.data = x_win * y_win
     out_frame.type = 'win'
     audit = out_frame.metadata.get('audit')
     audit += 'data = %sWindow()\n' % name
     audit += '    size: %d x %d\n' % (y_tile, x_tile)
+    audit += '    symmetric: %s\n' % (str(sym))
     extras = []
     for key, value in x_params.items():
         extras.append('%s: %s' % (key, str(value)))
@@ -209,7 +222,7 @@ def Window2D(name, x_tile, y_tile, function_1D, x_params={}, y_params={}):
     return out_frame
 
 
-def HannCore(x_tile=1, y_tile=1):
+def HannCore(x_tile=1, y_tile=1, sym=True):
     def Hann_1D(tile):
         result = numpy.ndarray([tile], dtype=numpy.float32)
         for i in range(tile):
@@ -217,10 +230,10 @@ def HannCore(x_tile=1, y_tile=1):
                 math.pi * float((i * 2) + tile - 1) / float(tile - 1)))
         return result
 
-    return Window2D('Hann', x_tile, y_tile, Hann_1D)
+    return Window2D('Hann', x_tile, y_tile, sym, Hann_1D)
 
 
-def HammingCore(x_tile=1, y_tile=1):
+def HammingCore(x_tile=1, y_tile=1, sym=True):
     def Hamming_1D(tile):
         result = numpy.ndarray([tile], dtype=numpy.float32)
         for i in range(tile):
@@ -228,10 +241,10 @@ def HammingCore(x_tile=1, y_tile=1):
                 math.pi * float((i * 2) + tile - 1) / float(tile - 1)))
         return result
 
-    return Window2D('Hamming', x_tile, y_tile, Hamming_1D)
+    return Window2D('Hamming', x_tile, y_tile, sym, Hamming_1D)
 
 
-def BlackmanCore(x_tile=1, y_tile=1, alpha=0.16):
+def BlackmanCore(x_tile=1, y_tile=1, sym=True, alpha=0.16):
     def Blackman_1D(tile, alpha):
         result = numpy.ndarray([tile], dtype=numpy.float32)
         a0 = (1.0 - alpha) / 2.0
@@ -242,15 +255,15 @@ def BlackmanCore(x_tile=1, y_tile=1, alpha=0.16):
             result[i] = a0 + (a1 * math.cos(f)) + (a2 * math.cos(2.0 * f))
         return result
 
-    return Window2D('Blackman', x_tile, y_tile, Blackman_1D,
+    return Window2D('Blackman', x_tile, y_tile, sym, Blackman_1D,
                     x_params={'alpha' : alpha}, y_params={'alpha' : alpha})
 
 
-def KaiserCore(x_tile=1, y_tile=1, alpha=0.9):
-    def Kaiser_1D(tile, alpha):
+def KaiserCore(x_tile=1, y_tile=1, sym=True, alpha=0.9):
+    def Kaiser_1D(tile, alpha=0.9):
         return numpy.kaiser(tile, alpha * math.pi)
 
-    return Window2D('Kaiser', x_tile, y_tile, Kaiser_1D,
+    return Window2D('Kaiser', x_tile, y_tile, sym, Kaiser_1D,
                     x_params={'alpha' : alpha}, y_params={'alpha' : alpha})
 
 
