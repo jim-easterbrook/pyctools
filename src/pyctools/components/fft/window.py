@@ -150,8 +150,9 @@ class Blackman(WindowBase):
 class Kaiser(WindowBase):
     """Kaiser-Bessel window.
 
-    See :py:func:`numpy:numpy.kaiser` for more detail. The ``alpha``
-    config parameter is called ``beta`` in the NumPy documentation.
+    See :py:func:`numpy:numpy.kaiser` for more detail. Note that NumPy
+    and SciPy use a control parameter called ``beta``. This is ``alpha *
+    pi``.
 
     ===========  =====  ====
     Config
@@ -164,7 +165,7 @@ class Kaiser(WindowBase):
     """
     def initialise(self):
         super(Kaiser, self).initialise()
-        self.config['alpha'] = ConfigFloat(value=3.0)
+        self.config['alpha'] = ConfigFloat(value=0.9)
 
     def make_window(self):
         self.update_config()
@@ -245,9 +246,9 @@ def BlackmanCore(x_tile=1, y_tile=1, alpha=0.16):
                     x_params={'alpha' : alpha}, y_params={'alpha' : alpha})
 
 
-def KaiserCore(x_tile=1, y_tile=1, alpha=3.0):
+def KaiserCore(x_tile=1, y_tile=1, alpha=0.9):
     def Kaiser_1D(tile, alpha):
-        return numpy.kaiser(tile, alpha)
+        return numpy.kaiser(tile, alpha * math.pi)
 
     return Window2D('Kaiser', x_tile, y_tile, Kaiser_1D,
                     x_params={'alpha' : alpha}, y_params={'alpha' : alpha})
