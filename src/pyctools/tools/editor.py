@@ -371,11 +371,13 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
             outbox = link_from.name
             dest = self.parentItem()
             inbox = self.name
-        else:
+        elif isinstance(link_from, InputIcon):
             source = self.parentItem()
             outbox = self.name
             dest = link_from.parentItem()
             inbox = link_from.name
+        else:
+            return
         for link in self.scene().matching_items(ComponentLink):
             if (link.source == source and link.outbox == outbox and
                                 link.dest == dest and link.inbox == inbox):
