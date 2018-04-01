@@ -57,9 +57,10 @@ creates a windowing component that uses a 32x32 Hamming window. Its
 
 """
 
-__all__ = ['Hann', 'Hamming', 'Blackman', 'Kaiser', 'InverseWindow']
+__all__ = ['Window', 'Hann', 'Hamming', 'Blackman', 'Kaiser', 'InverseWindow']
 __docformat__ = 'restructuredtext en'
 
+from collections import OrderedDict
 import math
 import numpy
 import sys
@@ -69,6 +70,7 @@ if 'sphinx' in sys.modules:
 from pyctools.core.base import Component
 from pyctools.core.config import ConfigBool, ConfigEnum, ConfigFloat, ConfigInt
 from pyctools.core.frame import Frame
+from pyctools.core.types import pt_float
 
 class WindowBase(Component):
     inputs = []
@@ -265,6 +267,95 @@ def KaiserCore(x_tile=1, y_tile=1, sym=True, alpha=0.9):
 
     return Window2D('Kaiser', x_tile, y_tile, sym, Kaiser_1D,
                     x_params={'alpha' : alpha}, y_params={'alpha' : alpha})
+
+
+def _Hann_1D(tile, alpha):
+    return numpy.hanning(tile)
+
+def _Hamming_1D(tile, alpha):
+    return numpy.hamming(tile)
+
+def _Blackman_1D(tile, alpha):
+    return numpy.blackman(tile)
+
+def _Kaiser_1D(tile, alpha):
+    return numpy.kaiser(tile, alpha * math.pi)
+
+class Window(Component):
+    """General 2-D window.
+
+    ============  =====  ====
+    Config
+    ============  =====  ====
+    ``xtile``     int    Horizontal tile size.
+    ``ytile``     int    Vertical tile size.
+    ``sym``       bool   When True (default), generates a symmetric window.
+    ``function``  str    Choose the window function. Possible values: {}
+    ``alpha``     float  Window control parameter.
+    ============  =====  ====
+
+    """
+    inputs = []
+    with_outframe_pool = False
+
+    functions = OrderedDict((
+        # name        function       has alpha
+        ('Hann',     (_Hann_1D,      False)),
+        ('Hamming',  (_Hamming_1D,   False)),
+        ('Blackman', (_Blackman_1D,  True)),
+        ('Kaiser',   (_Kaiser_1D,    True)),
+        ))
+    __doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in functions]))
+
+    def initialise(self):
+        self.config['xtile'] = ConfigInt(min_value=1)
+        self.config['ytile'] = ConfigInt(min_value=1)
+        self.config['sym'] = ConfigBool(True)
+        self.config['function'] = ConfigEnum(choices=self.functions.keys())
+        self.config['alpha'] = ConfigFloat()
+
+    def on_start(self):
+        # send first window
+        self.make_window()
+
+    def on_set_config(self):
+        # send more windows if config changes
+        self.make_window()
+
+    def make_window(self):
+        self.update_config()
+        x_tile = self.config['xtile']
+        y_tile = self.config['ytile']
+        sym = self.config['sym']
+        function = self.config['function']
+        alpha = self.config['alpha']
+        function_1D, has_alpha = self.functions[function]
+        if x_tile == 1:
+            x_win = numpy.array([1.0])
+        elif sym:
+            x_win = function_1D(x_tile, alpha)
+        else:
+            x_win = function_1D(x_tile + 1, alpha)[:-1]
+        if y_tile == 1:
+            y_win = numpy.array([1.0])
+        elif sym:
+            y_win = function_1D(y_tile, alpha)
+        else:
+            y_win = function_1D(y_tile + 1, alpha)[:-1]
+        x_win = x_win.reshape((1, 1, -1, 1))
+        y_win = y_win.reshape((1, -1, 1, 1))
+        window = x_win * y_win
+        out_frame = Frame()
+        out_frame.data = window.astype(pt_float)
+        out_frame.type = 'win'
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = %sWindow()\n' % function
+        audit += '    size: %d x %d\n' % (y_tile, x_tile)
+        audit += '    symmetric: %s\n' % str(sym)
+        if has_alpha:
+            audit += '    alpha: %g\n' % alpha
+        out_frame.metadata.set('audit', audit)
+        self.send('output', out_frame)
 
 
 class InverseWindow(Component):
