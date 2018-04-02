@@ -284,15 +284,36 @@ def _Kaiser_1D(tile, alpha):
 class Window(Component):
     """General 2-D window.
 
-    ============  =====  ====
+    The ``function`` parameter selects one of several widely used 1-D
+    window functions. The ``sym`` parameter makes the window symmetrical
+    or not. Note that a symmetrical window with an even size does not
+    have a central value of unity.
+
+    ``alpha`` is the control parameter for the ``Kaiser`` window. See
+    :py:func:`numpy:numpy.kaiser` for more detail. Note that NumPy and
+    SciPy use a control parameter called ``beta``, which is ``alpha *
+    pi``.
+
+    The ``combine2D`` parameter selects how the horizontal and vertical
+    windows are combined to make a 2-D window. (If either dimension has
+    size one it has no effect.) The option names refer to the shape of
+    the contours if you plotted the window. ``square`` means the two
+    windows are simply multiplied together. ``round`` means the window
+    value depends on the normalised distance from the centre of the
+    window, with points further than 0.5 set to zero. ``round2`` is an
+    alternative that is normalised to the diagonal, so no points are
+    further than 0.5.
+
+    =============  =====  ====
     Config
-    ============  =====  ====
-    ``xtile``     int    Horizontal tile size.
-    ``ytile``     int    Vertical tile size.
-    ``sym``       bool   When True (default), generates a symmetric window.
-    ``function``  str    Choose the window function. Possible values: {}
-    ``alpha``     float  Window control parameter.
-    ============  =====  ====
+    =============  =====  ====
+    ``xtile``      int    Horizontal tile size.
+    ``ytile``      int    Vertical tile size.
+    ``sym``        bool   When True (default), generates a symmetric window.
+    ``combine2D``  str    How to combine 1-D windows to make 2-D window. Can be ``square``, ``round`` or ``round2``.
+    ``function``   str    Choose the window function. Possible values: {}
+    ``alpha``      float  Window control parameter.
+    =============  =====  ====
 
     """
     inputs = []
@@ -311,6 +332,7 @@ class Window(Component):
         self.config['xtile'] = ConfigInt(min_value=1)
         self.config['ytile'] = ConfigInt(min_value=1)
         self.config['sym'] = ConfigBool(True)
+        self.config['combine2D'] = ConfigEnum(choices=('square', 'round', 'round2'))
         self.config['function'] = ConfigEnum(choices=self.functions.keys())
         self.config['alpha'] = ConfigFloat()
 
@@ -327,24 +349,41 @@ class Window(Component):
         x_tile = self.config['xtile']
         y_tile = self.config['ytile']
         sym = self.config['sym']
+        combine2D = self.config['combine2D']
         function = self.config['function']
         alpha = self.config['alpha']
         function_1D, has_alpha = self.functions[function]
-        if x_tile == 1:
-            x_win = numpy.array([1.0])
-        elif sym:
-            x_win = function_1D(x_tile, alpha)
+        if combine2D == 'square' or x_tile == 1 or y_tile == 1:
+            if x_tile == 1:
+                x_win = numpy.array([1.0])
+            elif sym:
+                x_win = function_1D(x_tile, alpha)
+            else:
+                x_win = function_1D(x_tile + 1, alpha)[:-1]
+            if y_tile == 1:
+                y_win = numpy.array([1.0])
+            elif sym:
+                y_win = function_1D(y_tile, alpha)
+            else:
+                y_win = function_1D(y_tile + 1, alpha)[:-1]
+            x_win = x_win.reshape((1, 1, -1, 1))
+            y_win = y_win.reshape((1, -1, 1, 1))
+            window = x_win * y_win
         else:
-            x_win = function_1D(x_tile + 1, alpha)[:-1]
-        if y_tile == 1:
-            y_win = numpy.array([1.0])
-        elif sym:
-            y_win = function_1D(y_tile, alpha)
-        else:
-            y_win = function_1D(y_tile + 1, alpha)[:-1]
-        x_win = x_win.reshape((1, 1, -1, 1))
-        y_win = y_win.reshape((1, -1, 1, 1))
-        window = x_win * y_win
+            xc, yc = x_tile // 2, y_tile // 2
+            if sym:
+                xc, yc = xc - 0.5, yc - 0.5
+            func_win = numpy.zeros((2049,), dtype=pt_float)
+            func_win[0:1025] = function_1D(2049, alpha)[1024:]
+            window = numpy.empty((1, y_tile, x_tile, 1), dtype=pt_float)
+            for y in range(y_tile):
+                for x in range(x_tile):
+                    window[0, y, x, 0] = math.sqrt((((x - xc) / x_tile) ** 2) +
+                                                   (((y - yc) / y_tile) ** 2))
+            if combine2D == 'round2':
+                window /= math.sqrt(2.0)
+            window = numpy.interp(
+                window, numpy.linspace(0, 1.0, func_win.shape[0]), func_win)
         out_frame = Frame()
         out_frame.data = window.astype(pt_float)
         out_frame.type = 'win'
