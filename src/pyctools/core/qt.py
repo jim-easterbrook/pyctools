@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015-18  Pyctools contributors
+#  Copyright (C) 2015-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -20,13 +20,28 @@ __all__ = ['QtEventLoop', 'QtThreadEventLoop']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque, namedtuple
+from functools import wraps
+import logging
 import time
 
 from PyQt5 import QtCore
 
+logger = logging.getLogger(__name__)
+
 qt_version_info = namedtuple(
     'qt_version_info', ('major', 'minor', 'micro'))._make(
         map(int, QtCore.QT_VERSION_STR.split('.')))
+
+# decorator for methods called by Qt that logs any exception raised
+def catch_all(func):
+    @wraps(func)
+    def wrapper(*args, **kwds):
+        try:
+            return func(*args, **kwds)
+        except Exception as ex:
+            logger.exception(ex)
+    return wrapper
+
 
 # create unique event type
 _queue_event = QtCore.QEvent.registerEventType()
@@ -67,6 +82,8 @@ class QtEventLoop(QtCore.QObject):
             self._owner.stop_event()
             self._running = False
             self._quit()
+        except Exception as ex:
+            logger.exception(ex)
         return True
 
     def queue_command(self, command):
@@ -171,6 +188,7 @@ class QtThreadEventLoop(QtEventLoop):
         self.thread.started.connect(self._on_start)
 
     @QtCore.pyqtSlot()
+    @catch_all
     def _on_start(self):
         super(QtThreadEventLoop, self).start()
 

@@ -65,6 +65,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import pyctools.components
 from pyctools.core.compound import Compound
 from pyctools.core.config import *
+from pyctools.core.qt import catch_all
 
 logger = logging.getLogger('pyctools-editor')
 
@@ -79,6 +80,8 @@ class ConfigPathWidget(QtWidgets.QPushButton):
         self.show_value(self.config)
         self.clicked.connect(self.set_value)
 
+    @QtCore.pyqtSlot()
+    @catch_all
     def set_value(self):
         directory = self.config
         if self.config.exists:
@@ -181,6 +184,7 @@ class ConfigEnumWidget(QtWidgets.QComboBox):
         self.currentIndexChanged.connect(self.new_value)
 
     @QtCore.pyqtSlot(int)
+    @catch_all
     def new_value(self, idx):
         value = str(self.itemText(idx))
         if value == '<new>':
@@ -277,13 +281,18 @@ class ConfigDialog(QtWidgets.QDialog):
         close_button.clicked.connect(self.apply_and_close)
         self.layout().addWidget(close_button, 1, 3)
 
+    @QtCore.pyqtSlot()
+    @catch_all
     def apply_and_close(self):
         self.apply_changes()
         self.close()
 
+    @QtCore.pyqtSlot()
+    @catch_all
     def apply_changes(self):
         config = self.main_area.get_value()
         self.component.obj.set_config(config)
+
 
 class ComponentLink(QtWidgets.QGraphicsLineItem):
     def __init__(self, source, outbox, dest, inbox, **kwds):
@@ -860,6 +869,8 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             if isinstance(child, klass):
                 yield child
 
+    @QtCore.pyqtSlot()
+    @catch_all
     def run_graph(self):
         # replace components with fresh instances
         for child in self.matching_items(BasicComponentIcon):
@@ -874,6 +885,8 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             if child.isEnabled():
                 child.obj.start()
 
+    @QtCore.pyqtSlot()
+    @catch_all
     def stop_graph(self):
         for child in self.matching_items(BasicComponentIcon):
             if child.isEnabled():
@@ -1153,6 +1166,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.set_window_title(script)
             self.network_area.load_script(script)
 
+    @QtCore.pyqtSlot()
+    @catch_all
     def load_script(self):
         file_name = QtWidgets.QFileDialog.getOpenFileName(
             self, 'Load file', self.script_file, 'Python scripts (*.py)')
@@ -1161,6 +1176,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.set_window_title(file_name)
             self.network_area.load_script(file_name)
 
+    @QtCore.pyqtSlot()
+    @catch_all
     def save_script(self):
         file_name = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Save file', self.script_file, 'Python scripts (*.py)')
@@ -1175,9 +1192,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(
             "Pyctools graph editor - %s" % os.path.basename(file_name))
 
+    @QtCore.pyqtSlot()
+    @catch_all
     def zoom_in(self):
         self.inc_zoom(1)
 
+    @QtCore.pyqtSlot()
+    @catch_all
     def zoom_out(self):
         self.inc_zoom(-1)
 
@@ -1192,6 +1213,8 @@ class MainWindow(QtWidgets.QMainWindow):
         action_list[idx].setChecked(True)
         self.set_zoom()
 
+    @QtCore.pyqtSlot()
+    @catch_all
     def set_zoom(self):
         current_action = self.zoom_group.checkedAction()
         zoom = float(current_action.data()) / 100.0
