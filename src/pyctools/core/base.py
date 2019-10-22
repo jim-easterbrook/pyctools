@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -28,6 +28,9 @@ import weakref
 
 from .config import ConfigMixin, ConfigInt
 from .frame import Frame, Metadata
+
+logger = logging.getLogger(__name__)
+
 
 class InputBuffer(object):
     """Input object buffer.
@@ -151,6 +154,8 @@ class ThreadEventLoop(threading.Thread):
                     command()
         except StopIteration:
             pass
+        except Exception as ex:
+            logger.exception(ex)
         self.owner.stop_event()
 
 
