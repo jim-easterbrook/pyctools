@@ -299,20 +299,25 @@ class AnalyseVignetteExp(Transformer):
         h, w = data.shape[:2]
         r = numpy.sqrt(radius_squared(w, h))
         # calculate required gain for each radial band
+        data = 1.0 / data
         bands = 50
         x = []
         y = []
+        sigma = []
         hi = 0.0
         for i in range(bands):
             lo = hi
             hi = (float(i) + 0.5) / float(bands - 1)
             mask = numpy.logical_and(r >= lo, r < hi)
             x.append(numpy.mean(r[mask]))
-            y.append(1.0 / numpy.mean(data[mask]))
+            y.append(numpy.mean(data[mask]))
+            sigma.append(numpy.std(data[mask]))
         x = numpy.array(x)
         y = numpy.array(y)
+        sigma = numpy.array(sigma)
         # fit a function to the required gain
-        popt_linear, pcov_linear = scipy.optimize.curve_fit(self.exp, x, y)
+        popt_linear, pcov_linear = scipy.optimize.curve_fit(
+            self.exp, x, y, sigma=sigma)
         a, b, c = popt_linear
         # print out parameters
         print('a = {}, b = {}'.format(a, b))
