@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016-18  Pyctools contributors
+#  Copyright (C) 2016-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -18,12 +18,13 @@
 
 from __future__ import print_function
 
-__all__ = ['VignetteCorrector', 'AnalyseVignette']
+__all__ = ['VignetteCorrector', 'AnalyseVignette', 'AnalyseVignetteExp']
 __docformat__ = 'restructuredtext en'
 
 import math
 
 import numpy
+import scipy
 
 from pyctools.core.config import ConfigEnum, ConfigFloat, ConfigInt
 from pyctools.core.base import Transformer
@@ -186,6 +187,75 @@ class AnalyseVignette(Transformer):
         # send plottable data
         func_frame = self.outframe_pool['function'].get()
         func_frame.data = numpy.stack((x, y, numpy.polyval(fit, x * x)))
+        func_frame.type = 'func'
+        func_frame.metadata.set('labels', repr(['radius', 'measured', 'fitted']))
+        audit = func_frame.metadata.get('audit')
+        audit += 'data = VignetteCorrectorFunction()\n'
+        func_frame.metadata.set('audit', audit)
+        self.send('function', func_frame)
+        return True
+
+
+class AnalyseVignetteExp(Transformer):
+    """Vignette analysis.
+
+    Measures the average luminance of 50 circular bands of an input grey
+    image, then calculates the optimum exponential function parameters
+    to correct it.
+
+    The ``function`` output emits the measured and fitted gain
+    functions. It can be connected to a
+    :py:class:`~pyctools.components.io.plotdata.PlotData` component.
+
+    ===========  =====  ====
+    Config
+    ===========  =====  ====
+    ``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
+    ===========  =====  ====
+
+    """
+    outputs = ['output', 'function']
+
+    def initialise(self):
+        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
+
+    @staticmethod
+    def exp(x, a, b):
+        return 1.0 + (a * (x ** b))
+
+    def transform(self, in_frame, out_frame):
+        self.update_config()
+        # get data
+        data = in_frame.as_numpy(dtype=pt_float, copy=True)
+        # subtract black level
+        if self.config['range'] == 'studio':
+            data -= pt_float(16.0)
+        # compute normalised radius
+        h, w = data.shape[:2]
+        r = numpy.sqrt(radius_squared(w, h))
+        # calculate required gain for each radial band
+        bands = 50
+        x = []
+        y = []
+        hi = 0.0
+        for i in range(bands):
+            x.append(float(i) / float(bands - 1))
+            lo = hi
+            hi = (float(i) + 0.5) / float(bands - 1)
+            mask = numpy.logical_and(r >= lo, r < hi)
+            mean = numpy.mean(data[mask])
+            if i == 0:
+                norm_factor = mean
+            y.append(norm_factor / mean)
+        x = numpy.array(x)
+        y = numpy.array(y)
+        # fit a function to the required gain
+        popt_linear, pcov_linear = scipy.optimize.curve_fit(self.exp, x, y)
+        # print out parameters
+        print(popt_linear)
+        # send plottable data
+        func_frame = self.outframe_pool['function'].get()
+        func_frame.data = numpy.stack((x, y, self.exp(x, *popt_linear)))
         func_frame.type = 'func'
         func_frame.metadata.set('labels', repr(['radius', 'measured', 'fitted']))
         audit = func_frame.metadata.get('audit')
