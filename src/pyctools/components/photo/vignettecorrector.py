@@ -220,8 +220,8 @@ class AnalyseVignetteExp(Transformer):
         self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
 
     @staticmethod
-    def exp(x, a, b):
-        return 1.0 + (a * (x ** b))
+    def exp(x, a, b, c):
+        return (1.0 + (a * (x ** b))) * c
 
     def transform(self, in_frame, out_frame):
         self.update_config()
@@ -239,23 +239,21 @@ class AnalyseVignetteExp(Transformer):
         y = []
         hi = 0.0
         for i in range(bands):
-            x.append(float(i) / float(bands - 1))
             lo = hi
             hi = (float(i) + 0.5) / float(bands - 1)
             mask = numpy.logical_and(r >= lo, r < hi)
-            mean = numpy.mean(data[mask])
-            if i == 0:
-                norm_factor = mean
-            y.append(norm_factor / mean)
+            x.append(numpy.mean(r[mask]))
+            y.append(1.0 / numpy.mean(data[mask]))
         x = numpy.array(x)
         y = numpy.array(y)
         # fit a function to the required gain
         popt_linear, pcov_linear = scipy.optimize.curve_fit(self.exp, x, y)
+        a, b, c = popt_linear
         # print out parameters
-        print(popt_linear)
+        print('a = {}, b = {}'.format(a, b))
         # send plottable data
         func_frame = self.outframe_pool['function'].get()
-        func_frame.data = numpy.stack((x, y, self.exp(x, *popt_linear)))
+        func_frame.data = numpy.stack((x, y / c, self.exp(x, *popt_linear) / c))
         func_frame.type = 'func'
         func_frame.metadata.set('labels', repr(['radius', 'measured', 'fitted']))
         audit = func_frame.metadata.get('audit')
