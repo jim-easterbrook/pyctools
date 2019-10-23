@@ -18,7 +18,8 @@
 
 from __future__ import print_function
 
-__all__ = ['VignetteCorrector', 'AnalyseVignette', 'AnalyseVignetteExp']
+__all__ = ['VignetteCorrector', 'AnalyseVignette',
+           'VignetteCorrectorExp', 'AnalyseVignetteExp']
 __docformat__ = 'restructuredtext en'
 
 import math
@@ -101,6 +102,70 @@ class VignetteCorrector(Transformer):
         audit = out_frame.metadata.get('audit')
         audit += 'data = VignetteCorrector(data, {}, {}, {}, {})\n'.format(
             r2, r4, r6, r8)
+        out_frame.metadata.set('audit', audit)
+        return True
+
+
+class VignetteCorrectorExp(Transformer):
+    """Vignette corrector.
+
+    Adjust the brightness of images with a radially varying gain
+    function. This should be applied to 'linear intensity' image data
+    before gamma correction is applied.
+
+    The ``range`` config item specifies the input and output video
+    ranges. It can be either ``'studio'`` (16..235) or ``'computer'``
+    (0..255).
+
+    The ``a`` and ``b`` parameters set how the correction varies with
+    radius. The function used is ``1.0 + (a * (x ** b))``. The
+    :py:class:`AnalyseVignetteExp` component can be used to generate
+    optimised values.
+
+    ===========  =====  ====
+    Config
+    ===========  =====  ====
+    ``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
+    ``a``        float  Exponential function parameter ``a``
+    ``b``        float  Exponential function parameter ``b``
+    ===========  =====  ====
+
+    """
+
+    def initialise(self):
+        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
+        self.config['a'] = ConfigFloat(decimals=4)
+        self.config['b'] = ConfigFloat(decimals=4)
+        self.gain = None
+
+    @staticmethod
+    def exp(x, a, b):
+        return 1.0 + (a * (x ** b))
+
+    def transform(self, in_frame, out_frame):
+        if self.update_config():
+            self.gain = None
+        # get data
+        data = in_frame.as_numpy(dtype=pt_float, copy=True)
+        # generate correction function
+        a = self.config['a']
+        b = self.config['b']
+        h, w = data.shape[:2]
+        if self.gain is None or self.gain.shape != [h, w, 1]:
+            self.gain = self.exp(radius_squared(w, h), a, b)
+            self.gain = numpy.expand_dims(self.gain, axis=2)
+        # subtract black level
+        if self.config['range'] == 'studio':
+            data -= pt_float(16.0)
+        # apply correction
+        data *= self.gain
+        # restore black level
+        if self.config['range'] == 'studio':
+            data += pt_float(16.0)
+        out_frame.data = data
+        # add audit
+        audit = out_frame.metadata.get('audit')
+        audit += 'data = VignetteCorrectorExp(data, {}, {})\n'.format(a, b)
         out_frame.metadata.set('audit', audit)
         return True
 
