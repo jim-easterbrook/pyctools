@@ -45,10 +45,6 @@ class VignetteCorrector(Transformer):
     function. This should be applied to 'linear intensity' image data
     before gamma correction is applied.
 
-    The ``range`` config item specifies the input and output video
-    ranges. It can be either ``'studio'`` (16..235) or ``'computer'``
-    (0..255).
-
     The ``r2`` ... ``r8`` parameters set how the correction varies with
     radius^n. The first affects the whole picture, the higher powers
     have more effect at the edges. The :py:class:`AnalyseVignette`
@@ -57,7 +53,6 @@ class VignetteCorrector(Transformer):
     ===========  =====  ====
     Config
     ===========  =====  ====
-    ``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
     ``r2``       float  Amount of radius^2 correction
     ``r4``       float  Amount of radius^4 correction
     ``r6``       float  Amount of radius^6 correction
@@ -67,7 +62,6 @@ class VignetteCorrector(Transformer):
     """
 
     def initialise(self):
-        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
         self.config['r2'] = ConfigFloat(decimals=4)
         self.config['r4'] = ConfigFloat(decimals=4)
         self.config['r6'] = ConfigFloat(decimals=4)
@@ -78,7 +72,7 @@ class VignetteCorrector(Transformer):
         if self.update_config():
             self.gain = None
         # get data
-        data = in_frame.as_numpy(dtype=pt_float, copy=True)
+        data = in_frame.as_numpy(dtype=pt_float)
         # generate correction function
         r2 = self.config['r2']
         r4 = self.config['r4']
@@ -89,15 +83,8 @@ class VignetteCorrector(Transformer):
             self.gain = numpy.polyval(
                 [r8, r6, r4, r2, 1.0], radius_squared(w, h))
             self.gain = numpy.expand_dims(self.gain, axis=2)
-        # subtract black level
-        if self.config['range'] == 'studio':
-            data -= pt_float(16.0)
         # apply correction
-        data *= self.gain
-        # restore black level
-        if self.config['range'] == 'studio':
-            data += pt_float(16.0)
-        out_frame.data = data
+        out_frame.data = data * self.gain
         # add audit
         audit = out_frame.metadata.get('audit')
         audit += 'data = VignetteCorrector(data, {}, {}, {}, {})\n'.format(
@@ -113,10 +100,6 @@ class VignetteCorrectorExp(Transformer):
     function. This should be applied to 'linear intensity' image data
     before gamma correction is applied.
 
-    The ``range`` config item specifies the input and output video
-    ranges. It can be either ``'studio'`` (16..235) or ``'computer'``
-    (0..255).
-
     The ``a`` and ``b`` parameters set how the correction varies with
     radius. The function used is ``1.0 + (a * (x ** b))``. The
     :py:class:`AnalyseVignetteExp` component can be used to generate
@@ -125,7 +108,6 @@ class VignetteCorrectorExp(Transformer):
     ===========  =====  ====
     Config
     ===========  =====  ====
-    ``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
     ``a``        float  Exponential function parameter ``a``
     ``b``        float  Exponential function parameter ``b``
     ===========  =====  ====
@@ -133,7 +115,6 @@ class VignetteCorrectorExp(Transformer):
     """
 
     def initialise(self):
-        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
         self.config['a'] = ConfigFloat(decimals=4)
         self.config['b'] = ConfigFloat(decimals=4)
         self.gain = None
@@ -146,7 +127,7 @@ class VignetteCorrectorExp(Transformer):
         if self.update_config():
             self.gain = None
         # get data
-        data = in_frame.as_numpy(dtype=pt_float, copy=True)
+        data = in_frame.as_numpy(dtype=pt_float)
         # generate correction function
         a = self.config['a']
         b = self.config['b']
@@ -154,15 +135,8 @@ class VignetteCorrectorExp(Transformer):
         if self.gain is None or self.gain.shape != [h, w, 1]:
             self.gain = self.exp(radius_squared(w, h), a, b)
             self.gain = numpy.expand_dims(self.gain, axis=2)
-        # subtract black level
-        if self.config['range'] == 'studio':
-            data -= pt_float(16.0)
         # apply correction
-        data *= self.gain
-        # restore black level
-        if self.config['range'] == 'studio':
-            data += pt_float(16.0)
-        out_frame.data = data
+        out_frame.data = data * self.gain
         # add audit
         audit = out_frame.metadata.get('audit')
         audit += 'data = VignetteCorrectorExp(data, {}, {})\n'.format(a, b)
@@ -195,7 +169,6 @@ class AnalyseVignette(Transformer):
     ===========  =====  ====
     Config
     ===========  =====  ====
-    ``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
     ``order``    int    Number of ``r`` parameters to generate.
     ``log_eps``  float  Base 10 logarithm of relative precision.
     ===========  =====  ====
@@ -204,17 +177,13 @@ class AnalyseVignette(Transformer):
     outputs = ['output', 'function']
 
     def initialise(self):
-        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
         self.config['order'] = ConfigInt(value=3, min_value=1)
         self.config['log_eps'] = ConfigFloat(value=-4, decimals=1)
 
     def transform(self, in_frame, out_frame):
         self.update_config()
         # get data
-        data = in_frame.as_numpy(dtype=pt_float, copy=True)
-        # subtract black level
-        if self.config['range'] == 'studio':
-            data -= pt_float(16.0)
+        data = in_frame.as_numpy(dtype=pt_float)
         # compute normalised radius
         h, w = data.shape[:2]
         r = numpy.sqrt(radius_squared(w, h))
@@ -272,17 +241,8 @@ class AnalyseVignetteExp(Transformer):
     functions. It can be connected to a
     :py:class:`~pyctools.components.io.plotdata.PlotData` component.
 
-    ===========  =====  ====
-    Config
-    ===========  =====  ====
-    ``range``    str    Nominal black and white levels. Can be ``'studio'`` or ``'computer'``.
-    ===========  =====  ====
-
     """
     outputs = ['output', 'function']
-
-    def initialise(self):
-        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
 
     @staticmethod
     def exp(x, a, b, c):
@@ -291,10 +251,7 @@ class AnalyseVignetteExp(Transformer):
     def transform(self, in_frame, out_frame):
         self.update_config()
         # get data
-        data = in_frame.as_numpy(dtype=pt_float, copy=True)
-        # subtract black level
-        if self.config['range'] == 'studio':
-            data -= pt_float(16.0)
+        data = in_frame.as_numpy(dtype=pt_float)
         # compute normalised radius
         h, w = data.shape[:2]
         r = numpy.sqrt(radius_squared(w, h))

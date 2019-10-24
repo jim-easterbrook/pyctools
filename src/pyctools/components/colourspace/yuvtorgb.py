@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -28,6 +28,8 @@ from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Component
 from pyctools.core.types import pt_float
 from pyctools.components.interp.resize import resize_frame
+from .rgbtoyuv import RGBtoYUV
+
 
 class YUVtoRGB(Component):
     """YUV (YCbCr) to RGB converter.
@@ -42,22 +44,24 @@ class YUVtoRGB(Component):
     specified, simple bicubic interpolation is used.
 
     The ``matrix`` config item chooses the matrix coefficient set. It
-    can be ``'601'`` ("Rec 601", standard definition) or ``'709'`` ("Rec
-    709", high definition). In ``'auto'`` mode the matrix is chosen
-    according to the number of lines in the image.
+    can be ``'601'`` ("`Rec. 601`_", standard definition) or ``'709'``
+    ("`Rec. 709`_", high definition). In ``'auto'`` mode the matrix is
+    chosen according to the number of lines in the image.
 
-    The ``range`` config item specifies the output video range. It can
-    be either ``'studio'`` (16..235) or ``'computer'`` (0..255). Values
-    are not clipped in either case.
+    WARNING: this component assumes Y input and RGB output both have
+    black level 0 and white level 255, not the 16..235 range specified
+    in Rec 601. See :py:mod:`pyctools.components.colourspace.levels` for
+    components to convert the Y input or RGB output. The UV input should
+    be in the range -112..112.
+
+    .. _Rec. 601: https://en.wikipedia.org/wiki/Rec._601
+    .. _Rec. 709: https://en.wikipedia.org/wiki/Rec._709
+    .. _YCbCr:    https://en.wikipedia.org/wiki/YCbCr
 
     """
 
-    mat_601 = numpy.array([[1.0,  0.0,       1.37071],
-                           [1.0, -0.336455, -0.698196],
-                           [1.0,  1.73245,   0.0]], dtype=pt_float)
-    mat_709 = numpy.array([[1.0,  0.0,       1.539648],
-                           [1.0, -0.183143, -0.457675],
-                           [1.0,  1.81418,   0.0]], dtype=pt_float)
+    mat_601 = numpy.linalg.inv(RGBtoYUV.mat_601)
+    mat_709 = numpy.linalg.inv(RGBtoYUV.mat_709)
     filter_21 = numpy.array([
         -0.002913300, 0.0,  0.010153700, 0.0, -0.022357799, 0.0,
          0.044929001, 0.0, -0.093861297, 0.0,  0.314049691, 0.5,
@@ -68,7 +72,6 @@ class YUVtoRGB(Component):
 
     def initialise(self):
         self.config['matrix'] = ConfigEnum(choices=('auto', '601', '709'))
-        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
         self.last_frame_type = None
 
     def process_frame(self):
@@ -96,8 +99,6 @@ class YUVtoRGB(Component):
         audit = 'Y = {\n%s}\n' % Y_frame.metadata.get('audit')
         audit += 'UV = {\n%s}\n' % UV_frame.metadata.get('audit')
         audit += 'data = YUVtoRGB(Y, UV)\n'
-        # apply offset
-        Y_data = Y_data - pt_float(16.0)
         # resample U & V
         v_ss = Y_data.shape[0] // UV_data.shape[0]
         h_ss = Y_data.shape[1] // UV_data.shape[1]
@@ -110,7 +111,6 @@ class YUVtoRGB(Component):
             UV_data = cv2.resize(
                 UV_data, None, fx=1, fy=v_ss, interpolation=cv2.INTER_CUBIC)
         # matrix to RGB
-        audit += '    range: %s' % (self.config['range'])
         if (self.config['matrix'] == '601' or
                 (self.config['matrix'] == 'auto' and Y_data.shape[0] <= 576)):
             matrix = self.mat_601
@@ -119,13 +119,7 @@ class YUVtoRGB(Component):
             matrix = self.mat_709
             audit += ', matrix: 709\n'
         YUV = numpy.dstack((Y_data, UV_data))
-        RGB = numpy.dot(YUV, matrix.T)
-        # offset or scale
-        if self.config['range'] == 'studio':
-            RGB += pt_float(16.0)
-        else:
-            RGB *= pt_float(255.0 / 219.0)
-        out_frame.data = RGB
+        out_frame.data = numpy.dot(YUV, matrix.T)
         out_frame.type = 'RGB'
         out_frame.metadata.set('audit', audit)
         return True

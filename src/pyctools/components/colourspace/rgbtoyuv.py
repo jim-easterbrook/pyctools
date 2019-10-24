@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -25,35 +25,41 @@ from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Component
 from pyctools.core.types import pt_float
 
+
 class RGBtoYUV(Component):
     """RGB to YUV (YCbCr) converter.
 
-    Convert RGB frames to "YUV" (actually YCbCr) with 4:4:4 sampling.
+    Convert RGB frames to "YUV" (actually YCbCr_) with 4:4:4 sampling.
 
     The ``matrix`` config item chooses the matrix coefficient set. It
-    can be ``'601'`` ("Rec 601", standard definition) or ``'709'`` ("Rec
-    709", high definition). In ``'auto'`` mode the matrix is chosen
-    according to the number of lines in the image.
+    can be ``'601'`` ("`Rec. 601`_", standard definition) or ``'709'``
+    ("`Rec. 709`_", high definition). In ``'auto'`` mode the matrix is
+    chosen according to the number of lines in the image.
 
-    The ``range`` config item specifies the input video range. It can be
-    either ``'studio'`` (16..235) or ``'computer'`` (0..255). Values are
-    not clipped in either case.
+    WARNING: this component assumes RGB input and Y output both have
+    black level 0 and white level 255, not the 16..235 range specified
+    in Rec 601. See :py:mod:`pyctools.components.colourspace.levels` for
+    components to convert the RGB input or Y output. The UV output is in
+    the range -112..112.
+
+    .. _Rec. 601: https://en.wikipedia.org/wiki/Rec._601
+    .. _Rec. 709: https://en.wikipedia.org/wiki/Rec._709
+    .. _YCbCr:    https://en.wikipedia.org/wiki/YCbCr
 
     """
 
     mat_601 = numpy.array(
-        [[ 0.299,      0.587,      0.114],
-         [-0.1725883, -0.3388272,  0.5114155],
-         [ 0.5114155, -0.4282466, -0.0831689]], dtype=pt_float)
+        [[ 0.299,     0.587,     0.114],
+         [-0.168736, -0.331264,  0.5],
+         [ 0.5,      -0.418688, -0.081312]], dtype=pt_float)
     mat_709 = numpy.array(
         [[ 0.2126,    0.7152,    0.0722],
-         [-0.117188, -0.394228,  0.511415],
-         [ 0.511415, -0.464522, -0.046894]], dtype=pt_float)
+         [-0.114572, -0.385428,  0.5],
+         [ 0.5,      -0.454153, -0.045847]], dtype=pt_float)
     outputs = ['output_Y', 'output_UV']
 
     def initialise(self):
         self.config['matrix'] = ConfigEnum(choices=('auto', '601', '709'))
-        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
         self.last_frame_type = None
 
     def process_frame(self):
@@ -84,14 +90,7 @@ class RGBtoYUV(Component):
         Y_audit += 'data = RGBtoY(data)\n'
         UV_audit = UV_frame.metadata.get('audit')
         UV_audit += 'data = RGBtoUV(data)\n'
-        # offset or scale
-        if self.config['range'] == 'studio':
-            RGB = RGB - pt_float(16.0)
-        else:
-            RGB = RGB * pt_float(219.0 / 255.0)
         # matrix to YUV
-        Y_audit += '    range: %s' % (self.config['range'])
-        UV_audit += '    range: %s' % (self.config['range'])
         if (self.config['matrix'] == '601' or
                 (self.config['matrix'] == 'auto' and RGB.shape[0] <= 576)):
             matrix = self.mat_601
@@ -101,8 +100,8 @@ class RGBtoYUV(Component):
             matrix = self.mat_709
             Y_audit += ', matrix: 709\n'
             UV_audit += ', matrix: 709\n'
-        Y_frame.data = numpy.dot(RGB, matrix[0:1].T) + pt_float(16.0)
-        UV_frame.data = numpy.dot(RGB, matrix[1:3].T)
+        Y_frame.data = numpy.dot(RGB, matrix[0:1].T)
+        UV_frame.data = numpy.dot(RGB, matrix[1:3].T) * pt_float(224.0 / 255.0)
         Y_frame.type = 'Y'
         UV_frame.type = 'CbCr'
         Y_frame.metadata.set('audit', Y_audit)

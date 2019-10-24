@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016-18  Pyctools contributors
+#  Copyright (C) 2016-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -37,6 +37,7 @@ from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
 from .gammacorrectioncore import apply_transfer_function
 
+
 class GammaCorrect(Transformer):
     """Gamma correction.
 
@@ -58,16 +59,14 @@ class GammaCorrect(Transformer):
     ``'Canon-Log'`` is taken from a white paper on the EOS C300 camera:
     http://learn.usa.canon.com/app/pdfs/white_papers/White_Paper_Clog_optoelectronic.pdf
 
-    The ``range`` config item specifies the gamma corrected black to
-    white range. It can be either ``'studio'`` (16..235) or
-    ``'computer'`` (0..255). The linear intensity black and white values
-    are set by the ``black`` and ``white`` config items.
-
     The gamma options have all been normalised so that linear intensity
-    ``white`` level input produces a gamma corrected output of 235 or
-    255. You can use an
-    :py:class:`~pyctools.components.arithmetic.Arithmetic` component to
-    scale the output if required.
+    ``black`` level input produces a gamma corrected output of 0 and
+    linear intensity ``white`` level input produces an output of 255.
+    The linear intensity black and white values are set by the ``black``
+    and ``white`` config items. You can use an
+    :py:class:`~pyctools.components.arithmetic.Arithmetic` or
+    :py:class:`~pyctools.components.colourspace.levels.ComputerToStudio`
+    component to scale the output if required.
 
     The ``function`` output emits the transfer function data whenever it
     changes. It can be connected to a
@@ -76,7 +75,6 @@ class GammaCorrect(Transformer):
     ==============  =====  ====
     Config
     ==============  =====  ====
-    ``range``       str    Nominal gamma corrected black and white levels. Can be ``'studio'`` or ``'computer'``.
     ``black``       float  "Linear intensity" black level.
     ``white``       float  "Linear intensity" white level.
     ``gamma``       str    Choose a gamma curve. Possible values: {}.
@@ -101,7 +99,6 @@ class GammaCorrect(Transformer):
     __doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in gamma_toe]))
 
     def initialise(self):
-        self.config['range'] = ConfigEnum(choices=('studio', 'computer'))
         self.config['gamma'] = ConfigEnum(choices=(self.gamma_toe.keys()))
         self.config['black'] = ConfigFloat(value=0.0, decimals=2)
         self.config['white'] = ConfigFloat(value=255.0, decimals=2)
@@ -200,11 +197,7 @@ class GammaCorrect(Transformer):
         self.in_val *= pt_float(white - black)
         self.in_val += pt_float(black)
         # scale gamma corrected values to normal video range
-        if self.config['range'] == 'studio':
-            self.out_val *= pt_float(219.0)
-            self.out_val += pt_float(16.0)
-        else:
-            self.out_val *= pt_float(255.0)
+        self.out_val *= pt_float(255.0)
         # send to function output
         func_frame = self.outframe_pool['function'].get()
         func_frame.data = numpy.stack((self.in_val, self.out_val))
