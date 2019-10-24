@@ -239,12 +239,27 @@ class AnalyseVignetteExp(Transformer):
     image, then calculates the optimum exponential function parameters
     to correct it.
 
+    The ``mode`` configuration selects the function to fit. If set to
+    ``measure`` or ``inv_measure`` no function is fitted. In
+    ``inv_measure`` mode the output shows the vignetting instead of the
+    required correction.
+
     The ``function`` output emits the measured and fitted gain
     functions. It can be connected to a
     :py:class:`~pyctools.components.io.plotdata.PlotData` component.
 
+    ============  =====  ====
+    Config
+    ============  =====  ====
+    ``mode``      str    Function to fit.
+    ============  =====  ====
+
     """
     outputs = ['output', 'function']
+
+    def initialise(self):
+        self.config['mode'] = ConfigEnum(
+            choices=('measure', 'inv_measure', 'power'))
 
     @staticmethod
     def exp(x, a, b, c):
@@ -252,13 +267,15 @@ class AnalyseVignetteExp(Transformer):
 
     def transform(self, in_frame, out_frame):
         self.update_config()
+        mode = self.config['mode']
         # get data
         data = in_frame.as_numpy(dtype=numpy.float64)
         # compute normalised radius
         h, w = data.shape[:2]
         r = numpy.sqrt(radius_squared(w, h))
         # calculate required gain for each radial band
-        data = 1.0 / data
+        if mode != 'inv_measure':
+            data = 1.0 / data
         bands = 50
         x = []
         y = []
@@ -271,20 +288,31 @@ class AnalyseVignetteExp(Transformer):
             x.append(numpy.mean(r[mask]))
             y.append(numpy.mean(data[mask]))
             sigma.append(numpy.std(data[mask]))
+        if mode == 'measure':
+            scale = min(y)
+        elif mode == 'inv_measure':
+            scale = max(y)
         x = numpy.array(x)
         y = numpy.array(y)
         sigma = numpy.array(sigma)
         # fit a function to the required gain
-        popt_linear, pcov_linear = scipy.optimize.curve_fit(
-            self.exp, x, y, sigma=sigma)
-        a, b, c = popt_linear
-        # print out parameters
-        print('a = {}, b = {}'.format(a, b))
+        if mode == 'power':
+            popt_linear, pcov_linear = scipy.optimize.curve_fit(
+                self.exp, x, y, sigma=sigma)
+            a, b, c = popt_linear
+            # print out parameters
+            print('a = {}, b = {}'.format(a, b))
+            scale = c
         # send plottable data
         func_frame = self.outframe_pool['function'].get()
-        func_frame.data = numpy.stack((x, y / c, self.exp(x, *popt_linear) / c))
+        plots = [x, y / scale]
+        labels = ['radius', 'measured']
+        if mode == 'power':
+            plots.append(self.exp(x, *popt_linear) / scale)
+            labels.append('fitted')
+        func_frame.data = numpy.stack(plots)
         func_frame.type = 'func'
-        func_frame.metadata.set('labels', repr(['radius', 'measured', 'fitted']))
+        func_frame.metadata.set('labels', repr(labels))
         audit = func_frame.metadata.get('audit')
         audit += 'data = VignetteCorrectorFunction()\n'
         func_frame.metadata.set('audit', audit)
