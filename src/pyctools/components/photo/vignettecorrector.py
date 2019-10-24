@@ -31,12 +31,14 @@ from pyctools.core.config import ConfigEnum, ConfigFloat, ConfigInt
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
 
+
 def radius_squared(w, h):
     xc = float(w - 1) / 2.0
     yc = float(h - 1) / 2.0
     index = numpy.mgrid[0:h, 0:w]
     return ((((index[1] - xc) ** 2) + ((index[0] - yc) ** 2)) /
             ((xc ** 2) + (yc ** 2)))
+
 
 class VignetteCorrector(Transformer):
     """Vignette corrector.
@@ -251,7 +253,7 @@ class AnalyseVignetteExp(Transformer):
     def transform(self, in_frame, out_frame):
         self.update_config()
         # get data
-        data = in_frame.as_numpy(dtype=pt_float)
+        data = in_frame.as_numpy(dtype=numpy.float64)
         # compute normalised radius
         h, w = data.shape[:2]
         r = numpy.sqrt(radius_squared(w, h))
