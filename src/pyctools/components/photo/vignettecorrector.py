@@ -27,7 +27,7 @@ import math
 import numpy
 import scipy
 
-from pyctools.core.config import ConfigEnum, ConfigFloat, ConfigInt
+from pyctools.core.config import ConfigEnum, ConfigFloat, ConfigInt, ConfigStr
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
 
@@ -102,46 +102,57 @@ class VignetteCorrectorExp(Transformer):
     function. This should be applied to 'linear intensity' image data
     before gamma correction is applied.
 
-    The ``a`` and ``b`` parameters set how the correction varies with
-    radius. The function used is ``1.0 + (a * (x ** b))``. The
+    The ``mode`` parameter sets the function to use. The ``params``
+    value sets how the correction varies with radius. It should be a
+    list of numbers whose meaning depends on the function. The
     :py:class:`AnalyseVignetteExp` component can be used to generate
     optimised values.
 
     ===========  =====  ====
     Config
     ===========  =====  ====
-    ``a``        float  Exponential function parameter ``a``
-    ``b``        float  Exponential function parameter ``b``
+    ``mode``     str    Function to use.
+    ``params``   str    Function parameters or coefficients.
     ===========  =====  ====
 
     """
 
     def initialise(self):
-        self.config['a'] = ConfigFloat(decimals=4)
-        self.config['b'] = ConfigFloat(decimals=4)
+        self.config['mode'] = ConfigEnum(choices=('power', 'poly2', 'poly3'))
+        self.config['params'] = ConfigStr(value='[1.0, 0.5]')
         self.gain = None
 
     @staticmethod
     def power(x, a, b):
         return 1.0 + (a * (x ** b))
 
+    @staticmethod
+    def poly2(x, a, b):
+        return 1.0 + (a * (x ** 2)) + (b * (x ** 4))
+
+    @staticmethod
+    def poly3(x, a, b, c):
+        return 1.0 + (a * (x ** 2)) + (b * (x ** 4)) + (c * (x ** 6))
+
     def transform(self, in_frame, out_frame):
         if self.update_config():
             self.gain = None
+        mode = self.config['mode']
+        params = eval(self.config['params'])
         # get data
         data = in_frame.as_numpy(dtype=pt_float)
         # generate correction function
-        a = self.config['a']
-        b = self.config['b']
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
-            self.gain = self.power(radius_squared(w, h), a, b)
+            func = getattr(self, mode)
+            self.gain = func(radius_squared(w, h), *params)
             self.gain = numpy.expand_dims(self.gain, axis=2)
         # apply correction
         out_frame.data = data * self.gain
         # add audit
         audit = out_frame.metadata.get('audit')
-        audit += 'data = VignetteCorrectorExp(data, {}, {})\n'.format(a, b)
+        audit += 'data = VignetteCorrectorExp(data, {}, {})\n'.format(
+            mode, str(params))
         out_frame.metadata.set('audit', audit)
         return True
 
@@ -264,14 +275,6 @@ class AnalyseVignetteExp(Transformer):
     @staticmethod
     def power(x, a, b, c):
         return (1.0 + (a * (x ** b))) * c
-
-    @staticmethod
-    def poly2(x, a, b, c):
-        return (1.0 + (a * (x ** 2)) + (b * (x ** 4))) * c
-
-    @staticmethod
-    def poly3(x, a, b, c, d):
-        return (1.0 + (a * (x ** 2)) + (b * (x ** 4)) + (c * (x ** 6))) * d
 
     def transform(self, in_frame, out_frame):
         self.update_config()
