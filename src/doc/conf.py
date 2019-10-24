@@ -2,7 +2,7 @@
 #
 # Pyctools - a picture processing algorithm development kit.
 # http://github.com/jim-easterbrook/pyctools
-# Copyright (C) 2014-18  Pyctools contributors
+# Copyright (C) 2014-19  Pyctools contributors
 #
 # This program is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -65,7 +65,7 @@ for mod_name in ('PyQt5', 'PyQt5.QtCore', 'PyQt5.QtGui',
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #needs_sphinx = '1.0'
-needs_sphinx = '1.3'
+needs_sphinx = '2.0'
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
@@ -74,8 +74,11 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary',
 
 autoclass_content = 'class'
 autodoc_member_order = 'bysource'
-autodoc_default_flags = ['members', 'show-inheritance']
-autosummary_generate = False
+autodoc_default_options = {
+    'members': True,
+    'show-inheritance': True,
+    }
+##autosummary_generate = False
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
@@ -96,7 +99,7 @@ Comments or questions? Please email jim@jim-easterbrook.me.uk.
 """
 
 # The suffix of source filenames.
-source_suffix = '.rst'
+source_suffix = {'.rst': 'restructuredtext'}
 
 # The encoding of source files.
 #source_encoding = 'utf-8-sig'
@@ -106,7 +109,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Pyctools'
-copyright = u'2014-17, Pyctools contributors'
+copyright = u'2014-19, Pyctools contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
