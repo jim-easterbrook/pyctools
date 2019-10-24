@@ -122,7 +122,7 @@ class VignetteCorrectorExp(Transformer):
         self.gain = None
 
     @staticmethod
-    def exp(x, a, b):
+    def power(x, a, b):
         return 1.0 + (a * (x ** b))
 
     def transform(self, in_frame, out_frame):
@@ -135,7 +135,7 @@ class VignetteCorrectorExp(Transformer):
         b = self.config['b']
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
-            self.gain = self.exp(radius_squared(w, h), a, b)
+            self.gain = self.power(radius_squared(w, h), a, b)
             self.gain = numpy.expand_dims(self.gain, axis=2)
         # apply correction
         out_frame.data = data * self.gain
@@ -236,8 +236,8 @@ class AnalyseVignetteExp(Transformer):
     """Vignette analysis.
 
     Measures the average luminance of 50 circular bands of an input grey
-    image, then calculates the optimum exponential function parameters
-    to correct it.
+    image, then calculates the optimum function parameters to correct
+    it.
 
     The ``mode`` configuration selects the function to fit. If set to
     ``measure`` or ``inv_measure`` no function is fitted. In
@@ -259,11 +259,19 @@ class AnalyseVignetteExp(Transformer):
 
     def initialise(self):
         self.config['mode'] = ConfigEnum(
-            choices=('measure', 'inv_measure', 'power'))
+            choices=('measure', 'inv_measure', 'power', 'poly2', 'poly3'))
 
     @staticmethod
-    def exp(x, a, b, c):
+    def power(x, a, b, c):
         return (1.0 + (a * (x ** b))) * c
+
+    @staticmethod
+    def poly2(x, a, b, c):
+        return (1.0 + (a * (x ** 2)) + (b * (x ** 4))) * c
+
+    @staticmethod
+    def poly3(x, a, b, c, d):
+        return (1.0 + (a * (x ** 2)) + (b * (x ** 4)) + (c * (x ** 6))) * d
 
     def transform(self, in_frame, out_frame):
         self.update_config()
@@ -288,28 +296,25 @@ class AnalyseVignetteExp(Transformer):
             x.append(numpy.mean(r[mask]))
             y.append(numpy.mean(data[mask]))
             sigma.append(numpy.std(data[mask]))
-        if mode == 'measure':
-            scale = min(y)
-        elif mode == 'inv_measure':
-            scale = max(y)
         x = numpy.array(x)
         y = numpy.array(y)
         sigma = numpy.array(sigma)
         # fit a function to the required gain
-        if mode == 'power':
+        if mode in ('measure', 'inv_measure'):
+            pass
+        else:
+            fit_func = getattr(self, mode)
             popt_linear, pcov_linear = scipy.optimize.curve_fit(
-                self.exp, x, y, sigma=sigma)
-            a, b, c = popt_linear
-            # print out parameters
-            print('a = {}, b = {}'.format(a, b))
-            scale = c
+                fit_func, x, y, sigma=sigma)
+            for n, value in enumerate(popt_linear[:-1]):
+                print('param {}: {}'.format(n, value))
         # send plottable data
         func_frame = self.outframe_pool['function'].get()
-        plots = [x, y / scale]
+        plots = [x, y / y[0]]
         labels = ['radius', 'measured']
-        if mode == 'power':
-            plots.append(self.exp(x, *popt_linear) / scale)
-            labels.append('fitted')
+        if mode not in ('measure', 'inv_measure'):
+            plots.append(fit_func(x, *popt_linear) / y[0])
+            labels.append(mode)
         func_frame.data = numpy.stack(plots)
         func_frame.type = 'func'
         func_frame.metadata.set('labels', repr(labels))
