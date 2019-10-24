@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -30,6 +30,7 @@ import numpy
 from pyctools.core.base import Transformer
 from pyctools.core.config import ConfigBool
 
+
 class Stats(Transformer):
     """Print information about input video.
 
@@ -48,7 +49,7 @@ class Stats(Transformer):
         if self.update_config():
             self.last_result = None
         result = {}
-        data = in_frame.as_numpy()
+        data = in_frame.as_numpy(dtype=numpy.float64)
         if self.config['rms']:
             result['rms'] = list(numpy.sqrt(numpy.mean(
                 numpy.square(data), axis=(0, 1))))
