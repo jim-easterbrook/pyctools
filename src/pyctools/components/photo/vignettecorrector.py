@@ -22,6 +22,7 @@ __all__ = ['VignetteCorrector', 'AnalyseVignette',
            'VignetteCorrectorExp', 'AnalyseVignetteExp']
 __docformat__ = 'restructuredtext en'
 
+import inspect
 import math
 
 import numpy
@@ -102,24 +103,27 @@ class VignetteCorrectorExp(Transformer):
     function. This should be applied to 'linear intensity' image data
     before gamma correction is applied.
 
-    The ``mode`` parameter sets the function to use. The ``params``
-    value sets how the correction varies with radius. It should be a
-    list of numbers whose meaning depends on the function. The
-    :py:class:`AnalyseVignetteExp` component can be used to generate
-    optimised values.
+    The ``mode`` parameter sets the function to use. The ``param_n``
+    values set how the correction varies with radius. Their meaning
+    depends on the function. The :py:class:`AnalyseVignetteExp`
+    component can be used to generate optimised values.
 
     ===========  =====  ====
     Config
     ===========  =====  ====
     ``mode``     str    Function to use.
-    ``params``   str    Function parameters or coefficients.
+    ``param_0``  float  First function parameter.
+    ``param_1``  float  Second function parameter.
+    ``param_2``  float  Third function parameter.
     ===========  =====  ====
 
     """
 
     def initialise(self):
         self.config['mode'] = ConfigEnum(choices=('power', 'poly2', 'poly3'))
-        self.config['params'] = ConfigStr(value='[1.0, 0.5]')
+        self.config['param_0'] = ConfigFloat()
+        self.config['param_1'] = ConfigFloat()
+        self.config['param_2'] = ConfigFloat()
         self.gain = None
 
     @staticmethod
@@ -138,20 +142,24 @@ class VignetteCorrectorExp(Transformer):
         if self.update_config():
             self.gain = None
         mode = self.config['mode']
-        params = eval(self.config['params'])
+        params = (self.config['param_0'],
+                  self.config['param_1'],
+                  self.config['param_2'])
         # get data
         data = in_frame.as_numpy(dtype=pt_float)
         # generate correction function
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
             func = getattr(self, mode)
+            arg_spec = inspect.getargspec(func)
+            params = params[:len(arg_spec.args)-1]
             self.gain = func(radius_squared(w, h), *params)
             self.gain = numpy.expand_dims(self.gain, axis=2)
         # apply correction
         out_frame.data = data * self.gain
         # add audit
         audit = out_frame.metadata.get('audit')
-        audit += 'data = VignetteCorrectorExp(data, {}, {})\n'.format(
+        audit += 'data = VignetteCorrectorExp_{}(data, {})\n'.format(
             mode, str(params))
         out_frame.metadata.set('audit', audit)
         return True
