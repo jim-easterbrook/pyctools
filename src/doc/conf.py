@@ -43,7 +43,7 @@ else:
     from mock import Mock
 
 for mod_name in ('cv2', 'pgi', 'gi', 'gi.repository', 'OpenGL',
-                 'matplotlib', 'matplotlib.pyplot', 'PIL', 'PIL.Image',
+                 'matplotlib', 'matplotlib.pyplot',
                  'scipy', 'scipy.optimize', 'scipy.signal', 'scipy.special',
                  'sip'):
     sys.modules[mod_name] = Mock()
