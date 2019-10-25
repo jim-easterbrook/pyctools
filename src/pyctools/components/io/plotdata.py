@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016-18  Pyctools contributors
+#  Copyright (C) 2016-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -24,10 +24,15 @@ __docformat__ = 'restructuredtext en'
 # GObject, so import pyctools.core.frame before matplotlib
 import pyctools.core.frame
 
+# matplotlib sometimes chooses the wrong backend, so make it use Qt5
+# https://gist.github.com/CMCDragonkai/4e9464d9f32f5893d837f3de2c43daa4
+import matplotlib as mpl
+mpl.use('Qt5Agg')
 import matplotlib.pyplot as plt
 
 from pyctools.core.base import Component
 from pyctools.core.qt import QtEventLoop
+
 
 class PlotData(Component):
     """Plot data on a graph.
