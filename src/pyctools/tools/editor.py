@@ -964,8 +964,11 @@ class NetworkArea(QtWidgets.QGraphicsScene):
 
 import argparse
 import logging
-from pyctools.core.compound import Compound
 """)
+            if with_qt:
+                of.write('import sys\n\n'
+                         'from PyQt5 import QtCore, QtWidgets\n')
+            of.write('\nfrom pyctools.core.compound import Compound\n')
             for module in modules:
                 of.write('import %s\n' % module)
             of.write("""
@@ -984,9 +987,8 @@ class Network(object):
 if __name__ == '__main__':
 """ % (components, linkages))
             if with_qt:
-                of.write('    from PyQt5 import QtCore, QtWidgets\n' +
-                         '    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)\n' +
-                         '    app = QtWidgets.QApplication([])\n')
+                of.write('    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)\n'
+                         '    app = QtWidgets.QApplication(sys.argv)\n')
             of.write("""
     comp = Network().make()
     cnf = comp.get_config()
