@@ -43,8 +43,9 @@ else:
     from mock import Mock
 
 for mod_name in ('cv2', 'pgi', 'gi', 'gi.repository', 'OpenGL',
-                 'matplotlib', 'matplotlib.pyplot',
-                 'scipy', 'scipy.signal', 'scipy.special', 'sip'):
+                 'matplotlib', 'matplotlib.pyplot', 'PIL', 'PIL.Image',
+                 'scipy', 'scipy.optimize', 'scipy.signal', 'scipy.special',
+                 'sip'):
     sys.modules[mod_name] = Mock()
 
 # Qt stuff needs a bit more work as it's used as base classes
