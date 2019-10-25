@@ -284,6 +284,14 @@ class AnalyseVignetteExp(Transformer):
     def power(x, a, b, c):
         return (1.0 + (a * (x ** b))) * c
 
+    @staticmethod
+    def poly2(x, a, b, c):
+        return (1.0 + (a * (x ** 2)) + (b * (x ** 4))) * c
+
+    @staticmethod
+    def poly3(x, a, b, c, d):
+        return (1.0 + (a * (x ** 2)) + (b * (x ** 4)) + (c * (x ** 6))) * d
+
     def transform(self, in_frame, out_frame):
         self.update_config()
         mode = self.config['mode']
