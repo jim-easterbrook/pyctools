@@ -25,7 +25,7 @@ __docformat__ = 'restructuredtext en'
 import math
 
 import numpy
-import scipy
+import scipy.optimize
 
 from pyctools.core.config import ConfigEnum, ConfigFloat, ConfigInt, ConfigStr
 from pyctools.core.base import Transformer
