@@ -28,7 +28,8 @@ import math
 import numpy
 import scipy.optimize
 
-from pyctools.core.config import ConfigEnum, ConfigFloat, ConfigInt, ConfigStr
+from pyctools.core.config import (
+    ConfigBool, ConfigEnum, ConfigFloat, ConfigInt, ConfigStr)
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
 
@@ -267,11 +268,18 @@ class AnalyseVignetteExp(Transformer):
     functions. It can be connected to a
     :py:class:`~pyctools.components.io.plotdata.PlotData` component.
 
-    ============  =====  ====
+    The ``plot...`` parameters can be used to control the plot's
+    appearance. Running the component network several times with
+    different options allows quite complex plots to be built up.
+
+    =======================  =====  ====
     Config
-    ============  =====  ====
-    ``mode``      str    Function to fit.
-    ============  =====  ====
+    =======================  =====  ====
+    ``mode``                 str    Function to fit.
+    ``plot_measurement``     bool   Include the measured input in the plot.
+    ``plot_label_measured``  str    Label for the 'measured' plot.
+    ``plot_label_fitted``    str    Label for the 'fitted' plot. If left blank ``mode`` is used.
+    =======================  =====  ====
 
     """
     outputs = ['output', 'function']
@@ -279,6 +287,9 @@ class AnalyseVignetteExp(Transformer):
     def initialise(self):
         self.config['mode'] = ConfigEnum(
             choices=('measure', 'inv_measure', 'power', 'poly2', 'poly3'))
+        self.config['plot_measurement'] = ConfigBool(value=True)
+        self.config['plot_label_measured'] = ConfigStr(value='measured')
+        self.config['plot_label_fitted'] = ConfigStr(value='')
 
     @staticmethod
     def power(x, a, b, c):
@@ -329,11 +340,14 @@ class AnalyseVignetteExp(Transformer):
                 print('param {}: {}'.format(n, value))
         # send plottable data
         func_frame = self.outframe_pool['function'].get()
-        plots = [x, y / y[0]]
-        labels = ['radius', 'measured']
+        plots = [x]
+        labels = ['radius']
+        if self.config['plot_measurement']:
+            plots.append(y / y[0])
+            labels.append(self.config['plot_label_measured'])
         if mode not in ('measure', 'inv_measure'):
             plots.append(fit_func(x, *popt_linear) / y[0])
-            labels.append(mode)
+            labels.append(self.config['plot_label_fitted'] or mode)
         func_frame.data = numpy.stack(plots)
         func_frame.type = 'func'
         func_frame.metadata.set('labels', repr(labels))
