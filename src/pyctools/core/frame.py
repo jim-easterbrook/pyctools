@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -220,6 +220,10 @@ class Metadata(object):
                 continue
             for tag in (md.get_exif_tags() +
                         md.get_iptc_tags() + md.get_xmp_tags()):
+                if tag.startswith('Exif.Thumbnail'):
+                    continue
+                if tag.startswith('Xmp.xmp.Thumbnails'):
+                    continue
                 if md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
                     self.data[tag] = md.get_tag_multiple(tag)
                 else:
