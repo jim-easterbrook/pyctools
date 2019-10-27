@@ -232,7 +232,7 @@ class Metadata(object):
             break
         return self
 
-    def to_file(self, path):
+    def to_file(self, path, thumbnail=None):
         """Write metadata to an image, video or XMP sidecar file.
 
         :param str path: The image/video file path name.
@@ -247,6 +247,8 @@ class Metadata(object):
         md = GExiv2.Metadata()
         try:
             md.open_path(md_path)
+            if thumbnail:
+                md.set_exif_thumbnail_from_buffer(thumbnail)
         except GLib.GError:
             # file type does not support metadata so use XMP sidecar
             md_path = xmp_path

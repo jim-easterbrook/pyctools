@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-17  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -19,9 +19,11 @@
 __all__ = ['ImageFileReaderPIL', 'ImageFileWriterPIL']
 __docformat__ = 'restructuredtext en'
 
+import io
+
 import PIL.Image
 
-from pyctools.core.config import ConfigPath, ConfigStr
+from pyctools.core.config import ConfigBool, ConfigPath, ConfigStr
 from pyctools.core.base import Component, Transformer
 from pyctools.core.frame import Frame, Metadata
 
@@ -80,17 +82,21 @@ class ImageFileWriterPIL(Transformer):
     colon separated names and values, for example a JPEG file might have
     these options: ``'quality': 95, 'progressive': True``.
 
+    The ``set_thumbnail`` option allows you to store a DCF standard 160
+    x 120 (or 120 x 160) thumbnail in the Exif metadata.
+
     PIL cannot write 16-bit data, so you may prefer to use
     :py:class:`~pyctools.components.io.imagefilecv.ImageFileWriterCV`
     instead.
 
-    ===========  ===  ====
+    =================  ====  ====
     Config
-    ===========  ===  ====
-    ``path``     str  Path name of file to be created.
-    ``format``   str  Over-ride the file format. This is normally derived from the ``path`` extension.
-    ``options``  str  A string of :py:meth:`PIL.Image.Image.save` options.
-    ===========  ===  ====
+    =================  ====  ====
+    ``path``           str   Path name of file to be created.
+    ``format``         str   Over-ride the file format. This is normally derived from the ``path`` extension.
+    ``options``        str   A string of :py:meth:`PIL.Image.Image.save` options.
+    ``set_thumbnail``  bool  Create and add an Exif thumbnail.
+    =================  ====  ====
 
     """
     def initialise(self):
@@ -98,6 +104,7 @@ class ImageFileWriterPIL(Transformer):
         self.config['path'] = ConfigPath(exists=False)
         self.config['format'] = ConfigStr()
         self.config['options'] = ConfigStr()
+        self.config['set_thumbnail'] = ConfigBool(value=False)
 
     def transform(self, in_frame, out_frame):
         if self.done:
@@ -118,6 +125,23 @@ class ImageFileWriterPIL(Transformer):
         if options:
             audit += '    options: {}\n'.format(self.config['options'])
         md.set('audit', audit)
-        md.to_file(path)
+        if self.config['set_thumbnail']:
+            w, h = image.size
+            if w >= h:
+                w, h = 160, 120
+            else:
+                w, h = 120, 160
+            image.thumbnail((w, h), PIL.Image.ANTIALIAS)
+            wt, ht = image.size
+            if (wt, ht) != (w, h):
+                # pad with black
+                padded = PIL.Image.new(image.mode, (w, h))
+                padded.paste(image, ((w - wt) // 2, (h - ht) // 2))
+                image = padded
+            buf = io.BytesIO()
+            image.save(buf, format='JPEG', params={'quality': 95})
+            md.to_file(path, thumbnail=buf.getbuffer())
+        else:
+            md.to_file(path)
         self.done = True
         return True
