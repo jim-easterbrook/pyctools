@@ -270,6 +270,15 @@ class Metadata(object):
             'https://github.com/jim-easterbrook/pyctools', 'pyctools')
         # copy metadata
         for tag, value in self.data.items():
+            if '[' in tag:
+                # XMP structured tag, need to create container
+                container = tag.split('[')[0]
+                for t in md.get_xmp_tags():
+                    if t.startswith(container):
+                        # container already exists
+                        break
+                else:
+                    md.set_xmp_tag_struct(container, GExiv2.StructureType.BAG)
             if md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
                 md.set_tag_multiple(tag, value)
             else:
