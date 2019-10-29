@@ -278,7 +278,14 @@ class Metadata(object):
                         # container already exists
                         break
                 else:
-                    md.set_xmp_tag_struct(container, GExiv2.StructureType.BAG)
+                    type_ = md.get_tag_type(container)
+                    if type_ == 'XmpBag':
+                        type_ = GExiv2.StructureType.BAG
+                    elif type_ == 'XmpSeq':
+                        type_ = GExiv2.StructureType.SEQ
+                    else:
+                        type_ = GExiv2.StructureType.ALT
+                    md.set_xmp_tag_struct(container, type_)
             if md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
                 md.set_tag_multiple(tag, value)
             else:
