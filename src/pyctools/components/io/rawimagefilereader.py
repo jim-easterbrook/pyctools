@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@ from __future__ import print_function
 __all__ = ['RawImageFileReader']
 __docformat__ = 'restructuredtext en'
 
-import time
+import os
 
 import numpy
 from rawkit.raw import Raw
@@ -33,6 +33,7 @@ from pyctools.core.config import (
 from pyctools.core.base import Component
 from pyctools.core.frame import Frame, Metadata
 from pyctools.core.types import pt_float
+
 
 class RawImageFileReader(Component):
     """Read 'raw' still image file (CR2, NEF, etc.).
@@ -141,7 +142,7 @@ class RawImageFileReader(Component):
                 clip_count = numpy.count_nonzero(
                     numpy.greater_equal(image, (2 ** 8) - 1))
             if clip_count > 0:
-                print('Pixels at clipping limit:', clip_count)
+                print(os.path.basename(path), 'clipped pixels:', clip_count)
             image = image.reshape((raw.metadata.height, raw.metadata.width, 3))
         out_frame = Frame()
         # send output frame
