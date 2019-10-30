@@ -262,10 +262,19 @@ class AnalyseVignetteExp(Transformer):
     The ``mode`` configuration selects the function to fit. If set to
     ``measure`` or ``inv_measure`` no function is fitted. In
     ``inv_measure`` mode the output shows the vignetting instead of the
-    required correction.
+    required correction. Available functions are:
 
-    The ``function`` output emits the measured and fitted gain
-    functions. It can be connected to a
+    power
+        ``1.0 + (a * (r ^ b))``
+
+    poly2
+        ``1.0 + (a * (r ^ 2)) + (b * (r ^ 4))``
+
+    poly3
+        ``1.0 + (a * (r ^ 2)) + (b * (r ^ 4)) + (c * (r ^ 6))``
+
+    The ``function`` output emits the measured and fitted gain values.
+    It can be connected to a
     :py:class:`~pyctools.components.io.plotdata.PlotData` component.
 
     The ``plot...`` parameters can be used to control the plot's
@@ -285,8 +294,8 @@ class AnalyseVignetteExp(Transformer):
     outputs = ['output', 'function']
 
     def initialise(self):
-        self.config['mode'] = ConfigEnum(
-            choices=('measure', 'inv_measure', 'power', 'poly2', 'poly3'))
+        self.config['mode'] = ConfigEnum(choices=(
+            'measure', 'inv_measure', 'power', 'poly2', 'poly3'))
         self.config['plot_measurement'] = ConfigBool(value=True)
         self.config['plot_label_measured'] = ConfigStr(value='measured')
         self.config['plot_label_fitted'] = ConfigStr(value='')
@@ -334,10 +343,17 @@ class AnalyseVignetteExp(Transformer):
             pass
         else:
             fit_func = getattr(self, mode)
-            popt_linear, pcov_linear = scipy.optimize.curve_fit(
-                fit_func, x, y, sigma=sigma)
-            for n, value in enumerate(popt_linear[:-1]):
-                print('param {}: {}'.format(n, value))
+            for method in ('lm', 'trf', 'dogbox'):
+                try:
+                    popt_linear, pcov_linear = scipy.optimize.curve_fit(
+                        fit_func, x, y, sigma=sigma, method=method)
+                    for n, value in enumerate(popt_linear[:-1]):
+                        print('param {}: {}'.format(n, value))
+                    break
+                except RuntimeError as ex:
+                    print(method, str(ex))
+            else:
+                mode = 'measure'
         # send plottable data
         func_frame = self.outframe_pool['function'].get()
         plots = [x]
