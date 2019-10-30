@@ -19,10 +19,11 @@
 __all__ = ['UnsharpMask']
 __docformat__ = 'restructuredtext en'
 
-import cv2
 import numpy
 
 from pyctools.components.colourspace.rgbtoyuv import RGBtoYUV
+from pyctools.components.interp.gaussianfilter import GaussianFilterCore
+from pyctools.components.interp.resizecore import resize_frame
 from pyctools.core.config import ConfigFloat
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
@@ -65,8 +66,13 @@ class UnsharpMask(Transformer):
         amount = self.config['amount']
         radius = self.config['radius']
         threshold = self.config['threshold']
-        data = in_frame.as_numpy()
-        mask = data - cv2.GaussianBlur(data, (0, 0), radius)
+        data = in_frame.as_numpy(dtype=pt_float)
+        # blur data with Gaussian and subtract to make mask
+        h_filter = GaussianFilterCore(x_sigma=radius).as_numpy(dtype=pt_float)
+        v_filter = GaussianFilterCore(y_sigma=radius).as_numpy(dtype=pt_float)
+        mask = data - resize_frame(resize_frame(
+            data, h_filter, 1, 1, 1, 1), v_filter, 1, 1, 1, 1)
+        # set mask values below threshold to zero
         if threshold > 0.0:
             comps = mask.shape[-1]
             if comps == 3:
@@ -79,6 +85,7 @@ class UnsharpMask(Transformer):
                     in_frame.type, comps)
                 return False
             mask *= (numpy.absolute(mask_Y) >= threshold)
+        # add some mask back to image
         out_frame.data = data + (mask * amount)
         # add audit
         audit = out_frame.metadata.get('audit')
