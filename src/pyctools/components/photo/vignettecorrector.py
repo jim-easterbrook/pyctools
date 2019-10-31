@@ -41,7 +41,7 @@ def radius_squared(w, h):
 
 
 class power(object):
-    "``1.0 + (a * (r ^ b))``"
+    "1.0 + (a * (r ^ b))"
 
     @staticmethod
     def process(x, a, b):
@@ -53,7 +53,7 @@ class power(object):
 
 
 class poly2(object):
-    "``1.0 + (a * (r ^ 2)) + (b * (r ^ 4))``"
+    "1.0 + (a * (r ^ 2)) + (b * (r ^ 4))"
 
     @staticmethod
     def process(x, a, b):
@@ -65,7 +65,7 @@ class poly2(object):
 
 
 class poly3(object):
-    "``1.0 + (a * (r ^ 2)) + (b * (r ^ 4)) + (c * (r ^ 6))``"
+    "1.0 + (a * (r ^ 2)) + (b * (r ^ 4)) + (c * (r ^ 6))"
 
     @staticmethod
     def process(x, a, b, c):
@@ -121,22 +121,24 @@ class VignetteCorrector(Transformer):
         params = (self.config['param_0'],
                   self.config['param_1'],
                   self.config['param_2'])
+        func = functions[mode].process
+        arg_spec = inspect.getargspec(func)
+        params = params[:len(arg_spec.args)-1]
         # get data
         data = in_frame.as_numpy(dtype=pt_float)
         # generate correction function
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
-            func = functions[mode].process
-            arg_spec = inspect.getargspec(func)
-            params = params[:len(arg_spec.args)-1]
             self.gain = func(radius_squared(w, h), *params)
             self.gain = numpy.expand_dims(self.gain, axis=2)
         # apply correction
         out_frame.data = data * self.gain
         # add audit
         audit = out_frame.metadata.get('audit')
-        audit += 'data = VignetteCorrector_{}(data, {})\n'.format(
-            mode, str(params))
+        audit += 'data = VignetteCorrector(data, {})\n'.format(mode)
+        audit += '    function: {}\n'.format(functions[mode].__doc__)
+        for n, value in enumerate(params):
+            audit += '    {} = {}\n'.format(chr(ord('a') + n), value)
         out_frame.metadata.set('audit', audit)
         return True
 
@@ -175,7 +177,7 @@ class AnalyseVignette(Transformer):
     """
 
     __doc__ = __doc__.format(
-        '\n\n'.join(['    {}\n        {}'.format(x.__name__, x.__doc__)
+        '\n\n'.join(['    {}\n        ``{}``'.format(x.__name__, x.__doc__)
                      for x in functions.values()]),
         ', '.join(["``'" + x + "'``"
                    for x in ['measure', 'inv_measure'] + list(functions)])
