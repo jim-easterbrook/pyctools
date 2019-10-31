@@ -40,6 +40,47 @@ def radius_squared(w, h):
             ((xc ** 2) + (yc ** 2)))
 
 
+class power(object):
+    "``1.0 + (a * (r ^ b))``"
+
+    @staticmethod
+    def process(x, a, b):
+        return 1.0 + (a * (x ** b))
+
+    @staticmethod
+    def analyse(x, a, b, c):
+        return power.process(x, a, b) * c
+
+
+class poly2(object):
+    "``1.0 + (a * (r ^ 2)) + (b * (r ^ 4))``"
+
+    @staticmethod
+    def process(x, a, b):
+        return 1.0 + (a * (x ** 2)) + (b * (x ** 4))
+
+    @staticmethod
+    def analyse(x, a, b, c):
+        return poly2.process(x, a, b) * c
+
+
+class poly3(object):
+    "``1.0 + (a * (r ^ 2)) + (b * (r ^ 4)) + (c * (r ^ 6))``"
+
+    @staticmethod
+    def process(x, a, b, c):
+        return 1.0 + (a * (x ** 2)) + (b * (x ** 4)) + (c * (x ** 6))
+
+    @staticmethod
+    def analyse(x, a, b, c, d):
+        return poly3.process(x, a, b, c) * d
+
+
+functions = {}
+for class_ in power, poly2, poly3:
+    functions[class_.__name__] = class_
+
+
 class VignetteCorrector(Transformer):
     """Vignette corrector.
 
@@ -55,7 +96,7 @@ class VignetteCorrector(Transformer):
     ===========  =====  ====
     Config
     ===========  =====  ====
-    ``mode``     str    Function to use.
+    ``mode``     str    Function to use. Possible values: {}.
     ``param_0``  float  First function parameter.
     ``param_1``  float  Second function parameter.
     ``param_2``  float  Third function parameter.
@@ -63,24 +104,15 @@ class VignetteCorrector(Transformer):
 
     """
 
+    __doc__ = __doc__.format(
+        ', '.join(["``'" + x + "'``" for x in functions]))
+
     def initialise(self):
-        self.config['mode'] = ConfigEnum(choices=('power', 'poly2', 'poly3'))
+        self.config['mode'] = ConfigEnum(choices=list(functions.keys()))
         self.config['param_0'] = ConfigFloat()
         self.config['param_1'] = ConfigFloat()
         self.config['param_2'] = ConfigFloat()
         self.gain = None
-
-    @staticmethod
-    def power(x, a, b):
-        return 1.0 + (a * (x ** b))
-
-    @staticmethod
-    def poly2(x, a, b):
-        return 1.0 + (a * (x ** 2)) + (b * (x ** 4))
-
-    @staticmethod
-    def poly3(x, a, b, c):
-        return 1.0 + (a * (x ** 2)) + (b * (x ** 4)) + (c * (x ** 6))
 
     def transform(self, in_frame, out_frame):
         if self.update_config():
@@ -94,7 +126,7 @@ class VignetteCorrector(Transformer):
         # generate correction function
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
-            func = getattr(self, mode)
+            func = functions[mode].process
             arg_spec = inspect.getargspec(func)
             params = params[:len(arg_spec.args)-1]
             self.gain = func(radius_squared(w, h), *params)
@@ -121,14 +153,7 @@ class AnalyseVignette(Transformer):
     ``inv_measure`` mode the output shows the vignetting instead of the
     required correction. Available functions are:
 
-    power
-        ``1.0 + (a * (r ^ b))``
-
-    poly2
-        ``1.0 + (a * (r ^ 2)) + (b * (r ^ 4))``
-
-    poly3
-        ``1.0 + (a * (r ^ 2)) + (b * (r ^ 4)) + (c * (r ^ 6))``
+{}
 
     The ``function`` output emits the measured and fitted gain values.
     It can be connected to a
@@ -141,33 +166,28 @@ class AnalyseVignette(Transformer):
     =======================  =====  ====
     Config
     =======================  =====  ====
-    ``mode``                 str    Function to fit.
+    ``mode``                 str    Function to fit. Possible values: {}.
     ``plot_measurement``     bool   Include the measured input in the plot.
     ``plot_label_measured``  str    Label for the 'measured' plot.
     ``plot_label_fitted``    str    Label for the 'fitted' plot. If left blank ``mode`` is used.
     =======================  =====  ====
 
     """
+
+    __doc__ = __doc__.format(
+        '\n\n'.join(['    {}\n        {}'.format(x.__name__, x.__doc__)
+                     for x in functions.values()]),
+        ', '.join(["``'" + x + "'``"
+                   for x in ['measure', 'inv_measure'] + list(functions)])
+        )
     outputs = ['output', 'function']
 
     def initialise(self):
-        self.config['mode'] = ConfigEnum(choices=(
-            'measure', 'inv_measure', 'power', 'poly2', 'poly3'))
+        self.config['mode'] = ConfigEnum(
+            choices=['measure', 'inv_measure'] + list(functions))
         self.config['plot_measurement'] = ConfigBool(value=True)
         self.config['plot_label_measured'] = ConfigStr(value='measured')
         self.config['plot_label_fitted'] = ConfigStr(value='')
-
-    @staticmethod
-    def power(x, a, b, c):
-        return (1.0 + (a * (x ** b))) * c
-
-    @staticmethod
-    def poly2(x, a, b, c):
-        return (1.0 + (a * (x ** 2)) + (b * (x ** 4))) * c
-
-    @staticmethod
-    def poly3(x, a, b, c, d):
-        return (1.0 + (a * (x ** 2)) + (b * (x ** 4)) + (c * (x ** 6))) * d
 
     def transform(self, in_frame, out_frame):
         self.update_config()
@@ -199,7 +219,7 @@ class AnalyseVignette(Transformer):
         if mode in ('measure', 'inv_measure'):
             pass
         else:
-            fit_func = getattr(self, mode)
+            fit_func = functions[mode].analyse
             for method in ('lm', 'trf', 'dogbox'):
                 try:
                     popt_linear, pcov_linear = scipy.optimize.curve_fit(
