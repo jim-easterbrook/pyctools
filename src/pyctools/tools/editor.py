@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -67,11 +67,13 @@ from pyctools.core.compound import Compound
 from pyctools.core.config import *
 from pyctools.core.qt import catch_all
 
+
 logger = logging.getLogger('pyctools-editor')
 
 _COMP_MIMETYPE = 'application/x-pyctools-component'
 _INPUT_MIMETYPE = 'application/x-pyctools-component-input'
 _OUTPUT_MIMETYPE = 'application/x-pyctools-component-output'
+
 
 class ConfigPathWidget(QtWidgets.QPushButton):
     def __init__(self, config, **kwds):
@@ -304,6 +306,7 @@ class ComponentLink(QtWidgets.QGraphicsLineItem):
         self.inbox = inbox
         self.renew()
 
+    @catch_all
     def itemChange(self, change, value):
         if change == QtWidgets.QGraphicsItem.ItemSceneHasChanged:
             if self.scene():
@@ -327,6 +330,7 @@ class ComponentLink(QtWidgets.QGraphicsLineItem):
         dest_pos = self.dest.in_pos(self.inbox, source_pos)
         source_pos = self.source.out_pos(self.outbox, dest_pos)
         self.setLine(QtCore.QLineF(source_pos, dest_pos))
+
 
 class IOIcon(QtWidgets.QGraphicsRectItem):
     def __init__(self, name, **kwds):
@@ -353,6 +357,7 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
     def mousePressEvent(self, event):
         pass
 
+    @catch_all
     def mouseMoveEvent(self, event):
         start_pos = event.buttonDownScreenPos(QtCore.Qt.LeftButton)
         if (QtCore.QLineF(event.screenPos(), start_pos).length() <
@@ -365,9 +370,11 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
         drag.setMimeData(mimeData)
         dropAction = drag.exec_(QtCore.Qt.LinkAction)
 
+    @catch_all
     def dragEnterEvent(self, event):
         event.setAccepted(event.mimeData().hasFormat(self.link_mime_type))
 
+    @catch_all
     def dropEvent(self, event):
         if not event.mimeData().hasFormat(self.link_mime_type):
             return super(IOIcon, self).dropEvent(event)
@@ -394,6 +401,7 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
         link = ComponentLink(source, outbox, dest, inbox)
         self.scene().addItem(link)
 
+
 class InputIcon(IOIcon):
     mime_type = _INPUT_MIMETYPE
     link_mime_type = _OUTPUT_MIMETYPE
@@ -405,6 +413,7 @@ class InputIcon(IOIcon):
 
     def connect_pos(self):
         return self.scenePos()
+
 
 class OutputIcon(IOIcon):
     mime_type = _OUTPUT_MIMETYPE
@@ -430,6 +439,7 @@ def strip_sphinx_domains(text):
     text = py_mod.sub(r'*\1*', text)
     text = py_other.sub(r'*\2*', text)
     return text
+
 
 class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
     width = 100
@@ -520,6 +530,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.obj = self.klass()
         self.obj.set_config(config)
 
+    @catch_all
     def contextMenuEvent(self, event):
         event.accept()
         menu = QtWidgets.QMenu()
@@ -537,6 +548,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
     def delete_self(self):
         self.scene().delete_child(self)
 
+    @catch_all
     def mouseDoubleClickEvent(self, event):
         self.do_config()
 
@@ -547,6 +559,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.config_dialog.raise_()
         self.config_dialog.activateWindow()
 
+    @catch_all
     def itemChange(self, change, value):
         if change == QtWidgets.QGraphicsItem.ItemPositionChange:
             if isinstance(value, QtCore.QVariant):
@@ -778,6 +791,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         self.parent().status.setText('position: {}, {}'.format(
             event.scenePos().x(), event.scenePos().y()))
 
+    @catch_all
     def dropEvent(self, event):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
             return super(NetworkArea, self).dropEvent(event)
@@ -1018,6 +1032,7 @@ if __name__ == '__main__':
     comp.join()
 """)
 
+
 class ComponentItemModel(QtGui.QStandardItemModel):
     def mimeTypes(self):
         return [_COMP_MIMETYPE]
@@ -1037,6 +1052,7 @@ class ComponentItemModel(QtGui.QStandardItemModel):
         result.setData(_COMP_MIMETYPE,
                        cPickle.dumps(data, cPickle.HIGHEST_PROTOCOL))
         return result
+
 
 class ComponentList(QtWidgets.QTreeView):
     def __init__(self, **kwds):
@@ -1102,6 +1118,7 @@ class ComponentList(QtWidgets.QTreeView):
                     self.add_nodes(node, item)
                 else:
                     node.setData(item)
+
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, script=None, **kwds):
@@ -1223,6 +1240,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.view.resetTransform()
         self.view.scale(zoom, zoom)
 
+
 def main():
     # let PyQt handle its options (need at least one argument after options)
     sys.argv.append('xxx')
@@ -1241,6 +1259,7 @@ def main():
     main = MainWindow(script=args.script)
     main.show()
     return app.exec_()
+
 
 if __name__ == '__main__':
     sys.exit(main())
