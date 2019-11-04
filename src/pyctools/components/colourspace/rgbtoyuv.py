@@ -24,6 +24,7 @@ import numpy
 from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Component
 from pyctools.core.types import pt_float
+from .matrices import Matrices
 
 
 class RGBtoYUV(Component):
@@ -48,14 +49,6 @@ class RGBtoYUV(Component):
 
     """
 
-    mat_601 = numpy.array(
-        [[ 0.299,     0.587,     0.114],
-         [-0.168736, -0.331264,  0.5],
-         [ 0.5,      -0.418688, -0.081312]], dtype=pt_float)
-    mat_709 = numpy.array(
-        [[ 0.2126,    0.7152,    0.0722],
-         [-0.114572, -0.385428,  0.5],
-         [ 0.5,      -0.454153, -0.045847]], dtype=pt_float)
     outputs = ['output_Y', 'output_UV']
 
     def initialise(self):
@@ -93,11 +86,11 @@ class RGBtoYUV(Component):
         # matrix to YUV
         if (self.config['matrix'] == '601' or
                 (self.config['matrix'] == 'auto' and RGB.shape[0] <= 576)):
-            matrix = self.mat_601
+            matrix = Matrices.RGBtoYUV_601
             Y_audit += ', matrix: 601\n'
             UV_audit += ', matrix: 601\n'
         else:
-            matrix = self.mat_709
+            matrix = Matrices.RGBtoYUV_709
             Y_audit += ', matrix: 709\n'
             UV_audit += ', matrix: 709\n'
         Y_frame.data = numpy.dot(RGB, matrix[0:1].T)

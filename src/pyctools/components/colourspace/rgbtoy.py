@@ -25,7 +25,7 @@ import numpy
 from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
-from .rgbtoyuv import RGBtoYUV
+from .matrices import Matrices
 
 
 class RGBtoY(Transformer):
@@ -49,9 +49,6 @@ class RGBtoY(Transformer):
 
     """
 
-    mat_601 = RGBtoYUV.mat_601[0:1]
-    mat_709 = RGBtoYUV.mat_709[0:1]
-
     def initialise(self):
         self.config['matrix'] = ConfigEnum(choices=('auto', '601', '709'))
         self.last_frame_type = None
@@ -72,10 +69,10 @@ class RGBtoY(Transformer):
         # matrix to Y
         if (self.config['matrix'] == '601' or
                 (self.config['matrix'] == 'auto' and RGB.shape[0] <= 576)):
-            matrix = self.mat_601
+            matrix = Matrices.RGBtoYUV_601[0:1]
             audit += ', matrix: 601\n'
         else:
-            matrix = self.mat_709
+            matrix = Matrices.RGBtoYUV_709[0:1]
             audit += ', matrix: 709\n'
         out_frame.data = numpy.dot(RGB, matrix.T)
         out_frame.type = 'Y'

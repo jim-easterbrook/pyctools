@@ -24,8 +24,7 @@ import numpy
 from pyctools.core.config import ConfigEnum, ConfigFloat
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
-from .rgbtoyuv import RGBtoYUV
-from .yuvtorgb import YUVtoRGB
+from .matrices import Matrices
 
 
 class AdjustSaturation(Transformer):
@@ -71,11 +70,11 @@ class AdjustSaturation(Transformer):
         if matrix == 'auto':
             matrix = ('601', '709')[RGB.shape[0] > 576]
         if matrix == '601':
-            in_mat = RGBtoYUV.mat_601
-            out_mat = YUVtoRGB.mat_601
+            in_mat = Matrices.RGBtoYUV_601
+            out_mat = Matrices.YUVtoRGB_601
         else:
-            in_mat = RGBtoYUV.mat_709
-            out_mat = YUVtoRGB.mat_709
+            in_mat = Matrices.RGBtoYUV_709
+            out_mat = Matrices.YUVtoRGB_709
         Y = numpy.dot(RGB, in_mat[0:1].T)
         UV = numpy.dot(RGB, in_mat[1:3].T)
         # apply gain

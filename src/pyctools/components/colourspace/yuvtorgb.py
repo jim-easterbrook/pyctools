@@ -28,7 +28,7 @@ from pyctools.core.config import ConfigEnum
 from pyctools.core.base import Component
 from pyctools.core.types import pt_float
 from pyctools.components.interp.resize import resize_frame
-from .rgbtoyuv import RGBtoYUV
+from .matrices import Matrices
 
 
 class YUVtoRGB(Component):
@@ -60,8 +60,6 @@ class YUVtoRGB(Component):
 
     """
 
-    mat_601 = numpy.linalg.inv(RGBtoYUV.mat_601)
-    mat_709 = numpy.linalg.inv(RGBtoYUV.mat_709)
     filter_21 = numpy.array([
         -0.002913300, 0.0,  0.010153700, 0.0, -0.022357799, 0.0,
          0.044929001, 0.0, -0.093861297, 0.0,  0.314049691, 0.5,
@@ -113,10 +111,10 @@ class YUVtoRGB(Component):
         # matrix to RGB
         if (self.config['matrix'] == '601' or
                 (self.config['matrix'] == 'auto' and Y_data.shape[0] <= 576)):
-            matrix = self.mat_601
+            matrix = Matrices.YUVtoRGB_601
             audit += ', matrix: 601\n'
         else:
-            matrix = self.mat_709
+            matrix = Matrices.YUVtoRGB_709
             audit += ', matrix: 709\n'
         YUV = numpy.dstack((Y_data, UV_data))
         out_frame.data = numpy.dot(YUV, matrix.T)
