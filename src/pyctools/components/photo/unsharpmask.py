@@ -21,7 +21,7 @@ __docformat__ = 'restructuredtext en'
 
 import numpy
 
-from pyctools.components.colourspace.rgbtoyuv import RGBtoYUV
+from pyctools.components.colourspace.matrices import Matrices
 from pyctools.components.interp.gaussianfilter import GaussianFilterCore
 from pyctools.components.interp.resizecore import resize_frame
 from pyctools.core.config import ConfigFloat
@@ -76,7 +76,7 @@ class UnsharpMask(Transformer):
         if threshold > 0.0:
             comps = mask.shape[-1]
             if comps == 3:
-                mask_Y = numpy.dot(mask, RGBtoYUV.mat_709[0:1].T)
+                mask_Y = numpy.dot(mask, Matrices.RGBtoYUV_709[0:1].T)
             elif comps == 1:
                 mask_Y = mask
             else:
