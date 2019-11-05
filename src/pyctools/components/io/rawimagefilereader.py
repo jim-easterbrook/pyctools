@@ -38,6 +38,10 @@ from pyctools.core.types import pt_float
 class RawImageFileReader(Component):
     """Read 'raw' still image file (CR2, NEF, etc.).
 
+    This component uses the rawkit_ Python package. See
+    :py:class:`~.rawimagefilereader2.RawImageFileReader2` for a component
+    that uses rawpy.
+
     See the `rawkit documentation
     <https://rawkit.readthedocs.io/en/latest/api/rawkit.html>`_ for
     more detail on the configuration options.
@@ -60,8 +64,10 @@ class RawImageFileReader(Component):
     ``red_scale``           float  Chromatic aberration correction red scale factor.
     ``blue_scale``          float  Chromatic aberration correction blue scale factor.
     ``crop``                bool   Auto crop image to dimensions in metadata.
-    ``use_camera_profile``  bool   Use embedded camera peofile, if present.
+    ``use_camera_profile``  bool   Use embedded camera profile, if present.
     ======================  =====  ====
+
+    .. _rawkit: https://rawkit.readthedocs.io/
 
     """
 
