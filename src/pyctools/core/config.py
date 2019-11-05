@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -149,7 +149,7 @@ class ConfigBool(ConfigInt):
             value = bool(value)
         return super(ConfigBool, cls).__new__(cls, value, default)
 
-    def __str__(self):
+    def __repr__(self):
         return str(bool(self))
 
     def parser_kw(self):
@@ -285,6 +285,27 @@ class ConfigParent(ConfigLeafNode, collections.OrderedDict):
             if value != value.default:
                 result.append("'{}': {!r}".format(key, value))
         return '{' + ', '.join(result) + '}'
+
+    def audit_string(self):
+        result = ''
+        details = []
+        for key, value in self.config.items():
+            if value == value.default:
+                continue
+            details.append('{}: {!r}'.format(key, value))
+            line = ', '.join(details)
+            if len(line) < 76:
+                continue
+            if len(details) > 1:
+                line = ', '.join(details[:-1])
+                details = details[-1:]
+            else:
+                details = []
+            result += '    ' + line + '\n'
+        if details:
+            line = ', '.join(details)
+            result += '    ' + line + '\n'
+        return result
 
     def parser_add(self, parser, prefix=''):
         """Add config to an :py:class:`argparse.ArgumentParser` object.

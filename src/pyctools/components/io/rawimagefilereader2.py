@@ -150,7 +150,9 @@ class RawImageFileReader2(Component):
         out_frame.frame_no = 0
         out_frame.metadata.from_file(path)
         audit = out_frame.metadata.get('audit')
-        audit += 'data = %s\n' % path
+        audit += 'data = RawImageFileReader2({})\n'.format(
+            os.path.basename(path))
+        audit += self.config.audit_string()
         out_frame.metadata.set('audit', audit)
         self.send('output', out_frame)
         # shut down pipeline
