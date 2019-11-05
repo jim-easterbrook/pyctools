@@ -289,7 +289,7 @@ class ConfigParent(ConfigLeafNode, collections.OrderedDict):
     def audit_string(self):
         result = ''
         details = []
-        for key, value in self.config.items():
+        for key, value in self.items():
             if value == value.default:
                 continue
             details.append('{}: {!r}'.format(key, value))
