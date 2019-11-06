@@ -68,6 +68,10 @@ class GammaCorrect(Transformer):
     :py:class:`~pyctools.components.colourspace.levels.ComputerToStudio`
     component to scale the output if required.
 
+    The ``scale`` option adjusts the input and output ranges without
+    changing the mapping from input white to output 255. With some
+    functions this acts as a highlight compression adjustment.
+
     The ``function`` output emits the transfer function data whenever it
     changes. It can be connected to a
     :py:class:`~pyctools.components.io.plotdata.PlotData` component.
@@ -77,6 +81,7 @@ class GammaCorrect(Transformer):
     ==============  =====  ====
     ``black``       float  "Linear intensity" black level.
     ``white``       float  "Linear intensity" white level.
+    ``scale``       float  Adjust the range of some functions.
     ``gamma``       str    Choose a gamma curve. Possible values: {}.
     ``knee``        bool   Turn on "knee" (highlight compression).
     ``knee_point``  float  Highlight compression threshold (normalised 0..1 range).
@@ -102,6 +107,7 @@ class GammaCorrect(Transformer):
         self.config['gamma'] = ConfigEnum(choices=(self.gamma_toe.keys()))
         self.config['black'] = ConfigFloat(value=0.0, decimals=2)
         self.config['white'] = ConfigFloat(value=255.0, decimals=2)
+        self.config['scale'] = ConfigFloat(value=1.0, decimals=2)
         self.config['inverse'] = ConfigBool()
         self.config['knee'] = ConfigBool()
         self.config['knee_point'] = ConfigFloat(value=0.9, decimals=3)
@@ -116,6 +122,7 @@ class GammaCorrect(Transformer):
         knee_slope = self.config['knee_slope']
         black = self.config['black']
         white = self.config['white']
+        scale = self.config['scale']
         # choose function to evaluate
         if self.config['gamma'] == 'hybrid_log':
             func = self.eval_hybrid_log
@@ -125,6 +132,11 @@ class GammaCorrect(Transformer):
             func = self.eval_canon_log
         else:
             func = self.eval_gamma
+        # set function ranges
+        self.k_out = 1.0
+        self.k_in = 1.0
+        self.k_out = 1.0 / func(scale)
+        self.k_in = scale
         # make list of in and out values
         in_lo = (-16.0 - black) / (white - black)
         in_hi = (256.0 + 16.0 - black) / (white - black)
@@ -132,17 +144,17 @@ class GammaCorrect(Transformer):
         out_val = []
         # compute first two points (linear slope)
         if toe is None:
-            v_out = func(threshold + 0.0000000001)
+            v_out = func((threshold / scale) + 0.0000000001)
             v_in = in_lo
             in_val.append(v_in)
             out_val.append(v_out)
-            v_in = threshold
+            v_in = threshold / scale
         else:
             v_in = in_lo
             v_out = v_in * toe
             in_val.append(v_in)
             out_val.append(v_out)
-            v_in = threshold
+            v_in = threshold / scale
             v_out = v_in * toe
         in_val.append(v_in)
         out_val.append(v_out)
@@ -198,26 +210,31 @@ class GammaCorrect(Transformer):
         self.send('function', func_frame)
 
     def eval_hybrid_log(self, v_in):
+        v_in *= self.k_in
         if v_in <= 1.0:
             v_out = 0.5 * math.sqrt(v_in)
         else:
             v_out = (0.17883277 * math.log(v_in - 0.28466892)) + 0.55991073
-        v_out *= 2.0
+        v_out *= self.k_out
         return v_out
 
     def eval_s_log(self, v_in):
+        v_in *= self.k_in
         v_out = (0.432699 * math.log10(v_in + 0.037584)) + 0.616596 + 0.03
-        v_out /= 0.653529251225
+        v_out *= self.k_out
         return v_out
 
     def eval_canon_log(self, v_in):
+        v_in *= self.k_in
         v_out = (0.529136 * math.log10((10.1596 * v_in) + 1.0)) + 0.0730597
-        v_out /= 0.627408304538
+        v_out *= self.k_out
         return v_out
 
     def eval_gamma(self, v_in):
+        v_in *= self.k_in
         v_out = v_in ** self.gamma
         v_out = ((1.0 + self.a) * v_out) - self.a
+        v_out *= self.k_out
         return v_out
 
     def transform(self, in_frame, out_frame):
