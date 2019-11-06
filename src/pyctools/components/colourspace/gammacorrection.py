@@ -93,7 +93,7 @@ class GammaCorrect(Transformer):
         ('srgb',       (1.0 / 2.4,     12.92, 0.0031308, 0.055)),
         ('adobe_rgb',  (256.0 / 563.0, None,  0.0,       0.0)),
         ('hybrid_log', (None,          None,  0.0,       0.0)),
-        ('S-Log',      (None,          None,  0.0,       0.0)),
+        ('S-Log',      (None,          None, -0.037584,  0.0)),
         ('Canon-Log',  (None,          None, -0.0452664, 0.0)),
         ])
     __doc__ = __doc__.format(', '.join(["``'" + x + "'``" for x in gamma_toe]))
@@ -105,7 +105,7 @@ class GammaCorrect(Transformer):
         self.config['inverse'] = ConfigBool()
         self.config['knee'] = ConfigBool()
         self.config['knee_point'] = ConfigFloat(value=0.9, decimals=3)
-        self.config['knee_slope'] = ConfigFloat(value=0.25, decimals=3)
+        self.config['knee_slope'] = ConfigFloat(value=0.1, decimals=3)
         self.initialised = False
 
     def adjust_params(self):
@@ -114,28 +114,8 @@ class GammaCorrect(Transformer):
         knee = self.config['knee']
         knee_point = self.config['knee_point']
         knee_slope = self.config['knee_slope']
-        # threshold for switch from toe to exponential gamma
-        if threshold is None:
-            # first approximate value, ignoring extra scaling factor a
-            threshold = (toe / self.gamma) ** (1.0 / (self.gamma - 1.0))
-            # refine using Newton-Raphson method
-            last_err = 1.0
-            while True:
-                f_p = (((1.0 - self.gamma) * (threshold ** self.gamma)) +
-                       ((self.gamma / toe) *
-                        (threshold ** (self.gamma - 1.0))) - 1.0)
-                df_p = (((1.0 - self.gamma) * self.gamma *
-                         (threshold ** (self.gamma - 1.0))) +
-                        ((self.gamma / toe) * (self.gamma - 1.0) *
-                         (threshold ** (self.gamma - 2.0))))
-                err = f_p / df_p
-                if abs(err) >= last_err:
-                    break
-                last_err = abs(err)
-                threshold -= err
-        if self.a is None:
-            self.a = (1.0 - self.gamma) * (threshold ** self.gamma)
-            self.a = self.a / (1.0 - self.a)
+        black = self.config['black']
+        white = self.config['white']
         # choose function to evaluate
         if self.config['gamma'] == 'hybrid_log':
             func = self.eval_hybrid_log
@@ -146,15 +126,19 @@ class GammaCorrect(Transformer):
         else:
             func = self.eval_gamma
         # make list of in and out values
+        in_lo = (-16.0 - black) / (white - black)
+        in_hi = (256.0 + 16.0 - black) / (white - black)
         in_val = []
         out_val = []
+        # compute first two points (linear slope)
         if toe is None:
-            # compute first point
+            v_out = func(threshold + 0.0000000001)
+            v_in = in_lo
+            in_val.append(v_in)
+            out_val.append(v_out)
             v_in = threshold
-            v_out = func(v_in)
         else:
-            # toe section just needs two end points
-            v_in = threshold - 0.1
+            v_in = in_lo
             v_out = v_in * toe
             in_val.append(v_in)
             out_val.append(v_out)
@@ -163,44 +147,48 @@ class GammaCorrect(Transformer):
         in_val.append(v_in)
         out_val.append(v_out)
         # complicated section needs many points
-        x_step = 0.01
-        while v_in < 10.0:
+        x_step = 0.0001
+        while v_in < in_hi:
             v_in += x_step
             if knee and v_in >= knee_point:
+                # knee section just needs another two endpoints
+                v_in = knee_point
+                v_out = func(v_in)
+                in_val.append(v_in)
+                out_val.append(v_out)
+                step = max(in_hi - v_in, 0.1)
+                in_val.append(v_in + step)
+                out_val.append(v_out + (knee_slope * step))
                 break
             v_out = func(v_in)
             y_step = abs(v_out - out_val[-1])
-            if y_step < 0.02 and x_step < 0.5:
+            if y_step < 0.005 and x_step < 0.5:
                 v_in -= x_step
                 x_step *= 2.0
                 continue
-            if y_step > 0.5 and x_step > 0.02:
+            if y_step > 0.5 and x_step > 0.005:
                 v_in -= x_step
                 x_step /= 2.0
                 continue
             in_val.append(v_in)
             out_val.append(v_out)
-        # knee section just needs another two endpoints
-        if knee:
-            v_in = knee_point
-            v_out = func(v_in)
-            in_val.append(v_in)
-            out_val.append(v_out)
-            step = max(10.0 - v_in, 0.1)
-            in_val.append(v_in + step)
-            out_val.append(v_out + (knee_slope * step))
         self.in_val = numpy.array(in_val, dtype=pt_float)
         self.out_val = numpy.array(out_val, dtype=pt_float)
         # scale "linear" values
-        black = self.config['black']
-        white = self.config['white']
         self.in_val *= pt_float(white - black)
         self.in_val += pt_float(black)
         # scale gamma corrected values to normal video range
         self.out_val *= pt_float(255.0)
-        # send to function output
+        # send section of curve to function output
         func_frame = self.outframe_pool['function'].get()
-        func_frame.data = numpy.stack((self.in_val, self.out_val))
+        lo = 0
+        while lo < len(self.out_val) and self.out_val[lo] < -64:
+            lo += 1
+        hi = len(self.out_val) - 1
+        while hi >= 0 and self.out_val[hi] > 256 + 64:
+            hi -= 1
+        func_frame.data = numpy.stack((self.in_val[lo:hi+1],
+                                       self.out_val[lo:hi+1]))
         func_frame.type = 'func'
         audit = func_frame.metadata.get('audit')
         audit += 'data = GammaFunction({})\n'.format(self.config['gamma'])
