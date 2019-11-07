@@ -85,6 +85,7 @@ class YUVtoRGB(Component):
 
     def transform(self, Y_frame, UV_frame, out_frame):
         self.update_config()
+        matrix = self.config['matrix']
         # check input and get data
         Y_data = Y_frame.as_numpy()
         if Y_data.shape[2] != 1:
@@ -94,9 +95,6 @@ class YUVtoRGB(Component):
         if UV_data.shape[2] != 2:
             self.logger.critical('UV input has %d components', UV_data.shape[2])
             return False
-        audit = 'Y = {\n%s}\n' % Y_frame.metadata.get('audit')
-        audit += 'UV = {\n%s}\n' % UV_frame.metadata.get('audit')
-        audit += 'data = YUVtoRGB(Y, UV)\n'
         # resample U & V
         v_ss = Y_data.shape[0] // UV_data.shape[0]
         h_ss = Y_data.shape[1] // UV_data.shape[1]
@@ -109,15 +107,19 @@ class YUVtoRGB(Component):
             UV_data = cv2.resize(
                 UV_data, None, fx=1, fy=v_ss, interpolation=cv2.INTER_CUBIC)
         # matrix to RGB
-        if (self.config['matrix'] == '601' or
-                (self.config['matrix'] == 'auto' and Y_data.shape[0] <= 576)):
-            matrix = Matrices.YUVtoRGB_601
-            audit += ', matrix: 601\n'
+        if matrix == 'auto':
+            matrix = ('601', '709')[RGB.shape[0] > 576]
+        if matrix == '601':
+            mat = Matrices.YUVtoRGB_601
         else:
-            matrix = Matrices.YUVtoRGB_709
-            audit += ', matrix: 709\n'
+            mat = Matrices.YUVtoRGB_709
         YUV = numpy.dstack((Y_data, UV_data))
-        out_frame.data = numpy.dot(YUV, matrix.T)
+        out_frame.data = numpy.dot(YUV, mat.T)
         out_frame.type = 'RGB'
+        # audit
+        audit = 'Y = {\n' + Y_frame.metadata.get('audit') + '}\n'
+        audit += 'UV = {\n' + UV_frame.metadata.get('audit') + '}\n'
+        audit += 'data = YUVtoRGB(Y, UV)\n'
+        audit += '    matrix: {}\n'.format(matrix)
         out_frame.metadata.set('audit', audit)
         return True

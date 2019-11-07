@@ -70,6 +70,7 @@ class RGBtoYUV(Component):
 
     def transform(self, in_frame, Y_frame, UV_frame):
         self.update_config()
+        matrix = self.config['matrix']
         # check input and get data
         RGB = in_frame.as_numpy()
         if RGB.shape[2] != 3:
@@ -79,24 +80,24 @@ class RGBtoYUV(Component):
         if in_frame.type != 'RGB' and in_frame.type != self.last_frame_type:
             self.logger.warning('Expected RGB input, got %s', in_frame.type)
         self.last_frame_type = in_frame.type
-        Y_audit = Y_frame.metadata.get('audit')
-        Y_audit += 'data = RGBtoY(data)\n'
-        UV_audit = UV_frame.metadata.get('audit')
-        UV_audit += 'data = RGBtoUV(data)\n'
         # matrix to YUV
-        if (self.config['matrix'] == '601' or
-                (self.config['matrix'] == 'auto' and RGB.shape[0] <= 576)):
-            matrix = Matrices.RGBtoYUV_601
-            Y_audit += ', matrix: 601\n'
-            UV_audit += ', matrix: 601\n'
+        if matrix == 'auto':
+            matrix = ('601', '709')[RGB.shape[0] > 576]
+        if matrix == '601':
+            mat = Matrices.RGBtoYUV_601
         else:
-            matrix = Matrices.RGBtoYUV_709
-            Y_audit += ', matrix: 709\n'
-            UV_audit += ', matrix: 709\n'
-        Y_frame.data = numpy.dot(RGB, matrix[0:1].T)
-        UV_frame.data = numpy.dot(RGB, matrix[1:3].T) * pt_float(224.0 / 255.0)
+            mat = Matrices.RGBtoYUV_709
+        Y_frame.data = numpy.dot(RGB, mat[0:1].T)
+        UV_frame.data = numpy.dot(RGB, mat[1:3].T) * pt_float(224.0 / 255.0)
         Y_frame.type = 'Y'
         UV_frame.type = 'CbCr'
-        Y_frame.metadata.set('audit', Y_audit)
-        UV_frame.metadata.set('audit', UV_audit)
+        # audit
+        audit = Y_frame.metadata.get('audit')
+        audit += 'data = RGBtoY(data)\n'
+        audit += '    matrix: {}\n'.format(matrix)
+        Y_frame.metadata.set('audit', audit)
+        audit = UV_frame.metadata.get('audit')
+        audit += 'data = RGBtoUV(data)\n'
+        audit += '    matrix: {}\n'.format(matrix)
+        UV_frame.metadata.set('audit', audit)
         return True

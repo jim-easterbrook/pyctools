@@ -251,8 +251,8 @@ class GammaCorrect(Transformer):
         audit = out_frame.metadata.get('audit')
         audit += 'data = {}GammaCorrect(data, {})\n'.format(
             ('', 'Inverse ')[inverse], self.config['gamma'])
-        audit += '    range: {}-{}\n'.format(
-            self.config['black'], self.config['white'])
+        audit += '    range: {}-{}, scale: {}\n'.format(
+            self.config['black'], self.config['white'], self.config['scale'])
         if self.config['knee']:
             audit += '    knee at {}, slope {}\n'.format(
                 self.config['knee_point'], self.config['knee_slope'])

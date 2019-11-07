@@ -55,6 +55,7 @@ class RGBtoY(Transformer):
 
     def transform(self, in_frame, out_frame):
         self.update_config()
+        matrix = self.config['matrix']
         # check input and get data
         RGB = in_frame.as_numpy()
         if RGB.shape[2] != 3:
@@ -64,17 +65,18 @@ class RGBtoY(Transformer):
         if in_frame.type != 'RGB' and in_frame.type != self.last_frame_type:
             self.logger.warning('Expected RGB input, got %s', in_frame.type)
         self.last_frame_type = in_frame.type
+        # matrix to Y
+        if matrix == 'auto':
+            matrix = ('601', '709')[RGB.shape[0] > 576]
+        if matrix == '601':
+            mat = Matrices.RGBtoYUV_601[0:1]
+        else:
+            mat = Matrices.RGBtoYUV_709[0:1]
+        out_frame.data = numpy.dot(RGB, mat.T)
+        out_frame.type = 'Y'
+        # audit
         audit = out_frame.metadata.get('audit')
         audit += 'data = RGBtoY(data)\n'
-        # matrix to Y
-        if (self.config['matrix'] == '601' or
-                (self.config['matrix'] == 'auto' and RGB.shape[0] <= 576)):
-            matrix = Matrices.RGBtoYUV_601[0:1]
-            audit += ', matrix: 601\n'
-        else:
-            matrix = Matrices.RGBtoYUV_709[0:1]
-            audit += ', matrix: 709\n'
-        out_frame.data = numpy.dot(RGB, matrix.T)
-        out_frame.type = 'Y'
+        audit += '    matrix: {}\n'.format(matrix)
         out_frame.metadata.set('audit', audit)
         return True

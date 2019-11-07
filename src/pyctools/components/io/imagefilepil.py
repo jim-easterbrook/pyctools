@@ -20,6 +20,7 @@ __all__ = ['ImageFileReaderPIL', 'ImageFileWriterPIL']
 __docformat__ = 'restructuredtext en'
 
 import io
+import os
 
 import PIL.Image
 
@@ -61,7 +62,8 @@ class ImageFileReaderPIL(Component):
         out_frame.frame_no = 0
         out_frame.metadata.from_file(path)
         audit = out_frame.metadata.get('audit')
-        audit += 'data = %s\n' % path
+        audit += 'data = {}\n'.format(os.path.basename(path))
+        audit += self.config.audit_string()
         out_frame.metadata.set('audit', audit)
         self.send('output', out_frame)
         # shut down pipeline
@@ -119,11 +121,8 @@ class ImageFileWriterPIL(Transformer):
         # save metadata
         md = Metadata().copy(in_frame.metadata)
         audit = md.get('audit')
-        audit += '{} = data\n'.format(path)
-        if fmt:
-            audit += '    format: {}\n'.format(fmt)
-        if options:
-            audit += '    options: {}\n'.format(self.config['options'])
+        audit += '{} = data\n'.format(os.path.basename(path))
+        audit += self.config.audit_string()
         md.set('audit', audit)
         if self.config['set_thumbnail']:
             w, h = image.size
