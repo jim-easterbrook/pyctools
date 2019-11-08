@@ -61,7 +61,9 @@ class RawImageFileReader2(Component):
     ``use_auto_wb``           bool   Automatic white balance.
     ``user_wb``               str    4 comma separated floats that set the gain of each channel.
     ``output_color``          str    Set colour space. Possible values: {}.
+    ``bright``                float  Brightness / white level scaling.
     ``highlight_mode``        str    Set highlight mode. Possible values: {}.
+    ``exp_shift``             float  Exposure shift. Darken if < 1.0, lighten if > 1.0.
     ``red_scale``             float  Chromatic aberration correction red scale factor.
     ``blue_scale``            float  Chromatic aberration correction blue scale factor.
     ``crop``                  bool   Auto crop image to dimensions in metadata.
@@ -99,8 +101,11 @@ class RawImageFileReader2(Component):
         self.config['user_wb'] = ConfigStr()
         self.config['output_color'] = ConfigEnum(
             choices=[x.name for x in rawpy.ColorSpace], value='sRGB')
+        self.config['bright'] = ConfigFloat(value=1.0, decimals=2)
         self.config['highlight_mode'] = ConfigEnum(
             choices=[x.name for x in rawpy.HighlightMode], value='Blend')
+        self.config['exp_shift'] = ConfigFloat(value=1.0, decimals=2,
+                                               min_value=0.25, max_value=8.0)
         self.config['red_scale'] = ConfigFloat(value=1.0, decimals=5)
         self.config['blue_scale'] = ConfigFloat(value=1.0, decimals=5)
         self.config['crop'] = ConfigBool(value=True)
@@ -124,9 +129,10 @@ class RawImageFileReader2(Component):
             'output_bps': 16,
             'user_flip': 0,
             'no_auto_bright': True,
-            'bright': 1.0,
+            'bright': self.config['bright'],
             'highlight_mode': rawpy.HighlightMode[
                 self.config['highlight_mode']],
+            'exp_shift': self.config['exp_shift'],
             'gamma': (1.0, 1.0),
             'chromatic_aberration': (self.config['red_scale'],
                                      self.config['blue_scale']),
