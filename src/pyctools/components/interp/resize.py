@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -64,8 +64,8 @@ class Resize(Transformer):
     =========  ===  ====
 
     """
-    inputs = ['input', 'filter']
-    outputs = ['output', 'filter']
+    inputs = ['input', 'filter']    #:
+    outputs = ['output', 'filter']  #:
 
     def initialise(self):
         self.config['xup'] = ConfigInt(min_value=1)
@@ -132,8 +132,8 @@ class FilterResponse(Transformer):
     :py:class:`~pyctools.components.io.plotdata.PlotData` component.
 
     """
-    inputs = ['filter']
-    outputs = ['response']
+    inputs = ['filter']     #:
+    outputs = ['response']  #:
 
     def transform(self, in_frame, out_frame):
         filter_coefs = in_frame.as_numpy(dtype=numpy.float32)

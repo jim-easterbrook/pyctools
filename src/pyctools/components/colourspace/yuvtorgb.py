@@ -66,7 +66,7 @@ class YUVtoRGB(Component):
          0.314049691, 0.0, -0.093861297, 0.0,  0.044929001, 0.0,
         -0.022357799, 0.0,  0.010153700, 0.0, -0.002913300
         ], dtype=pt_float).reshape(1, -1, 1)
-    inputs = ['input_Y', 'input_UV']
+    inputs = ['input_Y', 'input_UV']    #:
 
     def initialise(self):
         self.config['matrix'] = ConfigEnum(choices=('auto', '601', '709'))

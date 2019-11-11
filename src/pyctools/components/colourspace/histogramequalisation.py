@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016  Pyctools contributors
+#  Copyright (C) 2016-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -46,7 +46,7 @@ class HistogramEqualisation(Transformer):
     ============  =====  ====
 
     """
-    outputs = ['output', 'function']
+    outputs = ['output', 'function']    #:
 
     def initialise(self):
         self.config['weight_R'] = ConfigFloat(value=0.2126, decimals=4)

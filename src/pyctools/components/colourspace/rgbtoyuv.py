@@ -49,7 +49,7 @@ class RGBtoYUV(Component):
 
     """
 
-    outputs = ['output_Y', 'output_UV']
+    outputs = ['output_Y', 'output_UV']     #:
 
     def initialise(self):
         self.config['matrix'] = ConfigEnum(choices=('auto', '601', '709'))

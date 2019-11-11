@@ -90,7 +90,7 @@ class GammaCorrect(Transformer):
     ==============  =====  ====
 
     """
-    outputs = ['output', 'function']
+    outputs = ['output', 'function']    #:
     gamma_toe = OrderedDict([
         # name          gamma          toe    threshold  "a"
         ('linear',     (1.0,           1.0,   0.0,       0.0)),
@@ -287,7 +287,7 @@ class PiecewiseGammaCorrect(Transformer):
     ==============  =====  ====
 
     """
-    outputs = ['output', 'function']
+    outputs = ['output', 'function']    #:
 
     def initialise(self):
         self.config['in_vals'] = ConfigStr(value='0.0, 255.0')

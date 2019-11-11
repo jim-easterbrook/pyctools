@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -417,7 +417,7 @@ class InverseWindow(Component):
     =========  ===  ====
 
     """
-    outputs = ['window', 'inv_window']
+    outputs = ['window', 'inv_window']      #:
     with_outframe_pool = False
 
     def initialise(self):

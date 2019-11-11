@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-16  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -41,7 +41,7 @@ class Matrix(Transformer):
 
     """
 
-    inputs = ['input', 'matrix']
+    inputs = ['input', 'matrix']    #:
 
     def initialise(self):
         self.matrix_frame = None

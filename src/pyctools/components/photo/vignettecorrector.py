@@ -182,7 +182,7 @@ class AnalyseVignette(Transformer):
         ', '.join(["``'" + x + "'``"
                    for x in ['measure', 'inv_measure'] + list(functions)])
         )
-    outputs = ['output', 'function']
+    outputs = ['output', 'function']    #:
 
     def initialise(self):
         self.config['mode'] = ConfigEnum(
