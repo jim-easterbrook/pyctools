@@ -32,12 +32,18 @@ from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
 
 
-def radius_squared(w, h):
+def radius(w, h):
     xc = float(w - 1) / 2.0
     yc = float(h - 1) / 2.0
-    index = numpy.mgrid[0:h, 0:w]
-    return ((((index[1] - xc) ** 2) + ((index[0] - yc) ** 2)) /
-            ((xc ** 2) + (yc ** 2)))
+    r2 = (xc ** 2) + (yc ** 2)
+    index = numpy.mgrid[0 : h // 2, 0 : w // 2].astype(pt_float)
+    quad = numpy.sqrt((((index[1] + 0.5) ** 2) + ((index[0] + 0.5) ** 2)) / r2)
+    result = numpy.ndarray((h, w), dtype=pt_float)
+    result[h // 2 : h, w // 2 : w] = quad
+    result[h // 2 : h, 0 : w // 2] = quad[:, ::-1]
+    result[0 : h // 2, w // 2 : w] = quad[::-1, :]
+    result[0 : h // 2, 0 : w // 2] = quad[::-1, ::-1]
+    return result
 
 
 class power(object):
@@ -129,8 +135,13 @@ class VignetteCorrector(Transformer):
         # generate correction function
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
-            self.gain = func(radius_squared(w, h), *params)
-            self.gain = numpy.expand_dims(self.gain, axis=2)
+            quad = radius(w, h)[h // 2 : h, w // 2 : w]
+            quad = func(quad, *params)
+            self.gain = numpy.ndarray((h, w, 1), dtype=pt_float)
+            self.gain[h // 2 : h, w // 2 : w, 0] = quad
+            self.gain[h // 2 : h, 0 : w // 2, 0] = quad[:, ::-1]
+            self.gain[0 : h // 2, w // 2 : w, 0] = quad[::-1, :]
+            self.gain[0 : h // 2, 0 : w // 2, 0] = quad[::-1, ::-1]
         # apply correction
         out_frame.data = data * self.gain
         # add audit
@@ -198,7 +209,7 @@ class AnalyseVignette(Transformer):
         data = in_frame.as_numpy(dtype=numpy.float64)
         # compute normalised radius
         h, w = data.shape[:2]
-        r = numpy.sqrt(radius_squared(w, h))
+        r = radius(w, h)
         # calculate required gain for each radial band
         if mode != 'inv_measure':
             data = 1.0 / data
