@@ -195,7 +195,6 @@ class Metadata(object):
     def __init__(self, **kwds):
         super(Metadata, self).__init__(**kwds)
         self.data = {}
-        self.comment = None
         self.set('audit', '')
 
     def from_file(self, path):
@@ -228,7 +227,6 @@ class Metadata(object):
                     self.data[tag] = md.get_tag_multiple(tag)
                 else:
                     self.data[tag] = md.get_tag_string(tag)
-            self.comment = md.get_comment()
             break
         return self
 
@@ -290,8 +288,6 @@ class Metadata(object):
                 md.set_tag_multiple(tag, value)
             else:
                 md.set_tag_string(tag, value)
-        if self.comment is not None:
-            md.set_comment(self.comment)
         # save file
         md.save_file(md_path)
 
@@ -310,8 +306,6 @@ class Metadata(object):
         """
         # copy from other to self
         self.data.update(other.data)
-        if other.comment is not None:
-            self.comment = other.comment
         return self
 
     def image_size(self):
