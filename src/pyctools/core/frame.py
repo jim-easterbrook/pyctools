@@ -217,13 +217,14 @@ class Metadata(object):
                 md.open_path(xmp_path)
             except GLib.GError:
                 continue
-            for tag in (md.get_exif_tags() +
-                        md.get_iptc_tags() + md.get_xmp_tags()):
+            tags = md.get_exif_tags() + md.get_iptc_tags() + md.get_xmp_tags()
+            for tag in tags:
                 if tag.startswith('Exif.Thumbnail'):
                     continue
                 if tag.startswith('Xmp.xmp.Thumbnails'):
                     continue
-                if md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
+                count = tags.count(tag)
+                if count > 1 or md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
                     self.data[tag] = md.get_tag_multiple(tag)
                 else:
                     self.data[tag] = md.get_tag_string(tag)
@@ -284,7 +285,7 @@ class Metadata(object):
                     else:
                         type_ = GExiv2.StructureType.ALT
                     md.set_xmp_tag_struct(container, type_)
-            if md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
+            if isinstance(value, list):
                 md.set_tag_multiple(tag, value)
             else:
                 md.set_tag_string(tag, value)
