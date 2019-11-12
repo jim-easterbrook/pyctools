@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016  Pyctools contributors
+#  Copyright (C) 2016-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -45,24 +45,26 @@ class ErrorFeedbackQuantise(Transformer):
         if data.dtype == numpy.uint8:
             pass
         elif w >= h:
-            # seed error feedback with random numbers in range [-0.5, 0.5)
-            residue = numpy.random.random((h, c)) - 0.5
+            # seed error feedback with random numbers in range [0, 1)
+            # mean value 0.5 means numpy.floor is effectively 'round'
+            residue = numpy.random.random((h, c)).astype(data.dtype)
             for x in range(w):
                 # add residue
                 c_data = data[::, x, ::] + residue
                 # quantise
-                q_data = numpy.floor(c_data + 0.5)
+                q_data = numpy.floor(c_data)
                 data[::, x, ::] = q_data
                 # compute new residue
                 residue = c_data - q_data
         else:
-            # seed error feedback with random numbers in range [-0.5, 0.5)
-            residue = numpy.random.random((w, c)) - 0.5
+            # seed error feedback with random numbers in range [0, 1)
+            # mean value 0.5 means numpy.floor is effectively 'round'
+            residue = numpy.random.random((w, c)).astype(data.dtype)
             for y in range(h):
                 # add residue
                 c_data = data[y, ::, ::] + residue
                 # quantise
-                q_data = numpy.floor(c_data + 0.5)
+                q_data = numpy.floor(c_data)
                 data[y, ::, ::] = q_data
                 # compute new residue
                 residue = c_data - q_data
