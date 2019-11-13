@@ -91,7 +91,7 @@ class YUVtoRGB(Component):
         if Y.shape[2] != 1:
             self.logger.critical('Y input has %d components', Y.shape[2])
             return False
-        UV = UV_frame.as_numpy()
+        UV = UV_frame.as_numpy() * pt_float(255.0 / 224.0)
         if UV.shape[2] != 2:
             self.logger.critical('UV input has %d components', UV.shape[2])
             return False
