@@ -72,7 +72,9 @@ class RGBtoY(Transformer):
             mat = Matrices.RGBtoYUV_601[0:1]
         else:
             mat = Matrices.RGBtoYUV_709[0:1]
-        out_frame.data = numpy.dot(RGB, mat.T)
+        out_frame.data = ((RGB[:,:,0:1] * mat[0,0]) +
+                          (RGB[:,:,1:2] * mat[0,1]) +
+                          (RGB[:,:,2:3] * mat[0,2]))
         out_frame.type = 'Y'
         # audit
         audit = out_frame.metadata.get('audit')

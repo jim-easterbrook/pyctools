@@ -87,25 +87,25 @@ class YUVtoRGB(Component):
         self.update_config()
         matrix = self.config['matrix']
         # check input and get data
-        Y_data = Y_frame.as_numpy()
-        if Y_data.shape[2] != 1:
-            self.logger.critical('Y input has %d components', Y_data.shape[2])
+        Y = Y_frame.as_numpy()
+        if Y.shape[2] != 1:
+            self.logger.critical('Y input has %d components', Y.shape[2])
             return False
-        UV_data = UV_frame.as_numpy()
-        if UV_data.shape[2] != 2:
-            self.logger.critical('UV input has %d components', UV_data.shape[2])
+        UV = UV_frame.as_numpy()
+        if UV.shape[2] != 2:
+            self.logger.critical('UV input has %d components', UV.shape[2])
             return False
         # resample U & V
-        v_ss = Y_data.shape[0] // UV_data.shape[0]
-        h_ss = Y_data.shape[1] // UV_data.shape[1]
+        v_ss = Y.shape[0] // UV.shape[0]
+        h_ss = Y.shape[1] // UV.shape[1]
         if h_ss == 2:
-            UV_data = resize_frame(UV_data, self.filter_21, 2, 1, 1, 1)
+            UV = resize_frame(UV, self.filter_21, 2, 1, 1, 1)
         elif h_ss != 1:
-            UV_data = cv2.resize(
-                UV_data, None, fx=h_ss, fy=1, interpolation=cv2.INTER_CUBIC)
+            UV = cv2.resize(
+                UV, None, fx=h_ss, fy=1, interpolation=cv2.INTER_CUBIC)
         if v_ss != 1:
-            UV_data = cv2.resize(
-                UV_data, None, fx=1, fy=v_ss, interpolation=cv2.INTER_CUBIC)
+            UV = cv2.resize(
+                UV, None, fx=1, fy=v_ss, interpolation=cv2.INTER_CUBIC)
         # matrix to RGB
         if matrix == 'auto':
             matrix = ('601', '709')[RGB.shape[0] > 576]
@@ -113,8 +113,16 @@ class YUVtoRGB(Component):
             mat = Matrices.YUVtoRGB_601
         else:
             mat = Matrices.YUVtoRGB_709
-        YUV = numpy.dstack((Y_data, UV_data))
-        out_frame.data = numpy.dot(YUV, mat.T)
+        R = ((Y[:,:,0] * mat[0,0]) +
+             (UV[:,:,0] * mat[0,1]) +
+             (UV[:,:,1] * mat[0,2]))
+        G = ((Y[:,:,0] * mat[1,0]) +
+             (UV[:,:,0] * mat[1,1]) +
+             (UV[:,:,1] * mat[1,2]))
+        B = ((Y[:,:,0] * mat[2,0]) +
+             (UV[:,:,0] * mat[2,1]) +
+             (UV[:,:,1] * mat[2,2]))
+        out_frame.data = numpy.dstack((R, G, B))
         out_frame.type = 'RGB'
         # audit
         audit = 'Y = {\n' + Y_frame.metadata.get('audit') + '}\n'

@@ -87,8 +87,16 @@ class RGBtoYUV(Component):
             mat = Matrices.RGBtoYUV_601
         else:
             mat = Matrices.RGBtoYUV_709
-        Y_frame.data = numpy.dot(RGB, mat[0:1].T)
-        UV_frame.data = numpy.dot(RGB, mat[1:3].T) * pt_float(224.0 / 255.0)
+        Y_frame.data = ((RGB[:,:,0:1] * mat[0,0]) +
+                        (RGB[:,:,1:2] * mat[0,1]) +
+                        (RGB[:,:,2:3] * mat[0,2]))
+        U = ((RGB[:,:,0] * mat[1,0]) +
+             (RGB[:,:,1] * mat[1,1]) +
+             (RGB[:,:,2] * mat[1,2]))
+        V = ((RGB[:,:,0] * mat[2,0]) +
+             (RGB[:,:,1] * mat[2,1]) +
+             (RGB[:,:,2] * mat[2,2]))
+        UV_frame.data = numpy.dstack((U, V)) * pt_float(224.0 / 255.0)
         Y_frame.type = 'Y'
         UV_frame.type = 'CbCr'
         # audit
