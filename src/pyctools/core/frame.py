@@ -228,6 +228,8 @@ class Metadata(object):
                     self.data[tag] = md.get_tag_multiple(tag)
                 else:
                     self.data[tag] = md.get_tag_string(tag)
+                if tag == 'Xmp.pyctools.audit':
+                    self.data[tag] = self.data[tag].strip()
             break
         return self
 
@@ -285,6 +287,8 @@ class Metadata(object):
                     else:
                         type_ = GExiv2.StructureType.ALT
                     md.set_xmp_tag_struct(container, type_)
+            if tag == 'Xmp.pyctools.audit' and value[0] != '\n':
+                value = '\n' + value
             if isinstance(value, list):
                 md.set_tag_multiple(tag, value)
             else:
