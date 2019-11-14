@@ -117,8 +117,10 @@ class Resize(Transformer):
             audit += '    x_up: %d, x_down: %d\n' % (x_up, x_down)
         if y_up != 1 or y_down != 1:
             audit += '    y_up: %d, y_down: %d\n' % (y_up, y_down)
-        audit += '    filter: {\n%s}\n' % (
-            self.filter_frame.metadata.get('audit'))
+        audit += '    filter: {\n'
+        for line in self.filter_frame.metadata.get('audit').splitlines():
+            audit += '        ' + line + '\n'
+        audit += '        }\n'
         out_frame.metadata.set('audit', audit)
         return True
 

@@ -65,7 +65,9 @@ class Matrix(Transformer):
         out_frame.data = numpy.dot(data_in, self.matrix_coefs.T)
         audit = out_frame.metadata.get('audit')
         audit += 'data = Matrix(data)\n'
-        audit += '    matrix: {\n%s}\n' % (
-            self.matrix_frame.metadata.get('audit'))
+        audit += '    matrix: {\n'
+        for line in self.matrix_frame.metadata.get('audit').splitlines():
+            audit += '        ' + line + '\n'
+        audit += '        }\n'
         out_frame.metadata.set('audit', audit)
         return True

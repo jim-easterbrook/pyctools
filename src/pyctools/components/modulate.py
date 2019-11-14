@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -103,7 +103,9 @@ class Modulate(Transformer):
         out_frame.data = in_data * self.cell_data[k]
         audit = out_frame.metadata.get('audit')
         audit += 'data = Modulate(data)\n'
-        audit += '    cell: {\n%s}\n' % (
-            self.cell_frame.metadata.get('audit'))
+        audit += '    cell: {\n'
+        for line in self.cell_frame.metadata.get('audit').splitlines():
+            audit += '        ' + line + '\n'
+        audit += '        }\n'
         out_frame.metadata.set('audit', audit)
         return True

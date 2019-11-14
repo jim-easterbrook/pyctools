@@ -125,8 +125,14 @@ class YUVtoRGB(Component):
         out_frame.data = numpy.dstack((R, G, B))
         out_frame.type = 'RGB'
         # audit
-        audit = 'Y = {\n' + Y_frame.metadata.get('audit') + '}\n'
-        audit += 'UV = {\n' + UV_frame.metadata.get('audit') + '}\n'
+        audit = 'Y = {\n'
+        for line in Y_frame.metadata.get('audit').splitlines():
+            audit += '    ' + line + '\n'
+        audit += '    }\n'
+        audit += 'UV = {\n'
+        for line in UV_frame.metadata.get('audit').splitlines():
+            audit += '    ' + line + '\n'
+        audit += '    }\n'
         audit += 'data = YUVtoRGB(Y, UV)\n'
         audit += '    matrix: {}\n'.format(matrix)
         out_frame.metadata.set('audit', audit)

@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -24,6 +24,7 @@ import numpy
 from pyctools.core.config import ConfigStr
 from pyctools.core.base import Component, Transformer
 from pyctools.core.types import pt_float, pt_complex
+
 
 class Arithmetic(Transformer):
     """Do simple arithmetic.
@@ -87,8 +88,15 @@ class Arithmetic2(Component):
         data2 = in_frame2.as_numpy()
         out_frame.initialise(in_frame1)
         out_frame.data = eval(func)
-        audit = 'data1 = {\n%s}\n' % in_frame1.metadata.get('audit')
-        audit += 'data2 = {\n%s}\n' % in_frame2.metadata.get('audit')
-        audit += 'data = %s\n' % func
+        # audit
+        audit = 'data1 = {\n'
+        for line in in_frame1.metadata.get('audit').splitlines():
+            audit += '    ' + line + '\n'
+        audit += '    }\n'
+        audit += 'data2 = {\n'
+        for line in in_frame2.metadata.get('audit').splitlines():
+            audit += '    ' + line + '\n'
+        audit += '    }\n'
+        audit += 'data = {}\n'.format(func)
         out_frame.metadata.set('audit', audit)
         self.send('output', out_frame)
