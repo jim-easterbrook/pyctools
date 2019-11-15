@@ -46,6 +46,10 @@ class RawImageFileReader2(Component):
     :py:mod:`~pyctools.components.colourspace.gammacorrection` for some
     useful components.
 
+    Some options add significantly to the processing time, particularly
+    ``fbdd_noise_reduction`` and some of the ``demosaic_algorithm``
+    options.
+
     ========================  =====  ====
     Config
     ========================  =====  ====
