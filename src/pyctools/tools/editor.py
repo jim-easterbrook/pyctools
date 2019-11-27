@@ -453,7 +453,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.klass = klass
         self.obj = obj
         self.config_dialog = None
-        help_text = inspect.getdoc(self.obj)
+        help_text = inspect.getdoc(self.klass)
         if help_text:
             help_text = strip_sphinx_domains(help_text)
             help_text = docutils.core.publish_parts(
