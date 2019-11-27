@@ -24,7 +24,7 @@ import os
 from setuptools import setup, Extension
 import sys
 
-version = '0.5.0'
+version = '0.5.1'
 
 with open(os.path.join('src', 'pyctools', 'setup.py')) as f:
     exec(f.read())
