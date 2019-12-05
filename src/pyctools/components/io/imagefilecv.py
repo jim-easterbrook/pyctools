@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016  Pyctools contributors
+#  Copyright (C) 2016-19  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -29,6 +29,7 @@ import numpy
 from pyctools.core.config import ConfigBool, ConfigPath, ConfigStr
 from pyctools.core.base import Component, Transformer
 from pyctools.core.frame import Frame, Metadata
+
 
 class ImageFileReaderCV(Component):
     """Read a still image file using OpenCV library.
@@ -145,6 +146,7 @@ class ImageFileWriterCV(Transformer):
         # convert data
         if self.config['16bit']:
             image = in_frame.as_numpy() * numpy.float32(2 ** 8)
+            image = image.clip(0, 2**16 - 1)
             image = image.astype(numpy.uint16)
         else:
             image = in_frame.as_numpy(dtype=numpy.uint8)
