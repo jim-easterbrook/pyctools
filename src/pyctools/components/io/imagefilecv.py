@@ -21,7 +21,7 @@ from __future__ import print_function
 __all__ = ['ImageFileReaderCV', 'ImageFileWriterCV']
 __docformat__ = 'restructuredtext en'
 
-import time
+import os
 
 import cv2
 import numpy
@@ -169,10 +169,8 @@ class ImageFileWriterCV(Transformer):
         # save metadata
         md = Metadata().copy(in_frame.metadata)
         audit = md.get('audit')
-        audit += '{} = data\n'.format(path)
-        for item in self.cv2_params:
-            if self.config[item]:
-                audit += '    {}: {}\n'.format(item, int(self.config[item]))
+        audit += '{} = data\n'.format(os.path.basename(path))
+        audit += self.config.audit_string()
         md.set('audit', audit)
         md.to_file(path)
         self.done = True
