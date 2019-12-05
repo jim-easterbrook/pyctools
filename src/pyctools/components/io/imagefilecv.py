@@ -105,31 +105,37 @@ class ImageFileReaderCV(Component):
 class ImageFileWriterCV(Transformer):
     """Write a still image file using OpenCV library.
 
-    See the `OpenCV documentation
-    <http://docs.opencv.org/2.4.11/modules/highgui/doc/reading_and_writing_images_and_video.html#imwrite>`_
-    for more detail on the possible parameters.
+    See the `OpenCV documentation`_ for more detail on the parameters.
 
     If you need to write a file format that OpenCV can't do, try the
     :py:class:`~pyctools.components.io.imagefilepil.ImageFileWriterPIL`
     component instead.
 
-    ============  ====  ====
+    ==============================  ====  ====
     Config
-    ============  ====  ====
-    ``path``      str   Path name of file to be written.
-    ``16bit``     bool  Write a 16-bit depth file, if the format supports it.
-    ``JPEG_xxx``  int   OpenCV IMWRITE_JPEG_xxx parameter.
-    ``PNG_xxx``   int   OpenCV IMWRITE_PNG_xxx parameter.
-    ============  ====  ====
+    ==============================  ====  ====
+    ``path``                        str   Path name of file to be written.
+    ``16bit``                       bool  Write a 16-bit depth file, if the format supports it.
+    {}
+    ==============================  ====  ====
+
+    .. _OpenCV documentation:
+       http://docs.opencv.org/2.4.11/modules/highgui/doc/reading_and_writing_images_and_video.html#imwrite
 
     """
+
+    cv2_params = [x[8:] for x in cv2.__dict__ if x.startswith('IMWRITE_')]
+    cv2_params.sort()
+
+    __doc__ = __doc__.format(
+        '\n    '.join([
+            '``{x}``{s}  int   OpenCV CV_IMWRITE_{x} parameter.'.format(
+                x=x, s=' '*(26-len(x))) for x in cv2_params]))
+
     def initialise(self):
         self.done = False
         self.config['path'] = ConfigPath(exists=False)
         self.config['16bit'] = ConfigBool()
-        self.cv2_params = [
-            x[8:] for x in cv2.__dict__ if x.startswith('IMWRITE_')]
-        self.cv2_params.sort()
         for item in self.cv2_params:
             self.config[item] = ConfigStr()
 

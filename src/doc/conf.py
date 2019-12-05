@@ -42,7 +42,7 @@ if sys.version_info >= (3, 3):
 else:
     from mock import Mock
 
-for mod_name in ('cv2', 'pgi', 'gi', 'gi.repository', 'OpenGL',
+for mod_name in ('pgi', 'gi', 'gi.repository', 'OpenGL',
                  'matplotlib', 'matplotlib.pyplot',
                  'scipy', 'scipy.optimize', 'scipy.signal', 'scipy.special',
                  'sip'):
