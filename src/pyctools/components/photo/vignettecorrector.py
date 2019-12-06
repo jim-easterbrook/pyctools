@@ -36,9 +36,9 @@ def radius(w, h):
     xc = float(w - 1) / 2.0
     yc = float(h - 1) / 2.0
     r2 = (xc ** 2) + (yc ** 2)
-    index = numpy.mgrid[0 : h // 2, 0 : w // 2].astype(pt_float)
+    index = numpy.mgrid[0 : h // 2, 0 : w // 2].astype(numpy.float64)
     quad = numpy.sqrt((((index[1] + 0.5) ** 2) + ((index[0] + 0.5) ** 2)) / r2)
-    result = numpy.ndarray((h, w), dtype=pt_float)
+    result = numpy.ndarray((h, w), dtype=numpy.float64)
     result[h // 2 : h, w // 2 : w] = quad
     result[h // 2 : h, 0 : w // 2] = quad[:, ::-1]
     result[0 : h // 2, w // 2 : w] = quad[::-1, :]
@@ -136,7 +136,7 @@ class VignetteCorrector(Transformer):
         h, w = data.shape[:2]
         if self.gain is None or self.gain.shape != [h, w, 1]:
             quad = radius(w, h)[h // 2 : h, w // 2 : w]
-            quad = func(quad, *params)
+            quad = func(quad, *params).astype(pt_float)
             self.gain = numpy.ndarray((h, w, 1), dtype=pt_float)
             self.gain[h // 2 : h, w // 2 : w, 0] = quad
             self.gain[h // 2 : h, 0 : w // 2, 0] = quad[:, ::-1]
