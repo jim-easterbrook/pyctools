@@ -42,6 +42,11 @@ from pyctools.core.types import pt_float
 class ImageSequenceReader(Component):
     """Read a set of image files (JPEG, PNG, TIFF, etc).
 
+    The ``firstfile`` and ``lastfile`` strings must be identical apart
+    from a decimal number that signifies the position in the sequence.
+    This number can be anywhere in the filename and need not have
+    leading zeros.
+
     =============  ====  ====
     Config
     =============  ====  ====
@@ -55,49 +60,49 @@ class ImageSequenceReader(Component):
     inputs = []
 
     def initialise(self):
-        self.frame_no = 0
-        self.frame_idx = None
         self.metadata = None
         self.config['firstfile'] = ConfigPath()
         self.config['lastfile'] = ConfigPath()
         self.config['looping'] = ConfigEnum(choices=('off', 'repeat'))
 
     def process_frame(self):
-        # update parameters
         self.update_config()
-        first_name = self.config['firstfile']
-        last_name = self.config['lastfile']
-        prefix = ''
-        for a, b in zip(first_name, last_name):
-            if a != b:
-                break
-            prefix += a
-        suffix = ''
-        for a, b in zip(first_name[::-1], last_name[::-1]):
-            if a != b:
-                break
-            suffix = a + suffix
-        first_frame = first_name[len(prefix):-len(suffix)]
-        last_frame = last_name[len(prefix):-len(suffix)]
-        format_ = prefix + '{:0' + str(len(first_frame)) + 'd}' + suffix
-        first_frame = int(first_frame)
-        last_frame = int(last_frame)
-        if self.frame_idx is None:
-            self.frame_idx = first_frame
-        if self.frame_idx > last_frame:
-            if self.config['looping'] == 'off':
-                raise StopIteration()
-            self.frame_idx = first_frame
-        path = format_.format(self.frame_idx)
-        self.frame_idx += 1
-        # read metadata
         if self.metadata is None:
-            self.metadata = Metadata().from_file(path)
+            first_name = self.config['firstfile']
+            last_name = self.config['lastfile']
+            # read metadata
+            self.metadata = Metadata().from_file(first_name)
             audit = self.metadata.get('audit')
             audit += 'data = {}..{}\n'.format(
                 os.path.basename(first_name), os.path.basename(last_name))
             audit += self.config.audit_string()
             self.metadata.set('audit', audit)
+            # compare file names
+            prefix = ''
+            for a, b in zip(first_name, last_name):
+                if a != b:
+                    break
+                prefix += a
+            suffix = ''
+            for a, b in zip(first_name[::-1], last_name[::-1]):
+                if a != b:
+                    break
+                suffix = a + suffix
+            first_frame = first_name[len(prefix):-len(suffix)]
+            last_frame = last_name[len(prefix):-len(suffix)]
+            self.format_ = prefix + '{:0' + str(len(first_frame)) + 'd}' + suffix
+            self.first_frame = int(first_frame)
+            self.last_frame = int(last_frame)
+            # initialise looping parameters
+            self.frame_no = 0
+            self.frame_idx = self.first_frame
+        # get path of this frame
+        if self.frame_idx > self.last_frame:
+            if self.config['looping'] == 'off':
+                raise StopIteration()
+            self.frame_idx = self.first_frame
+        path = self.format_.format(self.frame_idx)
+        self.frame_idx += 1
         # read data
         image = None
         if cv2:
@@ -114,17 +119,12 @@ class ImageSequenceReader(Component):
             # rearrange components
             if image.shape[2] == 4:
                 # RGBA image
-                B = image[:, :, 0]
-                G = image[:, :, 1]
-                R = image[:, :, 2]
-                A = image[:, :, 3]
+                B, G, R, A = numpy.dsplit(image, 4)
                 image = numpy.dstack((R, G, B, A))
                 frame_type = 'RGBA'
             elif image.shape[2] == 3:
                 # RGB image
-                B = image[:, :, 0]
-                G = image[:, :, 1]
-                R = image[:, :, 2]
+                B, G, R = numpy.dsplit(image, 3)
                 image = numpy.dstack((R, G, B))
                 frame_type = 'RGB'
             elif image.shape[2] == 1:
