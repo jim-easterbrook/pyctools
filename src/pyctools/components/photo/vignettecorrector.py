@@ -57,6 +57,8 @@ class power(object):
     def analyse(x, a, b, c):
         return power.process(x, a, b) * c
 
+    kwds = {}
+
 
 class poly2(object):
     "1.0 + (a * (r ^ 2)) + (b * (r ^ 4))"
@@ -68,6 +70,8 @@ class poly2(object):
     @staticmethod
     def analyse(x, a, b, c):
         return poly2.process(x, a, b) * c
+
+    kwds = {}
 
 
 class poly3(object):
@@ -81,9 +85,41 @@ class poly3(object):
     def analyse(x, a, b, c, d):
         return poly3.process(x, a, b, c) * d
 
+    kwds = {}
+
+
+class lin2(object):
+    "2-segment piecewise linear"
+
+    @staticmethod
+    def process(x, a, b, c):
+        return 1.0 + (x * a) + (numpy.maximum(x - b, 0.0) * c)
+
+    @staticmethod
+    def analyse(x, a, b, c, d):
+        return lin2.process(x, a, b, c) * d
+
+    kwds = {'p0': (0.0, 0.5, 0.2, 1.0)}
+
+
+class lin3(object):
+    "3-segment piecewise linear"
+
+    @staticmethod
+    def process(x, a, b, c, d, e):
+        return (1.0 + (x * a)
+                + (numpy.maximum(x - b, 0.0) * c)
+                + (numpy.maximum(x - d, 0.0) * e))
+
+    @staticmethod
+    def analyse(x, a, b, c, d, e, f):
+        return lin3.process(x, a, b, c, d, e) * f
+
+    kwds = {'p0': (0.0, 0.3, 0.2, 0.6, 0.3, 1.0)}
+
 
 functions = {}
-for class_ in power, poly2, poly3:
+for class_ in power, poly2, poly3, lin2, lin3:
     functions[class_.__name__] = class_
 
 
@@ -180,6 +216,7 @@ class AnalyseVignette(Transformer):
     Config
     =======================  =====  ====
     ``mode``                 str    Function to fit. Possible values: {}.
+    ``method``               str    Curve fitting method: ``lm``, ``trf``, or ``dogbox``.
     ``plot_measurement``     bool   Include the measured input in the plot.
     ``plot_label_measured``  str    Label for the 'measured' plot.
     ``plot_label_fitted``    str    Label for the 'fitted' plot. If left blank ``mode`` is used.
@@ -198,6 +235,7 @@ class AnalyseVignette(Transformer):
     def initialise(self):
         self.config['mode'] = ConfigEnum(
             choices=['measure', 'inv_measure'] + list(functions))
+        self.config['method'] = ConfigEnum(choices=('lm', 'trf', 'dogbox'))
         self.config['plot_measurement'] = ConfigBool(value=True)
         self.config['plot_label_measured'] = ConfigStr(value='measured')
         self.config['plot_label_fitted'] = ConfigStr(value='')
@@ -233,16 +271,15 @@ class AnalyseVignette(Transformer):
             pass
         else:
             fit_func = functions[mode].analyse
-            for method in ('lm', 'trf', 'dogbox'):
-                try:
-                    popt_linear, pcov_linear = scipy.optimize.curve_fit(
-                        fit_func, x, y, sigma=sigma, method=method)
-                    for n, value in enumerate(popt_linear[:-1]):
-                        print('param {}: {}'.format(n, value))
-                    break
-                except RuntimeError as ex:
-                    print(method, str(ex))
-            else:
+            method = self.config['method']
+            try:
+                popt_linear, pcov_linear = scipy.optimize.curve_fit(
+                    fit_func, x, y, sigma=sigma, method=method,
+                    **functions[mode].kwds)
+                for n, value in enumerate(popt_linear[:-1]):
+                    print('param {}: {}'.format(n, value))
+            except Exception as ex:
+                print(method, str(ex))
                 mode = 'measure'
         # send plottable data
         func_frame = self.outframe_pool['function'].get()
