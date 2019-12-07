@@ -93,13 +93,17 @@ class lin2(object):
 
     @staticmethod
     def process(x, a, b, c):
+        c -= a
         return 1.0 + (x * a) + (numpy.maximum(x - b, 0.0) * c)
 
     @staticmethod
     def analyse(x, a, b, c, d):
         return lin2.process(x, a, b, c) * d
 
-    kwds = {'p0': (0.0, 0.5, 0.2, 1.0)}
+    kwds = {'p0': (0.0, 0.5, 0.2, 1.0),
+            'bounds': ((-numpy.inf, 0.0, -numpy.inf, -numpy.inf),
+                       (numpy.inf, 1.0, numpy.inf, numpy.inf))
+            }
 
 
 class lin3(object):
@@ -107,6 +111,12 @@ class lin3(object):
 
     @staticmethod
     def process(x, a, b, c, d, e):
+        c -= a
+        e -= a
+        if d >= b:
+            e -= c
+        else:
+            c -= e
         return (1.0 + (x * a)
                 + (numpy.maximum(x - b, 0.0) * c)
                 + (numpy.maximum(x - d, 0.0) * e))
@@ -115,7 +125,10 @@ class lin3(object):
     def analyse(x, a, b, c, d, e, f):
         return lin3.process(x, a, b, c, d, e) * f
 
-    kwds = {'p0': (0.0, 0.3, 0.2, 0.6, 0.3, 1.0)}
+    kwds = {'p0': (0.0, 0.3, 0.2, 0.6, 0.3, 1.0),
+            'bounds': ((-numpy.inf, 0.0, -numpy.inf, 0.0, -numpy.inf, -numpy.inf),
+                       (numpy.inf, 1.0, numpy.inf, 1.0, numpy.inf, numpy.inf))
+            }
 
 
 functions = {}
