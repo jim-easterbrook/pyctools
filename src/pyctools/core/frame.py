@@ -21,6 +21,7 @@ __all__ = ['Frame', 'Metadata']
 __docformat__ = 'restructuredtext en'
 
 import os
+import threading
 
 try:
     import pgi
@@ -39,6 +40,14 @@ import numpy
 import PIL.Image
 
 from pyctools.core.types import pt_float
+
+# register our XMP namespace from main thread
+GExiv2.Metadata.register_xmp_namespace(
+    'https://github.com/jim-easterbrook/pyctools', 'pyctools')
+
+# create a lock to serialise Exiv2 calls
+exiv2_lock = threading.Lock()
+
 
 class Frame(object):
     """Container for a single image or frame of video.
@@ -211,26 +220,29 @@ class Metadata(object):
         :rtype: :py:class:`Metadata`
 
         """
-        for xmp_path in (path + '.xmp', path):
-            md = GExiv2.Metadata()
-            try:
+        xmp_path = path + '.xmp'
+        if not os.path.exists(xmp_path):
+            xmp_path = path
+        md = GExiv2.Metadata()
+        try:
+            with exiv2_lock:
                 md.open_path(xmp_path)
-            except GLib.GError:
+        except GLib.GError as ex:
+            print(xmp_path, str(ex))
+            return self
+        tags = md.get_exif_tags() + md.get_iptc_tags() + md.get_xmp_tags()
+        for tag in tags:
+            if tag.startswith('Exif.Thumbnail'):
                 continue
-            tags = md.get_exif_tags() + md.get_iptc_tags() + md.get_xmp_tags()
-            for tag in tags:
-                if tag.startswith('Exif.Thumbnail'):
-                    continue
-                if tag.startswith('Xmp.xmp.Thumbnails'):
-                    continue
-                count = tags.count(tag)
-                if count > 1 or md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
-                    self.data[tag] = md.get_tag_multiple(tag)
-                else:
-                    self.data[tag] = md.get_tag_string(tag)
-                if tag == 'Xmp.pyctools.audit':
-                    self.data[tag] = self.data[tag].strip()
-            break
+            if tag.startswith('Xmp.xmp.Thumbnails'):
+                continue
+            count = tags.count(tag)
+            if count > 1 or md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
+                self.data[tag] = md.get_tag_multiple(tag)
+            else:
+                self.data[tag] = md.get_tag_string(tag)
+            if tag == 'Xmp.pyctools.audit':
+                self.data[tag] = self.data[tag].strip()
         return self
 
     def to_file(self, path, thumbnail=None):
@@ -247,7 +259,8 @@ class Metadata(object):
         md_path = path
         md = GExiv2.Metadata()
         try:
-            md.open_path(md_path)
+            with exiv2_lock:
+                md.open_path(md_path)
             if thumbnail:
                 md.set_exif_thumbnail_from_buffer(thumbnail)
         except GLib.GError:
@@ -265,10 +278,8 @@ class Metadata(object):
 </x:xmpmeta>
 <?xpacket end="w"?>''')
             md = GExiv2.Metadata()
-            md.open_path(md_path)
-        # add our namespace
-        md.register_xmp_namespace(
-            'https://github.com/jim-easterbrook/pyctools', 'pyctools')
+            with exiv2_lock:
+                md.open_path(md_path)
         # copy metadata
         for tag, value in self.data.items():
             if '[' in tag:
@@ -294,7 +305,8 @@ class Metadata(object):
             else:
                 md.set_tag_string(tag, value)
         # save file
-        md.save_file(md_path)
+        with exiv2_lock:
+            md.save_file(md_path)
 
     def copy(self, other):
         """Copy metadata from another :py:class:`Metadata` object.
