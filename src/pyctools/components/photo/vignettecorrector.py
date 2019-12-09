@@ -93,17 +93,34 @@ class lin2(object):
 
     @staticmethod
     def process(x, a, b, c):
-        c -= a
-        return 1.0 + (x * a) + (numpy.maximum(x - b, 0.0) * c)
+        s0 = (b - 1.0) / a
+        s1 = (c - b) / (1 - a)
+        return numpy.piecewise(
+            x, (x <= a), (lambda x: 1.0 + (x * s0),
+                          lambda x: b + ((x - a) * s1)))
 
     @staticmethod
     def analyse(x, a, b, c, d):
         return lin2.process(x, a, b, c) * d
 
-    kwds = {'p0': (0.0, 0.5, 0.2, 1.0),
-            'bounds': ((-numpy.inf, 0.0, -numpy.inf, -numpy.inf),
-                       (numpy.inf, 1.0, numpy.inf, numpy.inf))
+    kwds = {'p0': (0.5, 1.2, 1.4, 1.0),
+            'bounds': ((0.0, 0.0, 0.0, -numpy.inf),
+                       (1.0, 2.0, 2.0, numpy.inf))
             }
+
+
+class invlin2(object):
+    "inverse 2-segment piecewise linear"
+
+    @staticmethod
+    def process(x, a, b, c):
+        return 1.0 / lin2.process(x, a, 1.0 / b, 1.0 / c)
+
+    @staticmethod
+    def analyse(x, a, b, c, d):
+        return invlin2.process(x, a, b, c) * d
+
+    kwds = lin2.kwds
 
 
 class lin3(object):
@@ -111,28 +128,43 @@ class lin3(object):
 
     @staticmethod
     def process(x, a, b, c, d, e):
-        c -= a
-        e -= a
-        if d >= b:
-            e -= c
-        else:
-            c -= e
-        return (1.0 + (x * a)
-                + (numpy.maximum(x - b, 0.0) * c)
-                + (numpy.maximum(x - d, 0.0) * e))
+        if b < a:
+            a, b = b, a
+            c, d = d, c
+        s0 = (c - 1.0) / a
+        s1 = (d - c) / (b - a)
+        s2 = (e - d) / (1 - b)
+        return numpy.piecewise(
+            x, (x <= a, x >= b), (lambda x: 1.0 + (x * s0),
+                                  lambda x: d + ((x - b) * s2),
+                                  lambda x: c + ((x - a) * s1)))
 
     @staticmethod
     def analyse(x, a, b, c, d, e, f):
         return lin3.process(x, a, b, c, d, e) * f
 
-    kwds = {'p0': (0.0, 0.3, 0.2, 0.6, 0.3, 1.0),
-            'bounds': ((-numpy.inf, 0.0, -numpy.inf, 0.0, -numpy.inf, -numpy.inf),
-                       (numpy.inf, 1.0, numpy.inf, 1.0, numpy.inf, numpy.inf))
+    kwds = {'p0': (0.3, 0.6, 1.2, 1.3, 1.4, 1.0),
+            'bounds': ((0.0, 0.0, 0.01, 0.01, 0.01, -numpy.inf),
+                       (1.0, 1.0, 2.0, 2.0, 2.0, numpy.inf))
             }
 
 
+class invlin3(object):
+    "inverse 3-segment piecewise linear"
+
+    @staticmethod
+    def process(x, a, b, c, d, e):
+        return 1.0 / lin3.process(x, a, b, 1.0 / c, 1.0 / d, 1.0 / e)
+
+    @staticmethod
+    def analyse(x, a, b, c, d, e, f):
+        return invlin3.process(x, a, b, c, d, e) * f
+
+    kwds = lin3.kwds
+
+
 functions = {}
-for class_ in power, poly2, poly3, lin2, lin3:
+for class_ in power, poly2, poly3, lin2, lin3, invlin2, invlin3:
     functions[class_.__name__] = class_
 
 
@@ -155,6 +187,8 @@ class VignetteCorrector(Transformer):
     ``param_0``  float  First function parameter.
     ``param_1``  float  Second function parameter.
     ``param_2``  float  Third function parameter.
+    ``param_3``  float  Fourth function parameter.
+    ``param_4``  float  Fifth function parameter.
     ===========  =====  ====
 
     """
@@ -167,6 +201,8 @@ class VignetteCorrector(Transformer):
         self.config['param_0'] = ConfigFloat()
         self.config['param_1'] = ConfigFloat()
         self.config['param_2'] = ConfigFloat()
+        self.config['param_3'] = ConfigFloat()
+        self.config['param_4'] = ConfigFloat()
         self.gain = None
 
     def transform(self, in_frame, out_frame):
@@ -175,7 +211,9 @@ class VignetteCorrector(Transformer):
         mode = self.config['mode']
         params = (self.config['param_0'],
                   self.config['param_1'],
-                  self.config['param_2'])
+                  self.config['param_2'],
+                  self.config['param_3'],
+                  self.config['param_4'])
         func = functions[mode].process
         arg_spec = inspect.getargspec(func)
         params = params[:len(arg_spec.args)-1]
@@ -231,6 +269,7 @@ class AnalyseVignette(Transformer):
     ``mode``                 str    Function to fit. Possible values: {}.
     ``method``               str    Curve fitting method: ``lm``, ``trf``, or ``dogbox``.
     ``plot_measurement``     bool   Include the measured input in the plot.
+    ``plot_error``           bool   Include the residual error in the plot.
     ``plot_label_measured``  str    Label for the 'measured' plot.
     ``plot_label_fitted``    str    Label for the 'fitted' plot. If left blank ``mode`` is used.
     =======================  =====  ====
@@ -250,6 +289,7 @@ class AnalyseVignette(Transformer):
             choices=['measure', 'inv_measure'] + list(functions))
         self.config['method'] = ConfigEnum(choices=('lm', 'trf', 'dogbox'))
         self.config['plot_measurement'] = ConfigBool(value=True)
+        self.config['plot_error'] = ConfigBool(value=True)
         self.config['plot_label_measured'] = ConfigStr(value='measured')
         self.config['plot_label_fitted'] = ConfigStr(value='')
 
@@ -302,8 +342,14 @@ class AnalyseVignette(Transformer):
             plots.append(y / y[0])
             labels.append(self.config['plot_label_measured'])
         if mode not in ('measure', 'inv_measure'):
-            plots.append(fit_func(x, *popt_linear) / y[0])
+            d = fit_func(x, *popt_linear)
+            plots.append(d / y[0])
             labels.append(self.config['plot_label_fitted'] or mode)
+            e = d / y
+            print('Peak-peak error:', max(e) - min(e))
+            if self.config['plot_measurement']:
+                plots.append(e)
+                labels.append('error')
         func_frame.data = numpy.stack(plots)
         func_frame.type = 'func'
         func_frame.metadata.set('labels', repr(labels))
