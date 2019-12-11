@@ -95,9 +95,11 @@ class lin2(object):
     def process(x, a, b, c):
         s0 = (b - 1.0) / a
         s1 = (c - b) / (1 - a)
+        f = x.flatten()
         return numpy.piecewise(
-            x, (x <= a), (lambda x: 1.0 + (x * s0),
-                          lambda x: b + ((x - a) * s1)))
+            f, (f <= a), (lambda x: 1.0 + (x * s0),
+                          lambda x: b + ((x - a) * s1))
+            ).reshape(x.shape)
 
     @staticmethod
     def analyse(x, a, b, c, d):
@@ -134,10 +136,12 @@ class lin3(object):
         s0 = (c - 1.0) / a
         s1 = (d - c) / (b - a)
         s2 = (e - d) / (1 - b)
+        f = x.flatten()
         return numpy.piecewise(
-            x, (x <= a, x >= b), (lambda x: 1.0 + (x * s0),
+            f, (f <= a, f >= b), (lambda x: 1.0 + (x * s0),
                                   lambda x: d + ((x - b) * s2),
-                                  lambda x: c + ((x - a) * s1)))
+                                  lambda x: c + ((x - a) * s1))
+            ).reshape(x.shape)
 
     @staticmethod
     def analyse(x, a, b, c, d, e, f):
