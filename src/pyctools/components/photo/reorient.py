@@ -56,11 +56,18 @@ class Reorient(Transformer):
     def initialise(self):
         self.config['orientation'] = ConfigEnum(choices=self.orientations)
 
+    def orient_text(self, int_val):
+        for key, value in self.orientations.items():
+            if value == int_val:
+                return key
+        return 'unknown'
+
     def transform(self, in_frame, out_frame):
         self.update_config()
         # get orientation
         orientation = self.orientations[self.config['orientation']]
         if not orientation:
+            orientation = 1
             for tag in ('Exif.Image.Orientation', 'Xmp.tiff.Orientation'):
                 if tag in out_frame.metadata.data:
                     orientation = int(out_frame.metadata.data[tag])
@@ -70,18 +77,18 @@ class Reorient(Transformer):
             if tag in out_frame.metadata.data:
                 del out_frame.metadata.data[tag]
         # do transformation
-        orientation = (orientation or 1) - 1
-        if orientation:
+        orient_bits = orientation - 1
+        if orient_bits:
             data = out_frame.as_numpy()
-            if orientation & 0b100:
+            if orient_bits & 0b100:
                 # transpose horizontal & vertical
                 data = numpy.swapaxes(data, 0, 1)
             flip_v, flip_h = False, False
-            if orientation & 0b010:
+            if orient_bits & 0b010:
                 # rotate 180
                 flip_h = not flip_h
                 flip_v = not flip_v
-            if orientation & 0b001:
+            if orient_bits & 0b001:
                 # reflect left-right
                 flip_h = not flip_h
             if flip_v:
@@ -92,6 +99,7 @@ class Reorient(Transformer):
         # add audit
         audit = out_frame.metadata.get('audit')
         audit += 'data = Reorient(data)\n'
+        audit += '    from "{}"\n'.format(self.orient_text(orientation))
         audit += self.config.audit_string()
         out_frame.metadata.set('audit', audit)
         return True
