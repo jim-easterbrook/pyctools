@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-18  Pyctools contributors
+   Copyright (C) 2014-19  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -100,6 +100,14 @@ The :py:mod:`pyctools.components.io.rawimagefilereader` component uses ``rawkit`
 If you need to process raw images you can install ``rawkit`` using ``pip``::
 
   sudo pip install rawkit
+
+`rawpy <https://letmaik.github.io/rawpy/>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :py:mod:`pyctools.components.io.rawimagefilereader2` component uses ``rawpy`` to read raw image files such as the CR2 format produced by Canon cameras.
+If you need to process raw images you can install ``rawpy`` using ``pip``::
+
+  sudo pip install rawpy
 
 `PyQt5 <https://riverbankcomputing.com/software/pyqt/intro>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
