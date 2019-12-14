@@ -22,7 +22,7 @@ Requirements
 Essential
 ^^^^^^^^^
 
-* `Python <https://www.python.org/>`_ version 2.7 or 3.x.
+* `Python <https://www.python.org/>`_ version 3.x. Much of Pyctools will work with Python 2.7 but I no longer worry about compatibility when adding new features.
 * `NumPy <http://www.numpy.org/>`_ for its powerful multi-dimensional array object.
 * `Python Imaging Library <http://www.pythonware.com/products/pil/>`_ for image file reading and writing. (The `pillow <http://python-pillow.github.io/>`_ fork of PIL is recommended.)
 * `Cython <http://cython.org/>`_ to build fast extensions for Python.
@@ -34,7 +34,7 @@ Optional
 
 * `OpenCV <http://opencv.org/>`_ python bindings for advanced image processing.
 * `FFmpeg <https://www.ffmpeg.org/>`_ to read and write video files.
-* `rawkit <https://rawkit.readthedocs.io/>`_ to read raw image files.
+* `rawkit <https://rawkit.readthedocs.io/>`_ and/or `rawpy <https://letmaik.github.io/rawpy/api/index.html>`_ to read raw image files.
 * `PyQt5 <https://riverbankcomputing.com/software/pyqt/intro>`_ and `PyOpenGL <http://pyopengl.sourceforge.net/>`_ graphic toolkit used by the Pyctools visual editor and the Qt display components.
 * `Sphinx <http://sphinx-doc.org/>`_ and `mock <https://github.com/testing-cabal/mock>`_ to build local documentation.
 
@@ -48,7 +48,7 @@ Licence
 
 | Pyctools - a picture processing algorithm development kit.
 | http://github.com/jim-easterbrook/pyctools
-| Copyright (C) 2014-18  Pyctools contributors
+| Copyright (C) 2014-19  Pyctools contributors
 
 This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as
