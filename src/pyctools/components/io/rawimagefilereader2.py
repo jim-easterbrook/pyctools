@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2019  Pyctools contributors
+#  Copyright (C) 2019-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -77,13 +77,20 @@ class RawImageFileReader2(Component):
 
     """
 
+    highlight_modes = {}
+    for member in rawpy.HighlightMode:
+        highlight_modes[member.name] = member.value
+    for x in range(10):
+        if x not in highlight_modes.values():
+            highlight_modes[str(x)] = x
+
     __doc__ = __doc__.format(
         ', '.join(["``'" + x.name + "'``"
                    for x in rawpy.DemosaicAlgorithm if x.isSupported]),
         ', '.join(["``'" + x.name + "'``"
                    for x in rawpy.FBDDNoiseReductionMode]),
         ', '.join(["``'" + x.name + "'``" for x in rawpy.ColorSpace]),
-        ', '.join(["``'" + x.name + "'``" for x in rawpy.HighlightMode]))
+        ', '.join(["``'" + x + "'``" for x in highlight_modes]))
 
     inputs = []
     with_outframe_pool = False
@@ -107,7 +114,7 @@ class RawImageFileReader2(Component):
             choices=[x.name for x in rawpy.ColorSpace], value='sRGB')
         self.config['bright'] = ConfigFloat(value=1.0, decimals=2)
         self.config['highlight_mode'] = ConfigEnum(
-            choices=[x.name for x in rawpy.HighlightMode], value='Blend')
+            choices=self.highlight_modes.keys(), value='Blend')
         self.config['exp_shift'] = ConfigFloat(value=1.0, decimals=2,
                                                min_value=0.25, max_value=8.0)
         self.config['red_scale'] = ConfigFloat(value=1.0, decimals=5)
@@ -134,7 +141,7 @@ class RawImageFileReader2(Component):
             'user_flip': 0,
             'no_auto_bright': True,
             'bright': self.config['bright'],
-            'highlight_mode': rawpy.HighlightMode[
+            'highlight_mode': self.highlight_modes[
                 self.config['highlight_mode']],
             'exp_shift': self.config['exp_shift'],
             'gamma': (1.0, 1.0),
