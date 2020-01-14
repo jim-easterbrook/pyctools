@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2019  Pyctools contributors
+#  Copyright (C) 2019-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -42,12 +42,16 @@ class UnsharpMask(Transformer):
     The ``radius`` parameter sets the standard deviation of the Gaussian
     blurring filter.
 
-    To avoid discontinuities in the mask the threshold is used in a
+    To avoid discontinuities in the mask the ``threshold`` is used in a
     "coring" function. Detail lower than the threshold is ignored,
     detail above the threshold is reduced by the threshold value.
 
     Another option to reduce noise is ``denoise``. This uses a 5x5
     median filter as part of the mask computation.
+
+    Note that this component can also be used to soften an image using a
+    Gausssian filter. Set ``amount = -1``, ``threshold = 0``, and
+    ``denoise = False``.
 
     =============  =====  ====
     Config
