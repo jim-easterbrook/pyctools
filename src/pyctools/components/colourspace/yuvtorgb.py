@@ -108,7 +108,7 @@ class YUVtoRGB(Component):
                 UV, None, fx=1, fy=v_ss, interpolation=cv2.INTER_CUBIC)
         # matrix to RGB
         if matrix == 'auto':
-            matrix = ('601', '709')[RGB.shape[0] > 576]
+            matrix = ('601', '709')[Y.shape[0] > 576]
         if matrix == '601':
             mat = Matrices.YUVtoRGB_601
         else:
