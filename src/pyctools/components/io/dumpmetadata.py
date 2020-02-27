@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-19  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -93,11 +93,5 @@ class DumpMetadata(Transformer):
         if self.config['raw']:
             pprint.pprint(in_frame.metadata.data)
         else:
-            indent = 0
-            for line in in_frame.metadata.get('audit').splitlines():
-                print(' ' * indent, line)
-                if '{' in line:
-                    indent += 8
-                if '}' in line:
-                    indent -= 8
+            print(in_frame.metadata.get('audit'), end='')
         return True
