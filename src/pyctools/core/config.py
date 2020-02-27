@@ -218,10 +218,11 @@ class ConfigPath(ConfigStr):
             value = os.path.abspath(value)
             if exists:
                 if not os.path.isfile(value):
-                    raise ValueError(value)
+                    logger.warning('file "%s" does not exist', value)
             else:
-                if not os.path.isdir(os.path.dirname(value)):
-                    raise ValueError(value)
+                directory = os.path.dirname(value)
+                if not os.path.isdir(directory):
+                    logger.warning('directory "%s" does not exist', directory)
         return super(ConfigPath, cls).__new__(cls, value, default, exists=exists)
 
     def __getnewargs__(self):
