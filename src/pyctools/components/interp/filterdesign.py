@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2018  Pyctools contributors
+#  Copyright (C) 2018-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -29,6 +29,7 @@ from pyctools.core.config import ConfigBool, ConfigEnum, ConfigFloat, ConfigInt,
 from pyctools.core.base import Component
 from pyctools.core.frame import Frame
 from pyctools.core.types import pt_float, pt_complex
+
 
 class FilterDesign(Component):
     """Generate a 1-D filter from an ideal response.
@@ -104,46 +105,46 @@ class FilterDesign(Component):
                 wgt_vals = wgt_vals[:len(gain_vals)]
                 gain_vals = gain_vals[:len(wgt_vals)]
                 freq_vals = freq_vals[:len(gain_vals)]
-            wgt_vals = numpy.array(wgt_vals, dtype=pt_float)
-        freq_vals = numpy.array(freq_vals, dtype=pt_float)
-        gain_vals = numpy.array(gain_vals, dtype=pt_float)
+            wgt_vals = numpy.array(wgt_vals, dtype=numpy.double)
+        freq_vals = numpy.array(freq_vals, dtype=numpy.double)
+        gain_vals = numpy.array(gain_vals, dtype=numpy.double)
         aperture = self.config['aperture']
         # how much oversampling needed
         pad_len = 256
         while pad_len < aperture * 4:
             pad_len *= 2
         # interpolate ideal response
-        int_freq = numpy.linspace(0.0, 0.5, pad_len + 1).astype(pt_float)
+        int_freq = numpy.linspace(0.0, 0.5, pad_len + 1, dtype=numpy.double)
         interp_func = interpolate.interp1d(
             freq_vals, gain_vals, kind=self.config['interp'],
             bounds_error=False, fill_value='extrapolate')
-        int_gain = interp_func(int_freq).astype(pt_float)
+        int_gain = interp_func(int_freq)
         # interpolate weight
         if self.config['weight']:
             interp_func = interpolate.interp1d(
                 freq_vals, wgt_vals, kind=self.config['interp'],
                 bounds_error=False, fill_value='extrapolate')
-            int_wgt = interp_func(int_freq).astype(pt_float)
+            int_wgt = interp_func(int_freq)
         else:
-            int_wgt = numpy.ones((pad_len + 1,), dtype=pt_float)
+            int_wgt = numpy.ones((pad_len + 1,), dtype=numpy.double)
         # 'DC' and 'half fs' gain are always important
         int_wgt_copy = int_wgt.copy()
         int_wgt[0] = numpy.amax(int_wgt) * pad_len
         int_wgt[pad_len] = int_wgt[0]
         # compute response matrices
-        W2 = numpy.empty((pad_len * 2,), dtype=pt_float)
+        W2 = numpy.empty((pad_len * 2,), dtype=numpy.double)
         W2[:pad_len + 1] = int_wgt
         W2[pad_len + 1:] = int_wgt[pad_len - 1:0:-1]
         W2 = W2 ** 2
-        W2R = numpy.empty((pad_len * 2,), dtype=pt_float)
+        W2R = numpy.empty((pad_len * 2,), dtype=numpy.double)
         W2R[:pad_len + 1] = int_gain
         W2R[pad_len + 1:] = int_gain[pad_len - 1:0:-1]
         W2R *= W2
         W2 = numpy.fft.ifft(W2)
         W2R = numpy.fft.ifft(W2R)
         # compute matrices to solve
-        MtM = numpy.empty((aperture, aperture), dtype=pt_float)
-        MtR = numpy.empty((aperture,), dtype=pt_float)
+        MtM = numpy.empty((aperture, aperture), dtype=numpy.double)
+        MtR = numpy.empty((aperture,), dtype=numpy.double)
         offset = aperture // 2
         for j in range(aperture):
             MtR[j] = numpy.real(W2R[j - offset])
@@ -172,7 +173,7 @@ class FilterDesign(Component):
         fil_frame.metadata.set('audit', audit)
         self.send('filter', fil_frame)
         # compute actual response
-        padded = numpy.zeros(pad_len * 2)
+        padded = numpy.zeros(pad_len * 2, dtype=numpy.double)
         for j in range(aperture):
             padded[j - offset] = coefs[j]
         response = numpy.fft.rfft(padded)
@@ -181,11 +182,17 @@ class FilterDesign(Component):
         resp_frame.type = 'resp'
         if self.config['weight']:
             resp_frame.data = numpy.stack(
-                (int_freq, int_gain, int_wgt_copy, numpy.real(response)))
-            labels = 'normalised frequency', 'ideal gain', 'weight', 'actual gain'
+                (int_freq.astype(pt_float),
+                 int_gain.astype(pt_float),
+                 int_wgt_copy.astype(pt_float),
+                 numpy.real(response).astype(pt_float)))
+            labels = ('normalised frequency', 'ideal gain',
+                      'weight', 'actual gain')
         else:
             resp_frame.data = numpy.stack(
-                (int_freq, int_gain, numpy.real(response)))
+                (int_freq.astype(pt_float),
+                 int_gain.astype(pt_float),
+                 numpy.real(response).astype(pt_float)))
             labels = 'normalised frequency', 'ideal gain', 'actual gain'
         resp_frame.metadata.set('labels', repr(labels))
         audit = resp_frame.metadata.get('audit')
