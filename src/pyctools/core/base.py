@@ -342,6 +342,8 @@ class Component(ConfigMixin):
                     Frame, self.new_frame, self.config['outframe_pool_len'])
         try:
             self.on_start()
+        except StopIteration:
+            raise
         except Exception as ex:
             self.logger.exception(ex)
             raise StopIteration()
@@ -360,6 +362,8 @@ class Component(ConfigMixin):
         self.logger.debug('stopping')
         try:
             self.on_stop()
+        except StopIteration:
+            raise
         except Exception as ex:
             self.logger.exception(ex)
         for name in self.outputs:
@@ -397,6 +401,8 @@ class Component(ConfigMixin):
         """
         try:
             self.on_set_config()
+        except StopIteration:
+            raise
         except Exception as ex:
             self.logger.exception(ex)
             raise StopIteration()
