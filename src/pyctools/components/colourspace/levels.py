@@ -22,11 +22,11 @@ __docformat__ = 'restructuredtext en'
 import numpy
 
 from pyctools.core.config import ConfigFloat
-from pyctools.core.base import Component
+from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
 
 
-class ComputerToStudio(Component):
+class ComputerToStudio(Transformer):
     """Convert "computer" range to "studio".
 
     Most image file formats use a black to white range of 0..255. Video
@@ -42,8 +42,8 @@ class ComputerToStudio(Component):
     """
 
     def initialise(self):
-        self.config['black'] = ConfigFloat(default=16.0)
-        self.config['white'] = ConfigFloat(default=235.0)
+        self.config['black'] = ConfigFloat(value=16.0)
+        self.config['white'] = ConfigFloat(value=235.0)
 
     def transform(self, in_frame, out_frame):
         self.update_config()
@@ -55,12 +55,12 @@ class ComputerToStudio(Component):
         out_frame.data = (data * gain) + sit
         audit = out_frame.metadata.get('audit')
         audit += 'data = ComputerToStudio(data)\n'
-        audit += '    0-255 -> {}-{}'.format(black, white)
+        audit += '    0 - 255 -> {} - {}\n'.format(black, white)
         out_frame.metadata.set('audit', audit)
         return True
 
 
-class StudioToComputer(Component):
+class StudioToComputer(Transformer):
     """Convert "studio" range to "computer".
 
     Most image file formats use a black to white range of 0..255. Video
@@ -76,8 +76,8 @@ class StudioToComputer(Component):
     """
 
     def initialise(self):
-        self.config['black'] = ConfigFloat(default=16.0)
-        self.config['white'] = ConfigFloat(default=235.0)
+        self.config['black'] = ConfigFloat(value=16.0)
+        self.config['white'] = ConfigFloat(value=235.0)
 
     def transform(self, in_frame, out_frame):
         self.update_config()
@@ -89,6 +89,6 @@ class StudioToComputer(Component):
         out_frame.data = (data - sit) * gain
         audit = out_frame.metadata.get('audit')
         audit += 'data = StudioToComputer(data)\n'
-        audit += '    {}-{} -> 0-255'.format(black, white)
+        audit += '    {} - {} -> 0 - 255\n'.format(black, white)
         out_frame.metadata.set('audit', audit)
         return True
