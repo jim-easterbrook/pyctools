@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -19,6 +19,7 @@
 __all__ = ['VideoFileWriter']
 
 from contextlib import contextmanager
+import os
 import subprocess
 
 import numpy
@@ -27,6 +28,7 @@ from pyctools.core.config import ConfigBool, ConfigPath, ConfigInt, ConfigEnum
 from pyctools.core.frame import Metadata
 from pyctools.core.base import Transformer
 from pyctools.core.types import pt_float
+
 
 class VideoFileWriter(Transformer):
     """Write video files.
@@ -105,9 +107,8 @@ class VideoFileWriter(Transformer):
             return
         md = Metadata().copy(in_frame.metadata)
         audit = md.get('audit')
-        audit += '%s = data\n' % path
-        audit += '    encoder: "%s"\n' % (encoder)
-        audit += '    16bit: %s\n' % (self.config['16bit'])
+        audit += '{} = VideoFileWriter(data)\n'.format(os.path.basename(path))
+        audit += self.config.audit_string()
         md.set('audit', audit)
         md.to_file(path)
         with self.subprocess(
