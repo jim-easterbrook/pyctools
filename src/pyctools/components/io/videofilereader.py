@@ -56,6 +56,7 @@ class VideoFileReader(Component):
     ``looping``  str   Whether to play continuously. Can be ``'off'`` or ``'repeat'``.
     ``type``     str   Output data type. Can be ``'RGB'`` or ``'Y'``.
     ``16bit``    bool  Attempt to get greater precision than normal 8-bit range.
+    ``noaudit``  bool  Don't output file's "audit trail" metadata.
     ``zperiod``  int   Adjust repeat period to an integer multiple of ``zperiod``.
     ===========  ====  ====
 
@@ -70,6 +71,7 @@ class VideoFileReader(Component):
         self.config['looping'] = ConfigEnum(choices=('off', 'repeat'))
         self.config['type'] = ConfigEnum(choices=('RGB', 'Y'))
         self.config['16bit'] = ConfigBool()
+        self.config['noaudit'] = ConfigBool()
         self.config['zperiod'] = ConfigInt(min_value=0)
 
     @contextmanager
@@ -115,11 +117,16 @@ class VideoFileReader(Component):
             looping = self.config['looping']
             if frame_no > 0 and looping == 'off':
                 break
+            noaudit = self.config['noaudit']
             # update metadata
             self.metadata = Metadata().from_file(path)
-            audit = self.metadata.get('audit')
-            audit += 'data = %s\n' % path
-            audit += '    type: %s, 16bit: %s\n' % (self.frame_type, bit16)
+            if noaudit:
+                audit = ''
+            else:
+                audit = self.metadata.get('audit')
+            audit += 'data = VideoFileReader({})\n'.format(
+                os.path.basename(path))
+            audit += self.config.audit_string()
             self.metadata.set('audit', audit)
             # set data parameters
             bps = {'RGB': 3, 'Y': 1}[self.frame_type]
