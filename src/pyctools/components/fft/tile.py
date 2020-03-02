@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -24,6 +24,7 @@ import numpy
 
 from pyctools.core.base import Transformer
 from pyctools.core.config import ConfigInt
+
 
 class Tile(Transformer):
     """Arrange image in overlapping tiles.
@@ -72,6 +73,14 @@ class Tile(Transformer):
         tile_params.append(
             (y_tile, x_tile, y_off, x_off, data.shape[0], data.shape[1]))
         out_frame.metadata.set('tile', repr(tile_params))
+        if x_tile == x_off:
+            # no overlap, so nothing to do
+            x_tile = data.shape[1]
+            x_off = x_tile
+        if y_tile == y_off:
+            # no overlap, so nothing to do
+            y_tile = data.shape[0]
+            y_off = y_tile
         x_mgn = (x_tile - 1) // x_off
         y_mgn = (y_tile - 1) // y_off
         x_blk = ((data.shape[1] + x_off - 1) // x_off) + x_mgn
@@ -126,6 +135,14 @@ class UnTile(Transformer):
         audit += '    size: %d x %d, offset: %d x %d\n' % (
             y_tile, x_tile, y_off, x_off)
         out_frame.metadata.set('audit', audit)
+        if x_tile == x_off:
+            # no overlap, so nothing to do
+            x_tile = width
+            x_off = x_tile
+        if y_tile == y_off:
+            # no overlap, so nothing to do
+            y_tile = height
+            y_off = y_tile
         x_mgn = (x_tile - 1) // x_off
         y_mgn = (y_tile - 1) // y_off
         x_blk = data.shape[1] // x_tile
