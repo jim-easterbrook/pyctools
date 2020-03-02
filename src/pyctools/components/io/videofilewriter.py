@@ -19,6 +19,7 @@
 __all__ = ['VideoFileWriter']
 
 from contextlib import contextmanager
+from datetime import datetime
 import os
 import subprocess
 
@@ -109,6 +110,7 @@ class VideoFileWriter(Transformer):
         audit = md.get('audit')
         audit += '{} = VideoFileWriter(data)\n'.format(os.path.basename(path))
         audit += self.config.audit_string()
+        audit += '    time: {}\n'.format(datetime.now().isoformat())
         md.set('audit', audit)
         md.to_file(path)
         with self.subprocess(
