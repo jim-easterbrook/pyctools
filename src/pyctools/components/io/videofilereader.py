@@ -118,6 +118,15 @@ class VideoFileReader(Component):
             if frame_no > 0 and looping == 'off':
                 break
             noaudit = self.config['noaudit']
+            if header['pix_fmt'] in (
+                    'gray16be', 'gray16le',
+                    'rgb48be', 'rgb48le',
+                    'bgr48be', 'bgr48le',
+                    'yuv444p10be', 'yuv444p10le',
+                    'yuv422p16be', 'yuv422p16le',
+                    'yuv444p16be', 'yuv444p16le') and not bit16:
+                self.logger.warning(
+                    'Reading %s data as 8 bit', header['pix_fmt'])
             # update metadata
             self.metadata = Metadata().from_file(path)
             if noaudit:
