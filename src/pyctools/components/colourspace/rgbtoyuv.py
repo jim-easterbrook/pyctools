@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-19  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -37,15 +37,16 @@ class RGBtoYUV(Component):
     ("`Rec. 709`_", high definition). In ``'auto'`` mode the matrix is
     chosen according to the number of lines in the image.
 
+    If you are going to recombine the Y and UV outputs later on it makes
+    sense to omit the audit trail from one of the outputs, using the
+    ``audit`` config to choose which output will have the full audit
+    trail. This avoids unnecessary duplication.
+
     WARNING: this component assumes RGB input and Y output both have
     black level 0 and white level 255, not the 16..235 range specified
     in Rec 601. See :py:mod:`pyctools.components.colourspace.levels` for
     components to convert the RGB input or Y output. The UV output is in
     the range -112..112.
-
-    .. _Rec. 601: https://en.wikipedia.org/wiki/Rec._601
-    .. _Rec. 709: https://en.wikipedia.org/wiki/Rec._709
-    .. _YCbCr:    https://en.wikipedia.org/wiki/YCbCr
 
     """
 
@@ -53,6 +54,7 @@ class RGBtoYUV(Component):
 
     def initialise(self):
         self.config['matrix'] = ConfigEnum(choices=('auto', '601', '709'))
+        self.config['audit'] = ConfigEnum(choices=('both', 'Y', 'UV'))
         self.last_frame_type = None
 
     def process_frame(self):
@@ -71,6 +73,7 @@ class RGBtoYUV(Component):
     def transform(self, in_frame, Y_frame, UV_frame):
         self.update_config()
         matrix = self.config['matrix']
+        audit_out = self.config['audit']
         # check input and get data
         RGB = in_frame.as_numpy()
         if RGB.shape[2] != 3:
@@ -100,11 +103,17 @@ class RGBtoYUV(Component):
         Y_frame.type = 'Y'
         UV_frame.type = 'CbCr'
         # audit
-        audit = Y_frame.metadata.get('audit')
+        if audit_out in ('both', 'Y'):
+            audit = Y_frame.metadata.get('audit')
+        else:
+            audit = ''
         audit += 'data = RGBtoY(data)\n'
         audit += '    matrix: {}\n'.format(matrix)
         Y_frame.metadata.set('audit', audit)
-        audit = UV_frame.metadata.get('audit')
+        if audit_out in ('both', 'UV'):
+            audit = UV_frame.metadata.get('audit')
+        else:
+            audit = ''
         audit += 'data = RGBtoUV(data)\n'
         audit += '    matrix: {}\n'.format(matrix)
         UV_frame.metadata.set('audit', audit)
