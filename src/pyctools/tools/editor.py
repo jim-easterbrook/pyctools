@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-19  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -296,7 +296,7 @@ class ConfigDialog(QtWidgets.QDialog):
         self.component.obj.set_config(config)
 
 
-class ComponentLink(QtWidgets.QGraphicsLineItem):
+class ComponentLink(QtWidgets.QGraphicsItemGroup):
     def __init__(self, source, outbox, dest, inbox, **kwds):
         super(ComponentLink, self).__init__(**kwds)
         self.setFlags(QtWidgets.QGraphicsItem.ItemIsSelectable)
@@ -304,6 +304,7 @@ class ComponentLink(QtWidgets.QGraphicsLineItem):
         self.outbox = outbox
         self.dest = dest
         self.inbox = inbox
+        self.components = []
         self.renew()
 
     @catch_all
@@ -312,24 +313,52 @@ class ComponentLink(QtWidgets.QGraphicsLineItem):
             if self.scene():
                 self.redraw()
         elif change == QtWidgets.QGraphicsItem.ItemSelectedHasChanged:
-            pen = self.pen()
             if isinstance(value, QtCore.QVariant):
                 value = value.toBool()
-            if value:
-                pen.setStyle(QtCore.Qt.DashLine)
-            else:
-                pen.setStyle(QtCore.Qt.SolidLine)
-            self.setPen(pen)
+            for item in self.components:
+                pen = item.pen()
+                if value:
+                    pen.setStyle(QtCore.Qt.DashLine)
+                else:
+                    pen.setStyle(QtCore.Qt.SolidLine)
+                item.setPen(pen)
         return super(ComponentLink, self).itemChange(change, value)
 
     def renew(self):
         self.source.connect(self.outbox, self.dest, self.inbox)
 
     def redraw(self):
+        for item in self.components:
+            self.removeFromGroup(item)
+        self.components = []
         source_pos = self.source.out_pos(self.outbox, None)
         dest_pos = self.dest.in_pos(self.inbox, source_pos)
         source_pos = self.source.out_pos(self.outbox, dest_pos)
-        self.setLine(QtCore.QLineF(source_pos, dest_pos))
+        x0, y0 = source_pos.x(), source_pos.y()
+        x5, y5 = dest_pos.x(), dest_pos.y()
+        if x5 >= x0:
+            # draw direct line
+            self.components.append(QtWidgets.QGraphicsLineItem(x0, y0, x5, y5))
+        else:
+            # draw multi segment line
+            y1 = y0 - self.source.outputs[self.outbox].pos().y()
+            y4 = y5 - self.dest.inputs[self.inbox].pos().y()
+            if y5 >= y0:
+                y1 += self.source.height
+            else:
+                y4 += self.dest.height
+            yc = (y1 + y4) // 2
+            x1, y1 = x0 + 4, y0
+            x2, y2 = x1, yc
+            x3, y3 = x5 - 10, y2
+            x4, y4 = x3, y5
+            self.components.append(QtWidgets.QGraphicsLineItem(x0, y0, x1, y1))
+            self.components.append(QtWidgets.QGraphicsLineItem(x1, y1, x2, y2))
+            self.components.append(QtWidgets.QGraphicsLineItem(x2, y2, x3, y3))
+            self.components.append(QtWidgets.QGraphicsLineItem(x3, y3, x4, y4))
+            self.components.append(QtWidgets.QGraphicsLineItem(x4, y4, x5, y5))
+        for item in self.components:
+            self.addToGroup(item)
 
 
 class IOIcon(QtWidgets.QGraphicsRectItem):
