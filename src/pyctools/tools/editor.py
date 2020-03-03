@@ -300,6 +300,7 @@ class ComponentLink(QtWidgets.QGraphicsItemGroup):
     def __init__(self, source, outbox, dest, inbox, **kwds):
         super(ComponentLink, self).__init__(**kwds)
         self.setFlags(QtWidgets.QGraphicsItem.ItemIsSelectable)
+        self.setZValue(-10.0)
         self.source = source
         self.outbox = outbox
         self.dest = dest
@@ -341,13 +342,24 @@ class ComponentLink(QtWidgets.QGraphicsItemGroup):
             self.components.append(QtWidgets.QGraphicsLineItem(x0, y0, x5, y5))
         else:
             # draw multi segment line
-            y1 = y0 - self.source.outputs[self.outbox].pos().y()
-            y4 = y5 - self.dest.inputs[self.inbox].pos().y()
+            y2 = y0 - self.source.outputs[self.outbox].pos().y()
+            y3 = y5 - self.dest.inputs[self.inbox].pos().y()
             if y5 >= y0:
-                y1 += self.source.height
+                y2 += self.source.height
+                inc = 10
             else:
-                y4 += self.dest.height
-            yc = (y1 + y4) // 2
+                y3 += self.dest.height
+                inc = -10
+            # find line position that doesn't collide with components
+            for yc in range(int(y2) + inc, int(y3), inc):
+                line = QtWidgets.QGraphicsLineItem(x0, yc, x5, yc)
+                self.addToGroup(line)
+                collisions = line.collidingItems()
+                self.removeFromGroup(line)
+                if not any([isinstance(x, BasicComponentIcon) for x in collisions]):
+                    break
+            else:
+                yc = (y2 + y3) / 2
             x1, y1 = x0 + 4, y0
             x2, y2 = x1, yc
             x3, y3 = x5 - 10, y2
