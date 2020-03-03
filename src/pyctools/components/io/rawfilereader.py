@@ -74,73 +74,61 @@ class RawFileReader(Component):
         self.config['looping'] = ConfigEnum(choices=('off', 'repeat', 'reverse'))
 
     def on_start(self):
-        # set metadata
-        self.update_config()
-        path = self.config['path']
-        self.metadata = Metadata().from_file(path)
-        audit = self.metadata.get('audit')
-        audit += 'data = %s\n' % path
-        self.metadata.set('audit', audit)
         # create file reader
-        self.frame_no = 0
         self.generator = self.file_reader()
 
     def process_frame(self):
-        Y_data, UV_data = next(self.generator)
-        Y_frame = self.outframe_pool['output_Y_RGB'].get()
-        Y_frame.metadata.copy(self.metadata)
-        Y_frame.frame_no = self.frame_no
-        self.frame_no += 1
-        Y_frame.data = Y_data
-        Y_frame.type = self.Y_type
+        Y_frame, UV_frame = next(self.generator)
         self.send('output_Y_RGB', Y_frame)
-        if UV_data is not None:
-            UV_frame = self.outframe_pool['output_UV'].get()
-            UV_frame.initialise(Y_frame)
-            UV_frame.data = UV_data
-            UV_frame.type = self.UV_type
+        if UV_frame:
             self.send('output_UV', UV_frame)
 
+    params = {
+        # fourcc    planar ssy ssx bpp
+        'RGB[24]': (False, 1,  1,  24),
+        'HDYC'   : (False, 1,  2,  16),
+        'IYU2'   : (False, 1,  1,  24),
+        'UYNV'   : (False, 1,  2,  16),
+        'UYVY'   : (False, 1,  2,  16),
+        'V422'   : (False, 1,  2,  16),
+        'Y16'    : (True,  1,  1,  16),
+        'Y422'   : (False, 1,  2,  16),
+        'Y8'     : (True,  1,  1,   8),
+        'YUNV'   : (False, 1,  2,  16),
+        'YUYV'   : (False, 1,  2,  16),
+        'YUY2'   : (False, 1,  2,  16),
+        'YVYU'   : (False, 1,  2,  16),
+        'I420'   : (True,  2,  2,  12),
+        'IYUV'   : (True,  2,  2,  12),
+        'YV12'   : (True,  2,  2,  12),
+        'YV16'   : (True,  1,  2,  16),
+        'YVU9'   : (True,  4,  4,   9),
+        }
+
     def file_reader(self):
+        # set metadata
         self.update_config()
         path = self.config['path']
-        fourcc = self.metadata.get('fourcc')
-        xlen, ylen = self.metadata.image_size()
-        # set bits per pixel and component dimensions
-        UV_shape = {
-            'I420': (2, ylen // 2, xlen // 2, 1),
-            'IYUV': (2, ylen // 2, xlen // 2, 1),
-            'YV16': (2, ylen, xlen // 2, 1),
-            'YV12': (2, ylen // 2, xlen // 2, 1),
-            'YVU9': (2, ylen // 4, xlen // 4, 1),
-            }
-        bytes_per_frame = ylen * xlen
-        if fourcc in ('RGB[24]', 'IYU2'):
-            # 3 components
-            bytes_per_frame *= 3
-        elif fourcc == 'Y16':
-            # 16 bit data
-            bytes_per_frame *= 2
-        elif fourcc == 'Y8':
-            # no UV
-            pass
-        elif fourcc in UV_shape:
-            bytes_per_frame += reduce(lambda x, y: x * y, UV_shape[fourcc])
-        else:
-            # 4:2:2 sampling
-            bytes_per_frame += bytes_per_frame // 2
+        metadata = Metadata().from_file(path)
+        fourcc = metadata.get('fourcc')
+        xlen, ylen = metadata.image_size()
+        audit = metadata.get('audit')
+        audit += 'data = RawFileReader{}\n'.format(os.path.basename(path))
+        audit += self.config.audit_string()
+        metadata.set('audit', audit)
+        # set params according to dimensions and fourcc
+        if fourcc not in self.params:
+            self.logger.critical("Can't read '%s' files", fourcc)
+            return
+        planar, ssy, ssx, bpp = self.params[fourcc]
+        bytes_per_frame = ylen * xlen * bpp // 8
         zlen = os.path.getsize(path) // bytes_per_frame
         if zlen < 1:
             self.logger.critical("Zero length file %s", path)
             return
-        # set frame type
-        if fourcc in ('RGB[24]',):
-            self.Y_type = 'RGB'
-        else:
-            self.Y_type = 'Y'
-            self.UV_type = 'CbCr'
         file_frame = 0
         direction = 1
+        frame_no = 0
         with io.open(path, 'rb', 0) as raw_file:
             while True:
                 self.update_config()
@@ -162,53 +150,59 @@ class RawFileReader(Component):
                 # read frame into 1D array
                 raw_data = raw_file.read(bytes_per_frame)
                 if fourcc == 'Y16':
-                    dtype = '<u2'
+                    data = numpy.ndarray(
+                        shape=(ylen * xlen,), dtype='<u2', buffer=raw_data)
                 else:
-                    dtype = numpy.uint8
-                data = numpy.ndarray(
-                    shape=(bytes_per_frame,), dtype=dtype, buffer=raw_data)
+                    data = numpy.ndarray(
+                        shape=(bytes_per_frame,), dtype=numpy.uint8,
+                        buffer=raw_data)
                 # demux data
+                Y_frame = self.outframe_pool['output_Y_RGB'].get()
+                Y_frame.metadata.copy(metadata)
+                Y_frame.frame_no = frame_no
+                UV_frame = None
                 if fourcc in ('Y16', 'Y8'):
-                    Y_data = data.reshape((ylen, xlen, 1))
-                    UV_data = None
+                    Y_frame.type = 'Y'
+                    Y = data.reshape((ylen, xlen, 1))
                 elif fourcc == 'RGB[24]':
+                    Y_frame.type = 'RGB'
                     B, G, R = numpy.dsplit(data.reshape((ylen, xlen, 3)), 3)
-                    Y_data = numpy.dstack((R, G, B))
-                    UV_data = None
+                    Y = numpy.dstack((R, G, B))
                 else:
                     # YUV data
-                    if fourcc == 'IYU2':
+                    UV_frame = self.outframe_pool['output_UV'].get()
+                    UV_frame.metadata.copy(metadata)
+                    UV_frame.frame_no = frame_no
+                    UV_frame.type = 'CbCr'
+                    if planar:
+                        Y = data[0:xlen * ylen].reshape((ylen, xlen, 1))
+                        UV = data[xlen * ylen:].reshape((
+                            2, ylen // ssy, xlen // ssx, 1))
+                        if fourcc in ('IYUV', 'I420'):
+                            # planar format, YUV order
+                            U, V = UV[0], UV[1]
+                        else:
+                            # planar format, YVU order
+                            U, V = UV[1], UV[0]
+                    elif fourcc == 'IYU2':
                         U, Y, V = numpy.dsplit(data.reshape((ylen, xlen, 3)), 3)
-                    elif fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC'):
-                        # packed format, UYVY order
-                        U, Y0, V, Y1 = numpy.dsplit(
-                            data.reshape((ylen, xlen // 2, 4)), 4)
-                        Y = numpy.dstack((Y0, Y1))
-                    elif fourcc in ('YVYU',):
-                        # packed format, YVYU order
-                        Y0, V, Y1, U = numpy.dsplit(
-                            data.reshape((ylen, xlen // 2, 4)), 4)
-                        Y = numpy.dstack((Y0, Y1))
-                    elif fourcc in ('YUYV', 'YUY2', 'YUNV', 'V422'):
-                        # packed format, YUYV order
-                        Y0, U, Y1, V = numpy.dsplit(
-                            data.reshape((ylen, xlen // 2, 4)), 4)
-                        Y = numpy.dstack((Y0, Y1))
-                    elif fourcc in ('IYUV', 'I420'):
-                        # planar format, YUV order
-                        Y = data[0:xlen * ylen]
-                        UV = data[xlen * ylen:].reshape(UV_shape[fourcc])
-                        U, V = UV[0], UV[1]
-                    elif fourcc in ('YV16', 'YV12', 'YVU9'):
-                        # planar format, YVU order
-                        Y = data[0:xlen * ylen]
-                        UV = data[xlen * ylen:].reshape(UV_shape[fourcc])
-                        U, V = UV[1], UV[0]
                     else:
-                        self.logger.critical("Can't open %s files", fourcc)
-                        return
-                    Y_data = Y.reshape((ylen, xlen, 1))
-                    UV_data = numpy.dstack((U, V))
+                        quad = numpy.dsplit(
+                            data.reshape((ylen, xlen // 2, 4)), 4)
+                        if fourcc in ('UYVY', 'UYNV', 'Y422', 'HDYC'):
+                            # packed format, UYVY order
+                            U, Y0, V, Y1 = quad
+                        elif fourcc in ('YVYU',):
+                            # packed format, YVYU order
+                            Y0, V, Y1, U = quad
+                        elif fourcc in ('YUYV', 'YUY2', 'YUNV', 'V422'):
+                            # packed format, YUYV order
+                            Y0, U, Y1, V = quad
+                        Y = numpy.dstack((Y0, Y1))
+                        Y = Y.reshape((ylen, xlen, 1))
+                    UV = numpy.dstack((U, V))
                     # remove offset
-                    UV_data = UV_data.astype(pt_float) - pt_float(128.0)
-                yield Y_data, UV_data
+                    UV_frame.data = UV.astype(pt_float) - pt_float(128.0)
+                Y_frame.data = Y
+                yield Y_frame, UV_frame
+                frame_no += 1
