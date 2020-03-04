@@ -74,6 +74,13 @@ class VideoFileReader(Component):
         self.config['noaudit'] = ConfigBool()
         self.config['zperiod'] = ConfigInt(min_value=0)
 
+    def on_start(self):
+        self.generator = self.file_reader()
+
+    def process_frame(self):
+        frame = next(self.generator)
+        self.send('output', frame)
+
     @contextmanager
     def subprocess(self, *arg, **kw):
         try:
@@ -105,14 +112,17 @@ class VideoFileReader(Component):
         header = json.loads(output)['streams'][0]
         xlen = header['width']
         ylen = header['height']
-        zlen = header['duration_ts']
+        if 'nb_frames' in header:
+            zlen = int(header['nb_frames'])
+        else:
+            zlen = header['duration_ts']
         # read file repeatedly to allow looping
         frame_no = 0
         while True:
             # can change config once per outer loop
             self.update_config()
             bit16 = self.config['16bit']
-            self.frame_type = self.config['type']
+            frame_type = self.config['type']
             zperiod = self.config['zperiod']
             looping = self.config['looping']
             if frame_no > 0 and looping == 'off':
@@ -128,19 +138,19 @@ class VideoFileReader(Component):
                 self.logger.warning(
                     'Reading %s data as 8 bit', header['pix_fmt'])
             # update metadata
-            self.metadata = Metadata().from_file(path)
+            metadata = Metadata().from_file(path)
             if noaudit:
                 audit = ''
             else:
-                audit = self.metadata.get('audit')
+                audit = metadata.get('audit')
             audit += 'data = VideoFileReader({})\n'.format(
                 os.path.basename(path))
             audit += self.config.audit_string()
-            self.metadata.set('audit', audit)
+            metadata.set('audit', audit)
             # set data parameters
-            bps = {'RGB': 3, 'Y': 1}[self.frame_type]
+            bps = {'RGB': 3, 'Y': 1}[frame_type]
             pix_fmt = {'RGB': ('rgb24', 'rgb48le'),
-                       'Y':   ('gray', 'gray16le')}[self.frame_type][bit16]
+                       'Y':   ('gray', 'gray16le')}[frame_type][bit16]
             bytes_per_frame = xlen * ylen * bps
             if bit16:
                 bytes_per_frame *= 2
@@ -160,20 +170,21 @@ class VideoFileReader(Component):
                     except Exception as ex:
                         self.logger.exception(ex)
                         return
+                    if not raw_data:
+                        # premature end of file
+                        self.logger.warning(
+                            'Adjusting zlen from %d to %d', zlen, z)
+                        zlen = z - 1
+                        break
                     if bit16:
                         image = numpy.fromstring(raw_data, dtype=numpy.uint16)
                         image = image.astype(pt_float) / pt_float(256.0)
                     else:
                         image = numpy.fromstring(raw_data, dtype=numpy.uint8)
-                    yield frame_no, image.reshape((ylen, xlen, bps))
+                    frame = self.outframe_pool['output'].get()
+                    frame.data = image.reshape((ylen, xlen, bps))
+                    frame.metadata.copy(metadata)
+                    frame.type = frame_type
+                    frame.frame_no = frame_no
+                    yield frame
                     frame_no += 1
-
-    def on_start(self):
-        self.generator = self.file_reader()
-
-    def process_frame(self):
-        frame = self.outframe_pool['output'].get()
-        frame.frame_no, frame.data = next(self.generator)
-        frame.type = self.frame_type
-        frame.metadata.copy(self.metadata)
-        self.send('output', frame)
