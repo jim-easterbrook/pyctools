@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-19  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -86,6 +86,7 @@ import six
 
 logger = logging.getLogger(__name__)
 
+
 class ConfigLeafNode(object):
     """Mixin class for configuration nodes.
 
@@ -119,14 +120,19 @@ class ConfigInt(ConfigLeafNode, int):
 
     :keyword int max_value: Maximum permissible value.
 
+    :keyword bool wrapping: Should the value change to min_value when
+        incremented beyond max_value or *vice versa*.
+
     """
-    def __new__(cls, value=0, default=None, min_value=None, max_value=None):
+    def __new__(cls, value=0, default=None, min_value=None, max_value=None,
+                wrapping=False):
         if min_value is not None and value < min_value:
             value = min_value
         if max_value is not None and value > max_value:
             value = max_value
         return super(ConfigInt, cls).__new__(
-            cls, value, default, min_value=min_value, max_value=max_value)
+            cls, value, default, min_value=min_value, max_value=max_value,
+            wrapping=wrapping)
 
     def parser_kw(self):
         return {'type' : int, 'metavar' : 'n'}

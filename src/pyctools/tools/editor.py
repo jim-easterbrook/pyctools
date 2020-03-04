@@ -141,6 +141,7 @@ class ConfigIntWidget(QtWidgets.QSpinBox):
             self.setMaximum((2**31)-1)
         else:
             self.setMaximum(self.config.max_value)
+        self.setWrapping(config.wrapping)
         self.setValue(self.config)
 
     def get_value(self):
