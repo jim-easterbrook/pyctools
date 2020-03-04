@@ -68,50 +68,41 @@ class Tile(Transformer):
         audit += '    size: %d x %d, offset: %d x %d\n' % (
             y_tile, x_tile, y_off, x_off)
         out_frame.metadata.set('audit', audit)
-        data = in_frame.as_numpy()
+        in_data = in_frame.as_numpy()
+        y_len, x_len = in_data.shape[:2]
         tile_params = eval(out_frame.metadata.get('tile', '[]'))
-        tile_params.append(
-            (y_tile, x_tile, y_off, x_off, data.shape[0], data.shape[1]))
+        tile_params.append((y_tile, x_tile, y_off, x_off, y_len, x_len))
         out_frame.metadata.set('tile', repr(tile_params))
-        if x_tile == x_off:
+        if x_tile in (1, x_off):
             # no overlap, so nothing to do
-            x_tile = data.shape[1]
+            x_tile = x_len
             x_off = x_tile
-        if y_tile == y_off:
+        if y_tile in (1, y_off):
             # no overlap, so nothing to do
-            y_tile = data.shape[0]
+            y_tile = y_len
             y_off = y_tile
         x_mgn = (x_tile - 1) // x_off
         y_mgn = (y_tile - 1) // y_off
-        x_blk = ((data.shape[1] + x_off - 1) // x_off) + x_mgn
-        y_blk = ((data.shape[0] + y_off - 1) // y_off) + y_mgn
-        out_data = numpy.zeros(
-            [y_tile * y_blk, x_tile * x_blk] + list(data.shape[2:]),
-            dtype=data.dtype)
+        x_blk = (x_len + x_off - 1) // x_off
+        y_blk = (y_len + y_off - 1) // y_off
+        pad_width = ((y_mgn * y_off, y_tile + ((y_blk - 1) * y_off) - y_len),
+                     (x_mgn * x_off, x_tile + ((x_blk - 1) * x_off) - x_len),
+                     (0, 0))
+        x_blk += x_mgn
+        y_blk += y_mgn
+        if numpy.any(pad_width):
+            in_data = numpy.pad(in_data, pad_width)
+        out_data = numpy.empty(
+            [y_blk, y_tile, x_blk, x_tile] + list(in_data.shape[2:]),
+            dtype=in_data.dtype)
+        y = 0
         for j in range(y_blk):
-            yi_0 = (j - y_mgn) * y_off
-            yo_0 = j * y_tile
-            yi_1 = yi_0 + y_tile
-            yo_1 = yo_0 + y_tile
-            if yi_0 < 0:
-                yo_0 -= yi_0
-                yi_0 = 0
-            if yi_1 > data.shape[0]:
-                yo_1 -= yi_1 - data.shape[0]
-                yi_1 = data.shape[0]
+            x = 0
             for i in range(x_blk):
-                xi_0 = (i - x_mgn) * x_off
-                xo_0 = i * x_tile
-                xi_1 = xi_0 + x_tile
-                xo_1 = xo_0 + x_tile
-                if xi_0 < 0:
-                    xo_0 -= xi_0
-                    xi_0 = 0
-                if xi_1 > data.shape[1]:
-                    xo_1 -= xi_1 - data.shape[1]
-                    xi_1 = data.shape[1]
-                out_data[yo_0:yo_1, xo_0:xo_1] = data[yi_0:yi_1, xi_0:xi_1]
-        out_frame.data = out_data
+                out_data[j, ::, i, ::] = in_data[y:y+y_tile, x:x+x_tile]
+                x += x_off
+            y += y_off
+        out_frame.data = out_data.reshape((y_blk * y_tile, x_blk * x_tile, -1))
         return True
 
 
@@ -123,54 +114,42 @@ class UnTile(Transformer):
 
     """
     def transform(self, in_frame, out_frame):
-        data = in_frame.as_numpy()
+        in_data = in_frame.as_numpy()
         tile_params = eval(out_frame.metadata.get('tile', '[]'))
         if not tile_params:
             self.logger.error('Input has no "tile" metadata')
             return False
-        y_tile, x_tile, y_off, x_off, height, width = tile_params.pop()
+        y_tile, x_tile, y_off, x_off, y_len, x_len = tile_params.pop()
         out_frame.metadata.set('tile', repr(tile_params))
         audit = out_frame.metadata.get('audit')
         audit += 'data = UnTile(data)\n'
         audit += '    size: %d x %d, offset: %d x %d\n' % (
             y_tile, x_tile, y_off, x_off)
         out_frame.metadata.set('audit', audit)
-        if x_tile == x_off:
+        if x_tile in (1, x_off):
             # no overlap, so nothing to do
-            x_tile = width
+            x_tile = x_len
             x_off = x_tile
-        if y_tile == y_off:
+        if y_tile in (1, y_off):
             # no overlap, so nothing to do
-            y_tile = height
+            y_tile = y_len
             y_off = y_tile
         x_mgn = (x_tile - 1) // x_off
         y_mgn = (y_tile - 1) // y_off
-        x_blk = data.shape[1] // x_tile
-        y_blk = data.shape[0] // y_tile
-        out_data = numpy.zeros(
-            [height, width] + list(data.shape[2:]), dtype=data.dtype)
+        x_blk = in_data.shape[1] // x_tile
+        y_blk = in_data.shape[0] // y_tile
+        out_data = numpy.zeros([y_tile + ((y_blk - 1) * y_off),
+                                x_tile + ((x_blk - 1) * x_off)]
+                               + list(in_data.shape[2:]), dtype=in_data.dtype)
+        in_data = in_data.reshape((y_blk, y_tile, x_blk, x_tile, -1))
+        y = 0
         for j in range(y_blk):
-            yi_0 = j * y_tile
-            yo_0 = (j - y_mgn) * y_off
-            yi_1 = yi_0 + y_tile
-            yo_1 = yo_0 + y_tile
-            if yo_0 < 0:
-                yi_0 -= yo_0
-                yo_0 = 0
-            if yo_1 > out_data.shape[0]:
-                yi_1 -= yo_1 - out_data.shape[0]
-                yo_1 = out_data.shape[0]
+            x = 0
             for i in range(x_blk):
-                xi_0 = i * x_tile
-                xo_0 = (i - x_mgn) * x_off
-                xi_1 = xi_0 + x_tile
-                xo_1 = xo_0 + x_tile
-                if xo_0 < 0:
-                    xi_0 -= xo_0
-                    xo_0 = 0
-                if xo_1 > out_data.shape[1]:
-                    xi_1 -= xo_1 - out_data.shape[1]
-                    xo_1 = out_data.shape[1]
-                out_data[yo_0:yo_1, xo_0:xo_1] += data[yi_0:yi_1, xi_0:xi_1]
-        out_frame.data = out_data
+                out_data[y:y+y_tile, x:x+x_tile] += in_data[j, ::, i, ::]
+                x += x_off
+            y += y_off
+        x = x_mgn * x_off
+        y = y_mgn * y_off
+        out_frame.data = out_data[y:y+y_len, x:x+x_len, ::].copy()
         return True
