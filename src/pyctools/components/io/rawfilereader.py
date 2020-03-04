@@ -19,13 +19,12 @@
 __all__ = ['RawFileReader']
 __docformat__ = 'restructuredtext en'
 
-from functools import reduce
 import io
 import os
 
 import numpy
 
-from pyctools.core.config import ConfigPath, ConfigEnum
+from pyctools.core.config import ConfigBool, ConfigEnum, ConfigInt, ConfigPath
 from pyctools.core.base import Component
 from pyctools.core.frame import Metadata
 from pyctools.core.types import pt_float
@@ -48,21 +47,29 @@ class RawFileReader(Component):
 
     There are many possible arrangements of data in raw files. For
     example, the colour components can be packed (multiplexed) together
-    or stored in separate planes. The formats are labelled with a four
-    character code knows as a `fourcc <http://www.fourcc.org/>`_ code.
-    This code needs to be in the metadata file with the image
-    dimensions.
+    or stored in separate planes. The formats are labelled with a short
+    string knows as a fourcc_ code. This code needs to be in the
+    metadata file with the image dimensions.
 
     Note that when reading "YUV" formats the U & V outputs are offset by
     128 to restore their range to -128..127 (from the file range of
     0..255). This makes subsequent processing a lot easier.
 
-    ===========  ===  ====
+    The ``zperiod`` config item can be used to adjust the repeat period
+    so it is an integer multiple of a chosen number, e.g. 4 frames for a
+    PAL encoded sequence. It has no effect if ``looping`` is not
+    ``repeat``.
+
+    ===========  ====  ====
     Config
-    ===========  ===  ====
-    ``path``     str  Path name of file to be read.
-    ``looping``  str  Whether to play continuously. Can be ``'off'``, ``'repeat'`` or ``'reverse'``.
-    ===========  ===  ====
+    ===========  ====  ====
+    ``path``     str   Path name of file to be read.
+    ``looping``  str   Whether to play continuously. Can be ``'off'``, ``'repeat'`` or ``'reverse'``.
+    ``noaudit``  bool  Don't output file's "audit trail" metadata.
+    ``zperiod``  int   Adjust repeat period to an integer multiple of ``zperiod``.
+    ===========  ====  ====
+
+    .. _fourcc: http://www.fourcc.org/
 
     """
 
@@ -72,6 +79,8 @@ class RawFileReader(Component):
     def initialise(self):
         self.config['path'] = ConfigPath()
         self.config['looping'] = ConfigEnum(choices=('off', 'repeat', 'reverse'))
+        self.config['noaudit'] = ConfigBool()
+        self.config['zperiod'] = ConfigInt(min_value=0)
 
     def on_start(self):
         # create file reader
@@ -112,8 +121,11 @@ class RawFileReader(Component):
         metadata = Metadata().from_file(path)
         fourcc = metadata.get('fourcc')
         xlen, ylen = metadata.image_size()
-        audit = metadata.get('audit')
-        audit += 'data = RawFileReader{}\n'.format(os.path.basename(path))
+        if self.config['noaudit']:
+            audit = ''
+        else:
+            audit = metadata.get('audit')
+        audit += 'data = RawFileReader({})\n'.format(os.path.basename(path))
         audit += self.config.audit_string()
         metadata.set('audit', audit)
         # set params according to dimensions and fourcc
@@ -132,26 +144,34 @@ class RawFileReader(Component):
         with io.open(path, 'rb', 0) as raw_file:
             while True:
                 self.update_config()
-                if file_frame >= zlen:
-                    if self.config['looping'] == 'off':
-                        break
-                    elif self.config['looping'] == 'repeat':
+                looping = self.config['looping']
+                zperiod = self.config['zperiod']
+                frames = zlen
+                if zlen > zperiod and zperiod > 1 and looping == 'repeat':
+                    frames -= zlen % zperiod
+                if file_frame >= frames:
+                    if looping == 'off':
+                        return
+                    elif looping == 'repeat':
                         file_frame = 0
                         raw_file.seek(0)
                     else:
-                        file_frame = zlen - 2
+                        file_frame = frames - 2
                         direction = -1
                 elif file_frame < 0:
+                    if looping == 'off':
+                        return
                     file_frame = 1
                     direction = 1
-                if direction != 1:
-                    raw_file.seek((direction - 1) * bytes_per_frame, io.SEEK_CUR)
+                if direction < 0:
+                    raw_file.seek(-2 * bytes_per_frame, io.SEEK_CUR)
                 file_frame += direction
                 # read frame into 1D array
                 raw_data = raw_file.read(bytes_per_frame)
                 if fourcc == 'Y16':
                     data = numpy.ndarray(
                         shape=(ylen * xlen,), dtype='<u2', buffer=raw_data)
+                    data = data.astype(pt_float) / pt_float(256.0)
                 else:
                     data = numpy.ndarray(
                         shape=(bytes_per_frame,), dtype=numpy.uint8,
@@ -160,9 +180,9 @@ class RawFileReader(Component):
                 Y_frame = self.outframe_pool['output_Y_RGB'].get()
                 Y_frame.metadata.copy(metadata)
                 Y_frame.frame_no = frame_no
+                Y_frame.type = 'Y'
                 UV_frame = None
                 if fourcc in ('Y16', 'Y8'):
-                    Y_frame.type = 'Y'
                     Y = data.reshape((ylen, xlen, 1))
                 elif fourcc == 'RGB[24]':
                     Y_frame.type = 'RGB'
