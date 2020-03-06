@@ -250,13 +250,19 @@ class ConfigGrandParentWidget(QtWidgets.QTabWidget):
         return result
 
 
+def ConfigCompoundWidget(config, **kwds):
+    for value in config.values():
+        if isinstance(value, ConfigParent):
+            return ConfigGrandParentWidget(config, **kwds)
+    return ConfigParentWidget(config, **kwds)
+
+
 config_widget = {
     ConfigEnum        : ConfigEnumWidget,
     ConfigFloat       : ConfigFloatWidget,
-    ConfigGrandParent : ConfigGrandParentWidget,
+    ConfigParent      : ConfigCompoundWidget,
     ConfigBool        : ConfigBoolWidget,
     ConfigInt         : ConfigIntWidget,
-    ConfigParent      : ConfigParentWidget,
     ConfigPath        : ConfigPathWidget,
     ConfigStr         : ConfigStrWidget,
     }

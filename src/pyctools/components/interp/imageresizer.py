@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2018-19  Pyctools contributors
+#  Copyright (C) 2018-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -48,9 +48,10 @@ def ImageResizerX(config={}, **kwds):
         resize = Resize(),
         config = cfg,
         config_map = {
-            'filgen': (('up', 'xup'), ('down', 'xdown'),
-                       ('aperture', 'xaperture')),
-            'resize': (('up', 'xup'), ('down', 'xdown')),
+            'up'               : ('filgen.xup',   'resize.xup'),
+            'down'             : ('filgen.xdown', 'resize.xdown'),
+            'aperture'         : ('filgen.xaperture',),
+            'outframe_pool_len': ('resize.outframe_pool_len',),
             },
         linkages = {
             ('self',   'input')  : ('resize', 'input'),
@@ -84,9 +85,10 @@ def ImageResizerY(config={}, **kwds):
         resize = Resize(),
         config = cfg,
         config_map = {
-            'filgen': (('up', 'yup'), ('down', 'ydown'),
-                       ('aperture', 'yaperture')),
-            'resize': (('up', 'yup'), ('down', 'ydown')),
+            'up'               : ('filgen.yup',   'resize.yup'),
+            'down'             : ('filgen.ydown', 'resize.ydown'),
+            'aperture'         : ('filgen.yaperture',),
+            'outframe_pool_len': ('xresize.outframe_pool_len',),
             },
         linkages = {
             ('self',   'input')  : ('resize', 'input'),
@@ -129,12 +131,13 @@ def ImageResizer2D(config={}, **kwds):
         yresize = Resize(),
         config = cfg,
         config_map = {
-            'xfilgen': (('xup', 'xup'), ('xdown', 'xdown'),
-                        ('xaperture', 'xaperture')),
-            'yfilgen': (('yup', 'yup'), ('ydown', 'ydown'),
-                        ('yaperture', 'yaperture')),
-            'xresize': (('xup', 'xup'), ('xdown', 'xdown')),
-            'yresize': (('yup', 'yup'), ('ydown', 'ydown')),
+            'xup'              : ('xfilgen.xup',   'xresize.xup'),
+            'xdown'            : ('xfilgen.xdown', 'xresize.xdown'),
+            'yup'              : ('yfilgen.yup',   'yresize.yup'),
+            'ydown'            : ('yfilgen.ydown', 'yresize.ydown'),
+            'xaperture'        : ('xfilgen.xaperture',),
+            'yaperture'        : ('yfilgen.yaperture',),
+            'outframe_pool_len': ('xresize.outframe_pool_len',),
             },
         linkages = {
             ('self',    'input')  : ('yresize', 'input'),

@@ -65,7 +65,6 @@ are applied together, some time after calling
 
    ConfigMixin
    ConfigParent
-   ConfigGrandParent
    ConfigInt
    ConfigFloat
    ConfigBool
@@ -79,7 +78,6 @@ are applied together, some time after calling
 __docformat__ = 'restructuredtext en'
 
 import collections
-import copy
 import logging
 import os.path
 import six
@@ -107,6 +105,9 @@ class ConfigLeafNode(object):
     def update(self, value):
         """Adjust the config item's value."""
         return self.__class__(value, **self.__dict__)
+
+    def copy(self):
+        return self.update(self)
 
 
 class ConfigInt(ConfigLeafNode, int):
@@ -271,26 +272,92 @@ class ConfigEnum(ConfigStr):
                 self.extendable, self._parser_kw)
 
 
-class ConfigParent(ConfigLeafNode, collections.OrderedDict):
+class ConfigParent(object):
     """Parent configuration node.
 
-    Stores a set of child nodes in a :py:class:`dict`.
+    Stores a set of child nodes in a :py:class:`dict`. In a
+    :py:class:`~.compound.Compound` component the children are
+    themselves :py:class:`ConfigParent` nodes, allowing components to be
+    nested to any depth whilst making their configuration accessible
+    from the top level.
+
+    The ``config_map`` is used in :py:class:`~.compound.Compound`
+    components to allow multiple child components to be controlled by
+    one config value.
 
     """
-    def __new__(cls):
-        return super(ConfigParent, cls).__new__(cls, value={}, default=None)
+    default = {}
+
+    def __init__(self, config_map={}):
+        super(ConfigParent, self).__init__()
+        self._config_map = config_map
+        self._value = {}
 
     def __repr__(self):
         result = []
-        for key, value in self.items():
+        for key, value in self._value.items():
             if value != value.default:
                 result.append("'{}': {!r}".format(key, value))
         return '{' + ', '.join(result) + '}'
 
+    def __getattr__(self, name):
+        if name[0] != '_':
+            return self[name]
+        return super(ConfigParent, self).__getattr__(name)
+
+    def __setattr__(self, name, value):
+        if name[0] != '_':
+            self[name] = value
+            return
+        super(ConfigParent, self).__setattr__(name, value)
+
+    def __len__(self):
+        if self._config_map:
+            return len(self._config_map)
+        return len(self._value)
+
+    def __getitem__(self, key):
+        if key in self._config_map:
+            return self[self._config_map[key][0]]
+        child, sep, grandchild = key.partition('.')
+        if grandchild:
+            return self[child][grandchild]
+        return self._value[key]
+
+    def __setitem__(self, key, value):
+        if key in self._config_map:
+            for item in self._config_map[key]:
+                self[item] = value
+            return
+        child, sep, grandchild = key.partition('.')
+        if grandchild:
+            self[child][grandchild] = value
+            return
+        if key in self._value:
+            value = self._value[key].update(value)
+        elif not isinstance(value, (ConfigLeafNode, ConfigParent)):
+            logger.error('unknown config item: %s, %s', key, value)
+            return
+        self._value[key] = value
+
+    def __iter__(self):
+        if self._config_map:
+            yield from self._config_map
+        else:
+            yield from self._value
+
+    def items(self):
+        for key in self:
+            yield key, self[key]
+
+    def values(self):
+        for key in self:
+            yield self[key]
+
     def audit_string(self):
         result = ''
         details = []
-        for key, value in self.items():
+        for key, value in self._value.items():
             if value == value.default:
                 continue
             details.append('{}: {!r}'.format(key, value))
@@ -337,50 +404,18 @@ class ConfigParent(ConfigLeafNode, collections.OrderedDict):
 
         """
         for key, value in vars(args).items():
-            self._parser_update(key, value)
+            self[key] = value
 
-    def _parser_update(self, key, value):
-        self[key] = value
-
-    def __setitem__(self, key, value):
-        if key in self:
-            value = self[key].update(value)
-        elif not isinstance(value, ConfigLeafNode):
-            logger.error('unknown config item: %s, %s', key, value)
-        super(ConfigParent, self).__setitem__(key, value)
-
-    def __setattr__(self, name, value):
-        if name in self or isinstance(value, ConfigLeafNode):
-            self[name] = value
-            return
-        super(ConfigParent, self).__setattr__(name, value)
-
-    def __getattr__(self, name):
-        if name in self:
-            return self[name]
-        return super(ConfigParent, self).__getattr__(name)
-
-    def update(self, other=[], **kw):
-        if isinstance(other, dict):
-            other = other.items()
-        if other:
-            for key, value in other:
-                self[key] = value
-        for key, value in kw.items():
+    def update(self, value):
+        for key, value in value.items():
             self[key] = value
         return self
 
-
-class ConfigGrandParent(ConfigParent):
-    """Grandparent configuration node.
-
-    Stores a set of :py:class:`ConfigParent` nodes in a
-    :py:class:`dict`.
-
-    """
-    def _parser_update(self, key, value):
-        child, sep, grandchild = key.partition('.')
-        self[child]._parser_update(grandchild, value)
+    def copy(self):
+        copy = self.__class__(config_map=self._config_map)
+        for key, value in self._value.items():
+            copy._value[key] = value.copy()
+        return copy
 
 
 class ConfigMixin(object):
@@ -408,7 +443,7 @@ class ConfigMixin(object):
         # get any queued changes
         self.update_config()
         # make copy to allow changes without affecting running component
-        return copy.deepcopy(self.config)
+        return self.config.copy()
 
     def set_config(self, config):
         """Update the component's configuration.
@@ -423,8 +458,12 @@ class ConfigMixin(object):
         :param ConfigParent config: New configuration.
 
         """
-        # put copy of config on queue for running component
-        self._configmixin_queue.append(copy.deepcopy(config))
+        # get copy of current config
+        cfg = self.get_config()
+        # update it with new values
+        cfg = cfg.update(config)
+        # put modified copy on queue for running component
+        self._configmixin_queue.append(cfg)
         # notify component, using thread safe method
         self.new_config()
 
@@ -440,7 +479,6 @@ class ConfigMixin(object):
         """
         result = False
         while self._configmixin_queue:
-            config = self._configmixin_queue.popleft()
-            self.config.update(config)
+            self.config = self._configmixin_queue.popleft()
             result = True
         return result
