@@ -24,7 +24,7 @@ from pyctools.components.interp.resize import Resize
 from pyctools.core.compound import Compound
 
 
-def ImageResizerX(config={}, **kwds):
+class ImageResizerX(Compound):
     """Horizontal image resizer component.
 
     Uses a :py:class:`~pyctools.core.compound.Compound` component to
@@ -40,28 +40,29 @@ def ImageResizerX(config={}, **kwds):
     ============  ===  ====
 
     """
-    cfg = {'aperture': 16}
-    cfg.update(kwds)
-    cfg.update(config)
-    return Compound(
-        filgen = FilterGenerator(),
-        resize = Resize(),
-        config = cfg,
-        config_map = {
-            'up'               : ('filgen.xup',   'resize.xup'),
-            'down'             : ('filgen.xdown', 'resize.xdown'),
-            'aperture'         : ('filgen.xaperture',),
-            'outframe_pool_len': ('resize.outframe_pool_len',),
-            },
-        linkages = {
-            ('self',   'input')  : ('resize', 'input'),
-            ('filgen', 'output') : ('resize', 'filter'),
-            ('resize', 'output') : ('self',   'output'),
-            }
-        )
+    def __init__(self, config={}, **kwds):
+        cfg = {'aperture': 16}
+        cfg.update(kwds)
+        cfg.update(config)
+        super(ImageResizerX, self).__init__(
+            filgen = FilterGenerator(),
+            resize = Resize(),
+            config = cfg,
+            config_map = {
+                'up'               : ('filgen.xup',   'resize.xup'),
+                'down'             : ('filgen.xdown', 'resize.xdown'),
+                'aperture'         : ('filgen.xaperture',),
+                'outframe_pool_len': ('resize.outframe_pool_len',),
+                },
+            linkages = {
+                ('self',   'input')  : ('resize', 'input'),
+                ('filgen', 'output') : ('resize', 'filter'),
+                ('resize', 'output') : ('self',   'output'),
+                }
+            )
 
 
-def ImageResizerY(config={}, **kwds):
+class ImageResizerY(Compound):
     """Vertical image resizer component.
 
     Uses a :py:class:`~pyctools.core.compound.Compound` component to
@@ -77,28 +78,29 @@ def ImageResizerY(config={}, **kwds):
     ============  ===  ====
 
     """
-    cfg = {'aperture': 16}
-    cfg.update(kwds)
-    cfg.update(config)
-    return Compound(
-        filgen = FilterGenerator(),
-        resize = Resize(),
-        config = cfg,
-        config_map = {
-            'up'               : ('filgen.yup',   'resize.yup'),
-            'down'             : ('filgen.ydown', 'resize.ydown'),
-            'aperture'         : ('filgen.yaperture',),
-            'outframe_pool_len': ('xresize.outframe_pool_len',),
-            },
-        linkages = {
-            ('self',   'input')  : ('resize', 'input'),
-            ('filgen', 'output') : ('resize', 'filter'),
-            ('resize', 'output') : ('self',   'output'),
-            }
-        )
+    def __init__(self, config={}, **kwds):
+        cfg = {'aperture': 16}
+        cfg.update(kwds)
+        cfg.update(config)
+        super(ImageResizerY, self).__init__(
+            filgen = FilterGenerator(),
+            resize = Resize(),
+            config = cfg,
+            config_map = {
+                'up'               : ('filgen.yup',   'resize.yup'),
+                'down'             : ('filgen.ydown', 'resize.ydown'),
+                'aperture'         : ('filgen.yaperture',),
+                'outframe_pool_len': ('xresize.outframe_pool_len',),
+                },
+            linkages = {
+                ('self',   'input')  : ('resize', 'input'),
+                ('filgen', 'output') : ('resize', 'filter'),
+                ('resize', 'output') : ('self',   'output'),
+                }
+            )
 
 
-def ImageResizer2D(config={}, **kwds):
+class ImageResizer2D(Compound):
     """2-D image resizer component.
 
     Uses a :py:class:`~pyctools.core.compound.Compound` component to
@@ -121,29 +123,30 @@ def ImageResizer2D(config={}, **kwds):
     =============  ===  ====
 
     """
-    cfg = {'xaperture': 16, 'yaperture': 16}
-    cfg.update(kwds)
-    cfg.update(config)
-    return Compound(
-        xfilgen = FilterGenerator(),
-        yfilgen = FilterGenerator(),
-        xresize = Resize(),
-        yresize = Resize(),
-        config = cfg,
-        config_map = {
-            'xup'              : ('xfilgen.xup',   'xresize.xup'),
-            'xdown'            : ('xfilgen.xdown', 'xresize.xdown'),
-            'yup'              : ('yfilgen.yup',   'yresize.yup'),
-            'ydown'            : ('yfilgen.ydown', 'yresize.ydown'),
-            'xaperture'        : ('xfilgen.xaperture',),
-            'yaperture'        : ('yfilgen.yaperture',),
-            'outframe_pool_len': ('xresize.outframe_pool_len',),
-            },
-        linkages = {
-            ('self',    'input')  : ('yresize', 'input'),
-            ('yfilgen', 'output') : ('yresize', 'filter'),
-            ('yresize', 'output') : ('xresize', 'input'),
-            ('xfilgen', 'output') : ('xresize', 'filter'),
-            ('xresize', 'output') : ('self',    'output'),
-            }
-        )
+    def __init__(self, config={}, **kwds):
+        cfg = {'xaperture': 16, 'yaperture': 16}
+        cfg.update(kwds)
+        cfg.update(config)
+        super(ImageResizer2D, self).__init__(
+            xfilgen = FilterGenerator(),
+            yfilgen = FilterGenerator(),
+            xresize = Resize(),
+            yresize = Resize(),
+            config = cfg,
+            config_map = {
+                'xup'              : ('xfilgen.xup',   'xresize.xup'),
+                'xdown'            : ('xfilgen.xdown', 'xresize.xdown'),
+                'yup'              : ('yfilgen.yup',   'yresize.yup'),
+                'ydown'            : ('yfilgen.ydown', 'yresize.ydown'),
+                'xaperture'        : ('xfilgen.xaperture',),
+                'yaperture'        : ('yfilgen.yaperture',),
+                'outframe_pool_len': ('xresize.outframe_pool_len',),
+                },
+            linkages = {
+                ('self',    'input')  : ('yresize', 'input'),
+                ('yfilgen', 'output') : ('yresize', 'filter'),
+                ('yresize', 'output') : ('xresize', 'input'),
+                ('xfilgen', 'output') : ('xresize', 'filter'),
+                ('xresize', 'output') : ('self',    'output'),
+                }
+            )
