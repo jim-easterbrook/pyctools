@@ -100,7 +100,7 @@ class ConfigLeafNode(object):
 
     def parser_add(self, parser, key):
         parser.add_argument(
-            '--' + key, default=self, help=' ', **self._parser_kw)
+            '--' + key, default=self, help=' ', **self._parser_kw())
 
     def update(self, value):
         """Adjust the config item's value."""
@@ -135,7 +135,9 @@ class ConfigInt(ConfigLeafNode, int):
             cls, value, default, min_value=min_value, max_value=max_value,
             wrapping=wrapping)
 
-    _parser_kw = {'type' : int, 'metavar' : 'n'}
+    @staticmethod
+    def _parser_kw():
+        return {'type' : int, 'metavar' : 'n'}
 
 
 class ConfigBool(ConfigInt):
@@ -158,7 +160,9 @@ class ConfigBool(ConfigInt):
     def __repr__(self):
         return str(bool(self))
 
-    _parser_kw = {'type' : bool, 'metavar' : 'b'}
+    @staticmethod
+    def _parser_kw():
+        return {'type' : bool, 'metavar' : 'b'}
 
 
 class ConfigFloat(ConfigLeafNode, float):
@@ -189,7 +193,9 @@ class ConfigFloat(ConfigLeafNode, float):
             cls, value, default, min_value=min_value, max_value=max_value,
             decimals=decimals, wrapping=wrapping)
 
-    _parser_kw = {'type' : float, 'metavar' : 'x'}
+    @staticmethod
+    def _parser_kw():
+        return {'type' : float, 'metavar' : 'x'}
 
 
 class ConfigStr(ConfigLeafNode, six.text_type):
@@ -203,7 +209,9 @@ class ConfigStr(ConfigLeafNode, six.text_type):
     def __new__(cls, value='', default=None, **kwds):
         return super(ConfigStr, cls).__new__(cls, value, default, **kwds)
 
-    _parser_kw = {'metavar' : 'str'}
+    @staticmethod
+    def _parser_kw():
+        return {'metavar' : 'str'}
 
 
 class ConfigPath(ConfigStr):
@@ -231,7 +239,9 @@ class ConfigPath(ConfigStr):
     def __getnewargs__(self):
         return six.text_type(self), self.default, self.exists
 
-    _parser_kw = {'metavar' : 'path'}
+    @staticmethod
+    def _parser_kw():
+        return {'metavar' : 'path'}
 
 
 class ConfigEnum(ConfigStr):
@@ -251,8 +261,7 @@ class ConfigEnum(ConfigStr):
         setting new values.
 
     """
-    def __new__(cls, value=None, default=None, choices=[], extendable=False,
-                _parser_kw={'metavar' : 'str'}):
+    def __new__(cls, value=None, default=None, choices=[], extendable=False):
         choices = list(choices)
         if not value:
             value = choices[0]
@@ -261,15 +270,17 @@ class ConfigEnum(ConfigStr):
                 choices.append(value)
             else:
                 raise ValueError(str(value))
-        if not extendable:
-            _parser_kw['choices'] = choices
         return super(ConfigEnum, cls).__new__(
-            cls, value, default, choices=choices,
-            extendable=extendable, _parser_kw=_parser_kw)
+            cls, value, default, choices=choices, extendable=extendable)
 
     def __getnewargs__(self):
-        return (six.text_type(self), self.default, self.choices,
-                self.extendable, self._parser_kw)
+        return six.text_type(self), self.default, self.choices, self.extendable
+
+    def _parser_kw(self):
+        result = {'metavar' : 'str'}
+        if not self.extendable:
+            result['choices'] = self.choices
+        return result
 
 
 class ConfigParent(object):
