@@ -45,9 +45,11 @@ class Stats(Transformer):
         self.config['variance'] = ConfigBool()
         self.last_result = None
 
+    def on_set_config(self):
+        self.last_result = None
+
     def transform(self, in_frame, out_frame):
-        if self.update_config():
-            self.last_result = None
+        self.update_config()
         result = {}
         data = in_frame.as_numpy(dtype=numpy.float64)
         if self.config['rms']:
@@ -82,9 +84,11 @@ class DumpMetadata(Transformer):
         self.config['raw'] = ConfigBool()
         self.last_metadata = None
 
+    def on_set_config(self):
+        self.last_metadata = None
+
     def transform(self, in_frame, out_frame):
-        if self.update_config():
-            self.last_metadata = None
+        self.update_config()
         if self.last_metadata and in_frame.metadata.data == self.last_metadata.data:
             return True
         self.last_metadata = in_frame.metadata

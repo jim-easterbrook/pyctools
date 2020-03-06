@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016-19  Pyctools contributors
+#  Copyright (C) 2016-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -114,8 +114,12 @@ class GammaCorrect(Transformer):
         self.config['knee_slope'] = ConfigFloat(value=0.1, decimals=3)
         self.initialised = False
 
+    def on_set_config(self):
+        self.initialised = False
+
     def adjust_params(self):
         self.initialised = True
+        self.update_config()
         self.gamma, toe, threshold, self.a = self.gamma_toe[self.config['gamma']]
         knee = self.config['knee']
         knee_point = self.config['knee_point']
@@ -238,7 +242,7 @@ class GammaCorrect(Transformer):
         return v_out
 
     def transform(self, in_frame, out_frame):
-        if self.update_config() or not self.initialised:
+        if not self.initialised:
             self.adjust_params()
         inverse = self.config['inverse']
         data = in_frame.as_numpy(dtype=pt_float, copy=True)
@@ -297,8 +301,12 @@ class PiecewiseGammaCorrect(Transformer):
             self.config['smooth'] = ConfigBool()
         self.initialised = False
 
+    def on_set_config(self):
+        self.initialised = False
+
     def adjust_params(self):
         self.initialised = True
+        self.update_config()
         in_vals = eval(self.config['in_vals'])
         out_vals = eval(self.config['out_vals'])
         if len(in_vals) > len(out_vals):
@@ -343,7 +351,7 @@ class PiecewiseGammaCorrect(Transformer):
         self.send('function', func_frame)
 
     def transform(self, in_frame, out_frame):
-        if self.update_config() or not self.initialised:
+        if not self.initialised:
             self.adjust_params()
         inverse = self.config['inverse']
         data = in_frame.as_numpy(dtype=pt_float, copy=True)
