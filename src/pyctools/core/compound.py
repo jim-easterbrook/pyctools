@@ -262,3 +262,11 @@ class Compound(object):
         for src, dests in self._compound_linkages.items():
             for dest in dests:
                 yield src, dest
+
+    def components(self):
+        """Yield list of all the component's children.
+
+        Each result is a (name, component) tuple.
+
+        """
+        yield from self._compound_children.items()
