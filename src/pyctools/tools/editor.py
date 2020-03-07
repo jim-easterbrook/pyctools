@@ -791,28 +791,22 @@ class CompoundIcon(BasicComponentIcon):
         super(CompoundIcon, self).draw_icon()
         # draw linkages
         if self.expanded:
-            for source in self.obj._compound_linkages:
-                src, outbox = source
-                targets = self.obj._compound_linkages[source]
-                if isinstance(targets[0], six.string_types):
-                    # not a list of pairs, so make it into one
-                    targets = zip(targets[0::2], targets[1::2])
-                for dest, inbox in targets:
-                    if src == 'self':
-                        source_pos = self.in_pos(outbox, None)
-                        source_pos.setX(source_pos.x() + 6)
-                        dest_pos = child_comps[dest].in_pos(inbox, source_pos)
-                    elif dest == 'self':
-                        dest_pos = self.out_pos(inbox, None)
-                        dest_pos.setX(dest_pos.x() - 6)
-                        source_pos = child_comps[src].out_pos(outbox, dest_pos)
-                    else:
-                        source_pos = child_comps[src].out_pos(outbox, None)
-                        dest_pos = child_comps[dest].in_pos(inbox, source_pos)
-                        source_pos = child_comps[src].out_pos(outbox, dest_pos)
-                    line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(
-                        self.mapFromScene(source_pos), self.mapFromScene(dest_pos)
-                        ), self)
+            for (src, outbox), (dest, inbox) in self.obj.all_connections():
+                if src == 'self':
+                    source_pos = self.in_pos(outbox, None)
+                    source_pos.setX(source_pos.x() + 6)
+                    dest_pos = child_comps[dest].in_pos(inbox, source_pos)
+                elif dest == 'self':
+                    dest_pos = self.out_pos(inbox, None)
+                    dest_pos.setX(dest_pos.x() - 6)
+                    source_pos = child_comps[src].out_pos(outbox, dest_pos)
+                else:
+                    source_pos = child_comps[src].out_pos(outbox, None)
+                    dest_pos = child_comps[dest].in_pos(inbox, source_pos)
+                    source_pos = child_comps[src].out_pos(outbox, dest_pos)
+                line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(
+                    self.mapFromScene(source_pos), self.mapFromScene(dest_pos)
+                    ), self)
         self.scene().update_scene_rect(no_shrink=True)
 
 
@@ -973,43 +967,34 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         if ComponentNetwork:
             logger.info('New style network')
             network = ComponentNetwork()
-            comps = {}
-            for name, comp in network._compound_children.items():
-                kw = {'config': comp.get_config()}
-                if name in component_expanded:
-                    kw['expanded'] = component_expanded[name]
-                comps[name] = self.new_component(
-                    name, comp,
-                    QtCore.QPointF(*component_positions[name]), **kw)
-            for source, targets in network._compound_linkages.items():
-                src, outbox = source
-                for dest, inbox in targets:
-                    link = ComponentLink(comps[src], outbox, comps[dest], inbox)
-                    self.addItem(link)
         elif Network:
             logger.info('Old style network')
-            network = Network()
-            comps = {}
-            for name, comp in network.components.items():
-                kw = {'config': eval(comp['config'])}
+            factory = Network()
+            network = factory.make()
+            network.positions = {}
+            network.expanded = {}
+            for name, comp in factory.components.items():
+                network.positions[name] = comp['pos']
                 if 'expanded' in comp:
-                    kw['expanded'] = comp['expanded']
-                comps[name] = self.new_component(
-                    name, eval(comp['class'])(),
-                    QtCore.QPointF(*comp['pos']), **kw)
-            for source in network.linkages:
-                src, outbox = source
-                targets = network.linkages[source]
-                if isinstance(targets[0], six.string_types):
-                    # not a list of pairs, so make it into one
-                    targets = zip(targets[0::2], targets[1::2])
-                for dest, inbox in targets:
-                    link = ComponentLink(comps[src], outbox, comps[dest], inbox)
-                    self.addItem(link)
+                    network.expanded[name] = comp['expanded']
         else:
             # not a recognised script
             logger.error('Script not recognised')
             return
+        comps = {}
+        # add component icons
+        for name, comp in network._compound_children.items():
+            kw = {'config': comp.get_config()}
+            if name in network.expanded:
+                kw['expanded'] = network.expanded[name]
+            comps[name] = self.new_component(
+                name, comp, QtCore.QPointF(*network.positions[name]), **kw)
+        # add link icons
+        for name in comps:
+            for ((src, outbox),
+                 (dest, inbox)) in network.output_connections(name):
+                link = ComponentLink(comps[src], outbox, comps[dest], inbox)
+                self.addItem(link)
         self.views()[0].centerOn(self.itemsBoundingRect().center())
 
     def set_config(self, cnf, key, value):
@@ -1048,10 +1033,10 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                     (child.dest.name, child.inbox))
         linkages=('\n' + (' ' * 24)).join(pprint.pformat(
             dict(linkages), indent=0, width=80-24).splitlines())
-        positions=('\n' + (' ' * 23)).join(pprint.pformat(
-            positions, indent=0, width=80-23).splitlines())
-        expanded=('\n' + (' ' * 2)).join(pprint.pformat(
-            expanded, indent=0, width=80-22, compact=True).splitlines())
+        positions=('\n' + (' ' * 17)).join(pprint.pformat(
+            positions, indent=0, width=80-17).splitlines())
+        expanded=('\n' + (' ' * 16)).join(pprint.pformat(
+            expanded, indent=0, width=80-16, compact=True).splitlines())
         modules.sort()
         with open(file_name, 'w') as of:
             of.write("""#!/usr/bin/env python
@@ -1068,8 +1053,12 @@ import logging
                 of.write('import %s\n' % module)
             of.write("""
 class ComponentNetwork(Compound):
-    def __init__(self, config={}, **kwds):
-        super(ComponentNetwork, self).__init__(""")
+    positions = {positions}
+    expanded = {expanded}
+
+    def __init__(self, config={{}}, **kwds):
+        super(ComponentNetwork, self).__init__("""
+                     .format(positions=positions, expanded=expanded))
             for name, component in components.items():
                 of.write("""
             {name} = {class}(
@@ -1078,12 +1067,9 @@ class ComponentNetwork(Compound):
             linkages = {linkages},
             config = config, **kwds)
 
-component_positions = {positions}
-
-component_expanded = {expanded}
-
 if __name__ == '__main__':
-""".format(positions=positions, expanded=expanded, linkages=linkages))
+"""
+                     .format(linkages=linkages))
             if with_qt:
                 of.write('    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)\n'
                          '    app = QtWidgets.QApplication(sys.argv)\n')
