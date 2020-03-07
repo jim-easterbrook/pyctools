@@ -739,10 +739,10 @@ class CompoundIcon(BasicComponentIcon):
         for child in self.childItems():
             self.scene().removeItem(child)
         child_comps = {}
-        if self.expanded and self.obj._compound_children:
+        if self.expanded and self.obj.components():
             # create components and get max size
             dx, dy = 0, 0
-            for name, obj in self.obj._compound_children.items():
+            for name, obj in self.obj.components():
                 child = self.scene().new_component(
                     name, obj, QtCore.QPointF(0, 0), parent=self)
                 child.setEnabled(False)
@@ -983,7 +983,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             return
         comps = {}
         # add component icons
-        for name, comp in network._compound_children.items():
+        for name, comp in network.components():
             kw = {'config': comp.get_config()}
             if name in network.expanded:
                 kw['expanded'] = network.expanded[name]
