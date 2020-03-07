@@ -53,7 +53,7 @@ with the :py:meth:`~ConfigMixin.get_config` and
 
 Or, more simply::
 
-    resize.set_config({'xup': 3, 'xdown': 4})
+    resize.set_config(xup=3, xdown=4)
 
 Note that these methods are thread-safe and make a copy of the
 configuration tree. This ensures that all your configuration changes
@@ -88,8 +88,12 @@ logger = logging.getLogger(__name__)
 class ConfigLeafNode(object):
     """Mixin class for configuration nodes.
 
+    This can be used with immutable Python types such as :py:class:`int`
+    or :py:class:`str` to define a class that stores data of the Python
+    type but has some extra attributes and methods.
+
     """
-    def __new__(cls, value, default, **kwds):
+    def __new__(cls, value=None, default=None, **kwds):
         self = super(ConfigLeafNode, cls).__new__(cls, value)
         if default is None:
             default = value
@@ -99,21 +103,29 @@ class ConfigLeafNode(object):
         return self
 
     def parser_add(self, parser, key):
+        """Add information to a :py:mod:`argparse` CLI parser.
+
+        """
         parser.add_argument(
             '--' + key, default=self, help=' ', **self._parser_kw())
 
     def update(self, value):
-        """Adjust the config item's value."""
+        """Adjust the config item's value.
+
+        """
         return self.__class__(value, **self.__dict__)
 
     def copy(self):
+        """Copy the config item's value.
+
+        """
         return self.update(self)
 
 
 class ConfigInt(ConfigLeafNode, int):
     """Integer configuration node.
 
-    :keyword object value: Initial value of the node.
+    :keyword int value: Initial value of the node.
 
     :keyword int default: Default value of the node.
 
@@ -168,7 +180,7 @@ class ConfigBool(ConfigInt):
 class ConfigFloat(ConfigLeafNode, float):
     """Float configuration node.
 
-    :keyword object value: Initial value of the node.
+    :keyword float value: Initial value of the node.
 
     :keyword float default: Default value of the node.
 
@@ -201,14 +213,11 @@ class ConfigFloat(ConfigLeafNode, float):
 class ConfigStr(ConfigLeafNode, six.text_type):
     """String configuration node.
 
-    :keyword object value: Initial value of the node.
+    :keyword str value: Initial value of the node.
 
     :keyword str default: Default value of the node.
 
     """
-    def __new__(cls, value='', default=None, **kwds):
-        return super(ConfigStr, cls).__new__(cls, value, default, **kwds)
-
     @staticmethod
     def _parser_kw():
         return {'metavar' : 'str'}
@@ -217,7 +226,7 @@ class ConfigStr(ConfigLeafNode, six.text_type):
 class ConfigPath(ConfigStr):
     """File pathname configuration node.
 
-    :keyword object value: Initial value of the node.
+    :keyword str value: Initial value of the node.
 
     :keyword str default: Default value of the node.
 
@@ -235,9 +244,6 @@ class ConfigPath(ConfigStr):
                 if not os.path.isdir(directory):
                     logger.warning('directory "%s" does not exist', directory)
         return super(ConfigPath, cls).__new__(cls, value, default, exists=exists)
-
-    def __getnewargs__(self):
-        return six.text_type(self), self.default, self.exists
 
     @staticmethod
     def _parser_kw():
@@ -263,18 +269,15 @@ class ConfigEnum(ConfigStr):
     """
     def __new__(cls, value=None, default=None, choices=[], extendable=False):
         choices = list(choices)
-        if not value:
+        if choices and not value:
             value = choices[0]
-        elif value not in choices:
+        elif value and value not in choices:
             if extendable:
                 choices.append(value)
             else:
                 raise ValueError(str(value))
         return super(ConfigEnum, cls).__new__(
             cls, value, default, choices=choices, extendable=extendable)
-
-    def __getnewargs__(self):
-        return six.text_type(self), self.default, self.choices, self.extendable
 
     def _parser_kw(self):
         result = {'metavar' : 'str'}
@@ -456,7 +459,7 @@ class ConfigMixin(object):
         # make copy to allow changes without affecting running component
         return self.config.copy()
 
-    def set_config(self, config):
+    def set_config(self, config={}, **kwds):
         """Update the component's configuration.
 
         Use the :py:meth:`get_config` method to get a copy of the
@@ -473,6 +476,7 @@ class ConfigMixin(object):
         cfg = self.get_config()
         # update it with new values
         cfg = cfg.update(config)
+        cfg = cfg.update(kwds)
         # put modified copy on queue for running component
         self._configmixin_queue.append(cfg)
         # notify component, using thread safe method
@@ -488,8 +492,5 @@ class ConfigMixin(object):
         :rtype: bool
 
         """
-        result = False
         while self._configmixin_queue:
             self.config = self._configmixin_queue.popleft()
-            result = True
-        return result
