@@ -368,6 +368,10 @@ class ConfigParent(object):
         for key in self:
             yield self[key]
 
+    def keys(self):
+        for key in self:
+            yield key
+
     def audit_string(self):
         result = ''
         details = []
