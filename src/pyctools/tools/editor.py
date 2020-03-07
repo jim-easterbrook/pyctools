@@ -492,16 +492,15 @@ def strip_sphinx_domains(text):
 class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
     width = 100
 
-    def __init__(self, name, klass, obj, **kwds):
+    def __init__(self, name, obj, **kwds):
         super(BasicComponentIcon, self).__init__(**kwds)
         self.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable |
                       QtWidgets.QGraphicsItem.ItemIsSelectable |
                       QtWidgets.QGraphicsItem.ItemSendsGeometryChanges)
         self.name = name
-        self.klass = klass
         self.obj = obj
         self.config_dialog = None
-        help_text = inspect.getdoc(self.klass)
+        help_text = inspect.getdoc(self.obj)
         if help_text:
             help_text = strip_sphinx_domains(help_text)
             help_text = docutils.core.publish_parts(
@@ -509,7 +508,8 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         else:
             help_text = '<p>Undocumented</p>'
         help_text = '<h4>{}()</h4>\n{}\n<p>File: {}</p>'.format(
-            self.klass.__name__, help_text, inspect.getfile(self.klass))
+            self.obj.__class__.__name__, help_text,
+            inspect.getfile(self.obj.__class__))
         self.setToolTip(help_text)
         # context menu actions
         self.context_menu_actions = [
@@ -536,7 +536,8 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
             # expanded compound component, put type on same line
             max_width -= self.name_label.boundingRect().width() + 5
         text.setText(QtGui.QFontMetrics(font).elidedText(
-            self.klass.__name__ + '()', QtCore.Qt.ElideRight, max_width))
+            self.obj.__class__.__name__ + '()',
+            QtCore.Qt.ElideRight, max_width))
         text_width = text.boundingRect().width()
         if self.width > 120:
             text.setPos((self.width - 5) - text_width, 9)
@@ -575,7 +576,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         if not self.isEnabled():
             return
         config = self.obj.get_config()
-        self.obj = self.klass()
+        self.obj = self.obj.__class__()
         self.obj.set_config(config)
 
     @catch_all
@@ -645,9 +646,9 @@ class ComponentIcon(BasicComponentIcon):
 
 
 class CompoundIcon(BasicComponentIcon):
-    def __init__(self, name, klass, obj, expanded=False, **kwds):
+    def __init__(self, name, obj, expanded=False, **kwds):
         self.expanded = expanded
-        super(CompoundIcon, self).__init__(name, klass, obj, **kwds)
+        super(CompoundIcon, self).__init__(name, obj, **kwds)
         self.context_menu_actions.append(
             ('Expand/contract', self.expand_contract))
 
@@ -743,8 +744,7 @@ class CompoundIcon(BasicComponentIcon):
             dx, dy = 0, 0
             for name, obj in self.obj._compound_children.items():
                 child = self.scene().new_component(
-                    name, obj.__class__, QtCore.QPointF(0, 0),
-                    parent=self, obj=obj)
+                    name, obj, QtCore.QPointF(0, 0), parent=self)
                 child.setEnabled(False)
                 dx = max(dx, child.width + 40)
                 dy = max(dy, child.height + 20)
@@ -881,19 +881,17 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             n += 1
         name = self.get_unique_name(name)
         if name:
-            self.new_component(name, klass, position)
+            self.new_component(name, klass(), position)
 
-    def new_component(self, name, klass, position, expanded=False,
-                      parent=None, obj=None, config={}):
-        if not obj:
-            obj = klass(config=config)
-        elif config:
+    def new_component(self, name, obj, position, expanded=False,
+                      parent=None, config={}):
+        if config:
             obj.set_config(config)
         if isinstance(obj, Compound):
             component = CompoundIcon(
-                name, klass, obj, parent=parent, expanded=expanded)
+                name, obj, parent=parent, expanded=expanded)
         else:
-            component = ComponentIcon(name, klass, obj, parent=parent)
+            component = ComponentIcon(name, obj, parent=parent)
         component.setPos(position)
         if not parent:
             self.addItem(component)
@@ -981,8 +979,8 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                 if name in component_expanded:
                     kw['expanded'] = component_expanded[name]
                 comps[name] = self.new_component(
-                    name, comp.__class__,
-                    QtCore.QPointF(*component_positions[name]), obj=comp, **kw)
+                    name, comp,
+                    QtCore.QPointF(*component_positions[name]), **kw)
             for source, targets in network._compound_linkages.items():
                 src, outbox = source
                 for dest, inbox in targets:
@@ -997,7 +995,8 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                 if 'expanded' in comp:
                     kw['expanded'] = comp['expanded']
                 comps[name] = self.new_component(
-                    name, eval(comp['class']), QtCore.QPointF(*comp['pos']), **kw)
+                    name, eval(comp['class'])(),
+                    QtCore.QPointF(*comp['pos']), **kw)
             for source in network.linkages:
                 src, outbox = source
                 targets = network.linkages[source]
@@ -1029,12 +1028,13 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         with_qt = False
         for child in self.items():
             if isinstance(child, BasicComponentIcon) and child.isEnabled():
-                mod = child.klass.__module__
+                class_ = child.obj.__class__
+                mod = class_.__module__
                 config = dict(child.obj.get_config())
                 config=('\n' + (' ' * 24)).join(pprint.pformat(
                     config, indent=0, width=80-24, compact=True).splitlines())
                 components[child.name] = {
-                    'class' : '{}.{}'.format(mod, child.klass.__name__),
+                    'class' : '{}.{}'.format(mod, class_.__name__),
                     'config' : config,
                     }
                 positions[child.name] = (child.pos().x(), child.pos().y())
