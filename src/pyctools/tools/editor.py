@@ -810,12 +810,66 @@ class CompoundIcon(BasicComponentIcon):
         self.scene().update_scene_rect(no_shrink=True)
 
 
+class NetworkManager(QtCore.QObject):
+    def __init__(self, *args, **kwds):
+        super(NetworkManager, self).__init__(*args, **kwds)
+        # start with an empty compound component
+        self.network = Compound()
+        self.positions = {}
+        self.expanded = {}
+
+    def components(self):
+        yield from self.network.components()
+
+    def connections(self):
+        yield from self.network.all_connections()
+
+    def load_script(self, file_name):
+        global ComponentNetwork, Network
+
+        with open(file_name) as f:
+            code = f.read()
+        if 'Network' not in code:
+            # not a recognised script
+            logger.error('Script not recognised')
+            return False
+        code = compile(code, file_name, 'exec')
+        ComponentNetwork = None
+        Network = None
+        try:
+            exec(code, globals())
+        except ImportError as ex:
+            logger.error(str(ex))
+            return False
+        if ComponentNetwork:
+            logger.info('New style network')
+            self.network = ComponentNetwork()
+            self.positions = self.network.positions
+            self.expanded = self.network.expanded
+        elif Network:
+            logger.info('Old style network')
+            factory = Network()
+            self.network = factory.make()
+            self.positions = {}
+            self.expanded = {}
+            for name, comp in factory.components.items():
+                self.positions[name] = comp['pos']
+                if 'expanded' in comp:
+                    self.expanded[name] = comp['expanded']
+        else:
+            # not a recognised script
+            logger.error('Script not recognised')
+            return False
+        return True
+
+
 class NetworkArea(QtWidgets.QGraphicsScene):
     min_size = QtCore.QRectF(0, 0, 800, 600)
 
     def __init__(self, **kwds):
         super(NetworkArea, self).__init__(**kwds)
         self.setSceneRect(self.min_size)
+        self.network_manager = NetworkManager(parent=self)
 
     def dragEnterEvent(self, event):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
@@ -947,54 +1001,23 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                 child.obj.stop()
 
     def load_script(self, file_name):
-        global ComponentNetwork, Network
-
-        with open(file_name) as f:
-            code = f.read()
-        if 'Network' not in code:
-            # not a recognised script
-            logger.error('Script not recognised')
+        if not self.network_manager.load_script(file_name):
             return
-        code = compile(code, file_name, 'exec')
-        ComponentNetwork = None
-        Network = None
-        try:
-            exec(code, globals())
-        except ImportError as ex:
-            logger.error(str(ex))
         for child in self.items():
             self.removeItem(child)
-        if ComponentNetwork:
-            logger.info('New style network')
-            network = ComponentNetwork()
-        elif Network:
-            logger.info('Old style network')
-            factory = Network()
-            network = factory.make()
-            network.positions = {}
-            network.expanded = {}
-            for name, comp in factory.components.items():
-                network.positions[name] = comp['pos']
-                if 'expanded' in comp:
-                    network.expanded[name] = comp['expanded']
-        else:
-            # not a recognised script
-            logger.error('Script not recognised')
-            return
         comps = {}
         # add component icons
-        for name, comp in network.components():
+        for name, comp in self.network_manager.components():
             kw = {'config': comp.get_config()}
-            if name in network.expanded:
-                kw['expanded'] = network.expanded[name]
+            if name in self.network_manager.expanded:
+                kw['expanded'] = self.network_manager.expanded[name]
             comps[name] = self.new_component(
-                name, comp, QtCore.QPointF(*network.positions[name]), **kw)
+                name, comp,
+                QtCore.QPointF(*self.network_manager.positions[name]), **kw)
         # add link icons
-        for name in comps:
-            for ((src, outbox),
-                 (dest, inbox)) in network.output_connections(name):
-                link = ComponentLink(comps[src], outbox, comps[dest], inbox)
-                self.addItem(link)
+        for ((src, outbox), (dest, inbox)) in self.network_manager.connections():
+            link = ComponentLink(comps[src], outbox, comps[dest], inbox)
+            self.addItem(link)
         self.views()[0].centerOn(self.itemsBoundingRect().center())
 
     def set_config(self, cnf, key, value):
