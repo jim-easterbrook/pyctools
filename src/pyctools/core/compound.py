@@ -128,14 +128,15 @@ class Compound(object):
         if config:
             self.set_config(config)
         # set up linkages
-        self._compound_linkages = linkages
+        self._compound_linkages = {}
         self._compound_outputs = {}
         for source in linkages:
             src, outbox = source
             targets = linkages[source]
             if isinstance(targets[0], six.string_types):
                 # not a list of pairs, so make it into one
-                targets = zip(targets[0::2], targets[1::2])
+                targets = list(zip(targets[0::2], targets[1::2]))
+            self._compound_linkages[source] = targets
             for dest, inbox in targets:
                 if src == 'self':
                     if hasattr(self, outbox):
@@ -233,8 +234,6 @@ class Compound(object):
         for input_name in self._compound_children[name].inputs:
             dest = name, input_name
             for src, dests in self._compound_linkages.items():
-                if isinstance(dests[0], six.string_types):
-                    dests = zip(dests[0::2], dests[1::2])
                 if dest in dests:
                     yield src, dest
 
@@ -251,7 +250,15 @@ class Compound(object):
             src = name, output_name
             if src in self._compound_linkages:
                 dests = self._compound_linkages[src]
-                if isinstance(dests[0], six.string_types):
-                    dests = zip(dests[0::2], dests[1::2])
                 for dest in dests:
                     yield src, dest
+
+    def all_connections(self):
+        """Yield ordered list of all connections within the component.
+
+        Each result is a ((component, output), (component, input)) tuple.
+
+        """
+        for src, dests in self._compound_linkages.items():
+            for dest in dests:
+                yield src, dest
