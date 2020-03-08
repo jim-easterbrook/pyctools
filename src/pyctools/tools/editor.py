@@ -824,6 +824,12 @@ class NetworkManager(QtCore.QObject):
     def connections(self):
         yield from self.network.all_connections()
 
+    def new_component(self, name, component, position, expanded=False):
+        self.network._compound_children[name] = component
+        self.network.config[name] = component.get_config()
+        self.positions[name] = position
+        self.expanded[name] = expanded
+
     def load_script(self, file_name):
         global ComponentNetwork, Network
 
@@ -894,7 +900,18 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         self.parent().status.clear()
         data = event.mimeData().data(_COMP_MIMETYPE).data()
         klass = cPickle.loads(data)
-        self.add_component(klass, event.scenePos())
+        base_name = re.sub('[^A-Z]', '', klass.__name__).lower()
+        name = base_name
+        n = 0
+        while self.name_in_use(name):
+            name = base_name + str(n)
+            n += 1
+        name = self.get_unique_name(name)
+        if name:
+            obj = klass()
+            position = event.scenePos()
+            self.network_manager.new_component(name, obj, position, False)
+            self.new_component(name, obj, position)
 
     def keyPressEvent(self, event):
         if not event.matches(QtGui.QKeySequence.Delete):
@@ -920,21 +937,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             rect = rect.united(self.sceneRect())
         self.setSceneRect(rect)
 
-    def add_component(self, klass, position):
-        base_name = re.sub('[^A-Z]', '', klass.__name__).lower()
-        name = base_name
-        n = 0
-        while self.name_in_use(name):
-            name = base_name + str(n)
-            n += 1
-        name = self.get_unique_name(name)
-        if name:
-            self.new_component(name, klass(), position)
-
-    def new_component(self, name, obj, position, expanded=False,
-                      parent=None, config={}):
-        if config:
-            obj.set_config(config)
+    def new_component(self, name, obj, position, expanded=False, parent=None):
         if isinstance(obj, Compound):
             component = CompoundIcon(
                 name, obj, parent=parent, expanded=expanded)
@@ -1008,7 +1011,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         comps = {}
         # add component icons
         for name, comp in self.network_manager.components():
-            kw = {'config': comp.get_config()}
+            kw = {}
             if name in self.network_manager.expanded:
                 kw['expanded'] = self.network_manager.expanded[name]
             comps[name] = self.new_component(
