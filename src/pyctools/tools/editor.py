@@ -830,6 +830,21 @@ class NetworkManager(QtCore.QObject):
         self.positions[name] = position
         self.expanded[name] = expanded
 
+    def delete_component(self, name):
+        del self.network._compound_children[name]
+        del self.network.config[name]
+        del self.positions[name]
+        if name in self.expanded:
+            del self.expanded[name]
+        for src, dests in list(self.network._compound_linkages.items()):
+            src_name, outbox = src
+            if src_name == name:
+                del self.network._compound_linkages[src]
+            for dest in dests:
+                dest_name, inbox = dest
+                if dest_name == name:
+                    dests.remove(dest)
+
     def load_script(self, file_name):
         global ComponentNetwork, Network
 
@@ -924,6 +939,8 @@ class NetworkArea(QtWidgets.QGraphicsScene):
 
     def delete_child(self, child):
         if isinstance(child, BasicComponentIcon):
+            name = child.name
+            self.network_manager.delete_component(name)
             for link in self.matching_items(ComponentLink):
                 if link.source == child or link.dest == child:
                     self.removeItem(link)

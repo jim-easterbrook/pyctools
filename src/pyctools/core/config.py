@@ -354,6 +354,16 @@ class ConfigParent(object):
             return
         self._value[key] = value
 
+    def __delitem__(self, key):
+        if key in self._config_map:
+            del self._config_map[key]
+            return
+        child, sep, grandchild = key.partition('.')
+        if grandchild:
+            del self[child][grandchild]
+            return
+        del self._value[key]
+
     def __iter__(self):
         if self._config_map:
             yield from self._config_map
