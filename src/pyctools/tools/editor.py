@@ -739,10 +739,10 @@ class CompoundIcon(BasicComponentIcon):
         for child in self.childItems():
             self.scene().removeItem(child)
         child_comps = {}
-        if self.expanded and self.obj.components():
+        if self.expanded and self.obj._compound_children:
             # create components and get max size
             dx, dy = 0, 0
-            for name, obj in self.obj.components():
+            for name, obj in self.obj._compound_children.items():
                 child = self.scene().new_component(
                     name, obj, QtCore.QPointF(0, 0), parent=self)
                 child.setEnabled(False)
@@ -810,87 +810,12 @@ class CompoundIcon(BasicComponentIcon):
         self.scene().update_scene_rect(no_shrink=True)
 
 
-class NetworkManager(QtCore.QObject):
-    def __init__(self, *args, **kwds):
-        super(NetworkManager, self).__init__(*args, **kwds)
-        # start with an empty compound component
-        self.network = Compound()
-        self.positions = {}
-        self.expanded = {}
-
-    def components(self):
-        yield from self.network.components()
-
-    def connections(self):
-        yield from self.network.all_connections()
-
-    def new_component(self, name, component, position, expanded=False):
-        self.network._compound_children[name] = component
-        self.network.config[name] = component.get_config()
-        self.positions[name] = position
-        self.expanded[name] = expanded
-
-    def delete_component(self, name):
-        del self.network._compound_children[name]
-        del self.network.config[name]
-        del self.positions[name]
-        if name in self.expanded:
-            del self.expanded[name]
-        for src, dests in list(self.network._compound_linkages.items()):
-            src_name, outbox = src
-            if src_name == name:
-                del self.network._compound_linkages[src]
-            for dest in dests:
-                dest_name, inbox = dest
-                if dest_name == name:
-                    dests.remove(dest)
-
-    def load_script(self, file_name):
-        global ComponentNetwork, Network
-
-        with open(file_name) as f:
-            code = f.read()
-        if 'Network' not in code:
-            # not a recognised script
-            logger.error('Script not recognised')
-            return False
-        code = compile(code, file_name, 'exec')
-        ComponentNetwork = None
-        Network = None
-        try:
-            exec(code, globals())
-        except ImportError as ex:
-            logger.error(str(ex))
-            return False
-        if ComponentNetwork:
-            logger.info('New style network')
-            self.network = ComponentNetwork()
-            self.positions = self.network.positions
-            self.expanded = self.network.expanded
-        elif Network:
-            logger.info('Old style network')
-            factory = Network()
-            self.network = factory.make()
-            self.positions = {}
-            self.expanded = {}
-            for name, comp in factory.components.items():
-                self.positions[name] = comp['pos']
-                if 'expanded' in comp:
-                    self.expanded[name] = comp['expanded']
-        else:
-            # not a recognised script
-            logger.error('Script not recognised')
-            return False
-        return True
-
-
 class NetworkArea(QtWidgets.QGraphicsScene):
     min_size = QtCore.QRectF(0, 0, 800, 600)
 
     def __init__(self, **kwds):
         super(NetworkArea, self).__init__(**kwds)
         self.setSceneRect(self.min_size)
-        self.network_manager = NetworkManager(parent=self)
 
     def dragEnterEvent(self, event):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
@@ -915,18 +840,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         self.parent().status.clear()
         data = event.mimeData().data(_COMP_MIMETYPE).data()
         klass = cPickle.loads(data)
-        base_name = re.sub('[^A-Z]', '', klass.__name__).lower()
-        name = base_name
-        n = 0
-        while self.name_in_use(name):
-            name = base_name + str(n)
-            n += 1
-        name = self.get_unique_name(name)
-        if name:
-            obj = klass()
-            position = event.scenePos()
-            self.network_manager.new_component(name, obj, position, False)
-            self.new_component(name, obj, position)
+        self.add_component(klass, event.scenePos())
 
     def keyPressEvent(self, event):
         if not event.matches(QtGui.QKeySequence.Delete):
@@ -939,8 +853,6 @@ class NetworkArea(QtWidgets.QGraphicsScene):
 
     def delete_child(self, child):
         if isinstance(child, BasicComponentIcon):
-            name = child.name
-            self.network_manager.delete_component(name)
             for link in self.matching_items(ComponentLink):
                 if link.source == child or link.dest == child:
                     self.removeItem(link)
@@ -954,7 +866,21 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             rect = rect.united(self.sceneRect())
         self.setSceneRect(rect)
 
-    def new_component(self, name, obj, position, expanded=False, parent=None):
+    def add_component(self, klass, position):
+        base_name = re.sub('[^A-Z]', '', klass.__name__).lower()
+        name = base_name
+        n = 0
+        while self.name_in_use(name):
+            name = base_name + str(n)
+            n += 1
+        name = self.get_unique_name(name)
+        if name:
+            self.new_component(name, klass(), position)
+
+    def new_component(self, name, obj, position, expanded=False,
+                      parent=None, config={}):
+        if config:
+            obj.set_config(config)
         if isinstance(obj, Compound):
             component = CompoundIcon(
                 name, obj, parent=parent, expanded=expanded)
@@ -1021,23 +947,54 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                 child.obj.stop()
 
     def load_script(self, file_name):
-        if not self.network_manager.load_script(file_name):
+        global ComponentNetwork, Network
+
+        with open(file_name) as f:
+            code = f.read()
+        if 'Network' not in code:
+            # not a recognised script
+            logger.error('Script not recognised')
             return
+        code = compile(code, file_name, 'exec')
+        ComponentNetwork = None
+        Network = None
+        try:
+            exec(code, globals())
+        except ImportError as ex:
+            logger.error(str(ex))
         for child in self.items():
             self.removeItem(child)
+        if ComponentNetwork:
+            logger.info('New style network')
+            network = ComponentNetwork()
+        elif Network:
+            logger.info('Old style network')
+            factory = Network()
+            network = factory.make()
+            network.positions = {}
+            network.expanded = {}
+            for name, comp in factory.components.items():
+                network.positions[name] = comp['pos']
+                if 'expanded' in comp:
+                    network.expanded[name] = comp['expanded']
+        else:
+            # not a recognised script
+            logger.error('Script not recognised')
+            return
         comps = {}
         # add component icons
-        for name, comp in self.network_manager.components():
-            kw = {}
-            if name in self.network_manager.expanded:
-                kw['expanded'] = self.network_manager.expanded[name]
+        for name, comp in network._compound_children.items():
+            kw = {'config': comp.get_config()}
+            if name in network.expanded:
+                kw['expanded'] = network.expanded[name]
             comps[name] = self.new_component(
-                name, comp,
-                QtCore.QPointF(*self.network_manager.positions[name]), **kw)
+                name, comp, QtCore.QPointF(*network.positions[name]), **kw)
         # add link icons
-        for ((src, outbox), (dest, inbox)) in self.network_manager.connections():
-            link = ComponentLink(comps[src], outbox, comps[dest], inbox)
-            self.addItem(link)
+        for name in comps:
+            for ((src, outbox),
+                 (dest, inbox)) in network.output_connections(name):
+                link = ComponentLink(comps[src], outbox, comps[dest], inbox)
+                self.addItem(link)
         self.views()[0].centerOn(self.itemsBoundingRect().center())
 
     def set_config(self, cnf, key, value):
