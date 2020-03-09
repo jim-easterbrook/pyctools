@@ -268,16 +268,18 @@ config_widget = {
     }
 
 class ConfigDialog(QtWidgets.QDialog):
+    new_config = QtCore.pyqtSignal(six.text_type, dict)
+
     def __init__(self, parent, **kwds):
         super(ConfigDialog, self).__init__(
             flags=QtCore.Qt.WindowStaysOnTopHint, **kwds)
         self.setWindowTitle('%s configuration' % parent.name)
         self.component = parent
-        self.config = self.component.obj.get_config()
         self.setLayout(QtWidgets.QGridLayout())
         self.layout().setColumnStretch(0, 1)
         # central area
-        self.main_area = config_widget[type(self.config)](self.config)
+        self.main_area = config_widget[
+            type(self.component.config)](self.component.config)
         self.layout().addWidget(self.main_area, 0, 0, 1, 4)
         # buttons
         cancel_button = QtWidgets.QPushButton('Cancel')
@@ -300,7 +302,8 @@ class ConfigDialog(QtWidgets.QDialog):
     @catch_all
     def apply_changes(self):
         config = self.main_area.get_value()
-        self.component.obj.set_config(config)
+        self.component.config = self.component.config.update(config)
+        self.new_config.emit(self.component.name, dict(self.component.config))
 
 
 class ComponentLink(QtWidgets.QGraphicsItemGroup):
@@ -498,6 +501,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
                       QtWidgets.QGraphicsItem.ItemSendsGeometryChanges)
         self.name = name
         self.obj = obj
+        self.config = self.obj.get_config()
         self.config_dialog = None
         help_text = inspect.getdoc(self.obj)
         if help_text:
@@ -518,7 +522,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
             ]
 
     def get_data(self):
-        return self.name, self.obj.__class__, dict(self.obj.get_config())
+        return self.name, self.obj.__class__, dict(self.config)
 
     def draw_icon(self):
         # name label
@@ -594,6 +598,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
     def do_config(self):
         if not (self.config_dialog and self.config_dialog.isVisible()):
             self.config_dialog = ConfigDialog(self)
+            self.config_dialog.new_config.connect(self.scene().new_config)
             self.config_dialog.show()
         self.config_dialog.raise_()
         self.config_dialog.activateWindow()
@@ -883,6 +888,12 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         component.draw_icon()
         self.update_scene_rect()
         return component
+
+    @QtCore.pyqtSlot(six.text_type, dict)
+    @catch_all
+    def new_config(self, name, config):
+        if self.runnable:
+            self.runnable.set_config({name: config})
 
     def rename_component(self, component):
         old_name = component.name
