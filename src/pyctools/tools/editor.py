@@ -313,7 +313,9 @@ class ComponentLink(QtWidgets.QGraphicsItemGroup):
         self.dest = dest
         self.inbox = inbox
         self.components = []
-        self.renew()
+
+    def get_data(self):
+        return self.source.name, self.outbox, self.dest.name, self.inbox
 
     @catch_all
     def itemChange(self, change, value):
@@ -331,9 +333,6 @@ class ComponentLink(QtWidgets.QGraphicsItemGroup):
                     pen.setStyle(QtCore.Qt.SolidLine)
                 item.setPen(pen)
         return super(ComponentLink, self).itemChange(change, value)
-
-    def renew(self):
-        self.source.connect(self.outbox, self.dest, self.inbox)
 
     def redraw(self):
         for item in self.components:
@@ -518,6 +517,9 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
             ('Configure', self.do_config),
             ]
 
+    def get_data(self):
+        return self.name, self.obj.__class__, dict(self.obj.get_config())
+
     def draw_icon(self):
         # name label
         self.name_label = QtWidgets.QGraphicsSimpleTextItem(self.name, self)
@@ -566,18 +568,6 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
 
     def out_pos(self, name, link_pos):
         return self.outputs[name].connect_pos()
-
-    def connect(self, outbox, dest, inbox):
-        if not self.isEnabled():
-            return
-        self.obj.connect(outbox, getattr(dest.obj, inbox))
-
-    def renew(self):
-        if not self.isEnabled():
-            return
-        config = self.obj.get_config()
-        self.obj = self.obj.__class__()
-        self.obj.set_config(config)
 
     @catch_all
     def contextMenuEvent(self, event):
@@ -663,7 +653,7 @@ class CompoundIcon(BasicComponentIcon):
         x = pos.x()
         y = pos.y()
         for child in self.scene().matching_items(BasicComponentIcon):
-            if child == self or not child.isEnabled():
+            if child == self:
                 continue
             pos = child.scenePos()
             move = [0, 0]
@@ -816,6 +806,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
     def __init__(self, **kwds):
         super(NetworkArea, self).__init__(**kwds)
         self.setSceneRect(self.min_size)
+        self.runnable = None
 
     def dragEnterEvent(self, event):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
@@ -914,37 +905,37 @@ class NetworkArea(QtWidgets.QGraphicsScene):
 
     def name_in_use(self, name):
         for child in self.matching_items(BasicComponentIcon):
-            if child.name == name and child.isEnabled():
+            child_name, class_, config = child.get_data()
+            if child_name == name:
                 return True
         return False
 
     def matching_items(self, klass):
         for child in self.items():
-            if isinstance(child, klass):
+            if child.isEnabled() and isinstance(child, klass):
                 yield child
 
     @QtCore.pyqtSlot()
     @catch_all
     def run_graph(self):
-        # replace components with fresh instances
+        # create compound component and run it
+        components = {}
         for child in self.matching_items(BasicComponentIcon):
-            if child.isEnabled():
-                child.obj.stop()
-                child.renew()
-        # rebuild connections
+            name, class_, config = child.get_data()
+            components[name] = class_(config=config)
+        linkages = defaultdict(list)
         for child in self.matching_items(ComponentLink):
-            child.renew()
-        # run it!
-        for child in self.matching_items(BasicComponentIcon):
-            if child.isEnabled():
-                child.obj.start()
+            src, outbox, dest, inbox = child.get_data()
+            linkages[src, outbox].append((dest, inbox))
+        self.runnable = Compound(linkages=linkages, **components)
+        self.runnable.start()
 
     @QtCore.pyqtSlot()
     @catch_all
     def stop_graph(self):
-        for child in self.matching_items(BasicComponentIcon):
-            if child.isEnabled():
-                child.obj.stop()
+        if self.runnable:
+            self.runnable.stop()
+            self.runnable = None
 
     def load_script(self, file_name):
         global ComponentNetwork, Network
@@ -1007,36 +998,34 @@ class NetworkArea(QtWidgets.QGraphicsScene):
     def save_script(self, file_name, needs_qt):
         components = {}
         modules = []
-        linkages = defaultdict(list)
         positions = {}
         expanded = {}
         with_qt = False
-        for child in self.items():
-            if isinstance(child, BasicComponentIcon) and child.isEnabled():
-                class_ = child.obj.__class__
-                mod = class_.__module__
-                config = dict(child.obj.get_config())
-                config=('\n' + (' ' * 24)).join(pprint.pformat(
-                    config, indent=0, width=80-24, compact=True).splitlines())
-                components[child.name] = {
-                    'class' : '{}.{}'.format(mod, class_.__name__),
-                    'config' : config,
-                    }
-                positions[child.name] = (child.pos().x(), child.pos().y())
-                if isinstance(child, CompoundIcon):
-                    expanded[child.name] = child.expanded
-                if mod not in modules:
-                    modules.append(mod)
-                    with_qt = with_qt or needs_qt[mod]
-            elif isinstance(child, ComponentLink):
-                linkages[(child.source.name, child.outbox)].append(
-                    (child.dest.name, child.inbox))
-        linkages=('\n' + (' ' * 24)).join(pprint.pformat(
-            dict(linkages), indent=0, width=80-24).splitlines())
-        positions=('\n' + (' ' * 17)).join(pprint.pformat(
-            positions, indent=0, width=80-17).splitlines())
-        expanded=('\n' + (' ' * 16)).join(pprint.pformat(
-            expanded, indent=0, width=80-16, compact=True).splitlines())
+        for child in self.matching_items(BasicComponentIcon):
+            name, class_, config = child.get_data()
+            mod = class_.__module__
+            config=('\n' + (' ' * 23)).join(pprint.pformat(
+                config, width=80-23, compact=True).splitlines())
+            components[name] = {
+                'class' : '{}.{}'.format(mod, class_.__name__),
+                'config' : config,
+                }
+            positions[name] = (child.pos().x(), child.pos().y())
+            if isinstance(child, CompoundIcon):
+                expanded[name] = child.expanded
+            if mod not in modules:
+                modules.append(mod)
+                with_qt = with_qt or needs_qt[mod]
+        linkages = defaultdict(list)
+        for child in self.matching_items(ComponentLink):
+            src, outbox, dest, inbox = child.get_data()
+            linkages[src, outbox].append((dest, inbox))
+        linkages=('\n' + (' ' * 23)).join(pprint.pformat(
+            dict(linkages), width=80-23).splitlines())
+        positions=('\n' + (' ' * 16)).join(pprint.pformat(
+            positions, width=80-16).splitlines())
+        expanded=('\n' + (' ' * 15)).join(pprint.pformat(
+            expanded, width=80-15, compact=True).splitlines())
         modules.sort()
         with open(file_name, 'w') as of:
             of.write("""#!/usr/bin/env python
