@@ -58,6 +58,7 @@ class ImageResizerX(Compound):
                 ('self',   'input')  : ('resize', 'input'),
                 ('filgen', 'output') : ('resize', 'filter'),
                 ('resize', 'output') : ('self',   'output'),
+                ('resize', 'filter') : ('self',   'filter'),
                 }
             )
 
@@ -96,6 +97,7 @@ class ImageResizerY(Compound):
                 ('self',   'input')  : ('resize', 'input'),
                 ('filgen', 'output') : ('resize', 'filter'),
                 ('resize', 'output') : ('self',   'output'),
+                ('resize', 'filter') : ('self',   'filter'),
                 }
             )
 
@@ -148,5 +150,7 @@ class ImageResizer2D(Compound):
                 ('yresize', 'output') : ('xresize', 'input'),
                 ('xfilgen', 'output') : ('xresize', 'filter'),
                 ('xresize', 'output') : ('self',    'output'),
+                ('xresize', 'filter') : ('self',    'xfilter'),
+                ('yresize', 'filter') : ('self',    'yfilter'),
                 }
             )
