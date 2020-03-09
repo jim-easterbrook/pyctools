@@ -268,18 +268,15 @@ config_widget = {
     }
 
 class ConfigDialog(QtWidgets.QDialog):
-    new_config = QtCore.pyqtSignal(six.text_type, dict)
+    new_config = QtCore.pyqtSignal(dict)
 
-    def __init__(self, parent, **kwds):
+    def __init__(self, config, **kwds):
         super(ConfigDialog, self).__init__(
             flags=QtCore.Qt.WindowStaysOnTopHint, **kwds)
-        self.setWindowTitle('%s configuration' % parent.name)
-        self.component = parent
         self.setLayout(QtWidgets.QGridLayout())
         self.layout().setColumnStretch(0, 1)
         # central area
-        self.main_area = config_widget[
-            type(self.component.config)](self.component.config)
+        self.main_area = config_widget[type(config)](config)
         self.layout().addWidget(self.main_area, 0, 0, 1, 4)
         # buttons
         cancel_button = QtWidgets.QPushButton('Cancel')
@@ -301,9 +298,7 @@ class ConfigDialog(QtWidgets.QDialog):
     @QtCore.pyqtSlot()
     @catch_all
     def apply_changes(self):
-        config = self.main_area.get_value()
-        self.component.config = self.component.config.update(config)
-        self.new_config.emit(self.component.name, dict(self.component.config))
+        self.new_config.emit(self.main_area.get_value())
 
 
 class ComponentLink(QtWidgets.QGraphicsItemGroup):
@@ -318,7 +313,7 @@ class ComponentLink(QtWidgets.QGraphicsItemGroup):
         self.components = []
 
     def get_data(self):
-        return self.source.name, self.outbox, self.dest.name, self.inbox
+        return self.source.component.name, self.outbox, self.dest.component.name, self.inbox
 
     @catch_all
     def itemChange(self, change, value):
@@ -491,6 +486,88 @@ def strip_sphinx_domains(text):
     return text
 
 
+class Component(QtCore.QObject):
+    # Class to store state for a pyctools component. As a QObject it can
+    # send signals, unlike the various icons which are QGraphicsItems.
+    new_config = QtCore.pyqtSignal(six.text_type, dict)
+
+    def __init__(self, name, class_, config, icon, **kwds):
+        super(Component, self).__init__(**kwds)
+        self.name = name
+        self.class_ = class_
+        self.icon = icon
+        self.config_dialog = None
+        # temporarily instantiate object to get information about it
+        obj = self.class_()
+        self.config = obj.get_config().update(config)
+        self.inputs = obj.inputs
+        self.outputs = obj.outputs
+        # set icon's tooltip
+        help_text = inspect.getdoc(obj)
+        if help_text:
+            help_text = strip_sphinx_domains(help_text)
+            help_text = docutils.core.publish_parts(
+                help_text, writer_name='html')['html_body']
+        else:
+            help_text = '<p>Undocumented</p>'
+        help_text = '<h4>{}()</h4>\n{}\n<p>File: {}</p>'.format(
+            self.class_.__name__, help_text, inspect.getfile(self.class_))
+        self.icon.setToolTip(help_text)
+
+    def widget(self):
+        return self.icon.scene().views()[0]
+
+    def network(self):
+        return self.icon.scene()
+
+    def rename(self):
+        old_name = self.name
+        self.name = None
+        name = self.get_unique_name(old_name)
+        self.name = old_name
+        if not name:
+            return
+        self.name = name
+        if self.config_dialog:
+            self.config_dialog.setWindowTitle('%s configuration' % self.name)
+        self.icon.name_label.setText(self.name)
+
+    def get_unique_name(self, base_name):
+        while True:
+            name, OK = QtWidgets.QInputDialog.getText(
+                self.widget(), 'Component name',
+                'Please enter a unique component name', text=base_name)
+            if not OK:
+                return ''
+            name = str(name)
+            if not self.name_in_use(name):
+                return name
+
+    def name_in_use(self, name):
+        for child in self.network().matching_items(BasicComponentIcon):
+            if child.component.name == name:
+                return True
+        return False
+
+    def delete(self):
+        self.network().delete_child(self.icon)
+
+    def do_config(self):
+        if not (self.config_dialog and self.config_dialog.isVisible()):
+            self.config_dialog = ConfigDialog(self.config, parent=self.widget())
+            self.config_dialog.setWindowTitle('%s configuration' % self.name)
+            self.config_dialog.new_config.connect(self.do_new_config)
+            self.config_dialog.show()
+        self.config_dialog.raise_()
+        self.config_dialog.activateWindow()
+
+    @QtCore.pyqtSlot(dict)
+    @catch_all
+    def do_new_config(self, config):
+        self.config = self.config.update(config)
+        self.new_config.emit(self.name, dict(self.config))
+
+
 class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
     width = 100
 
@@ -499,34 +576,19 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable |
                       QtWidgets.QGraphicsItem.ItemIsSelectable |
                       QtWidgets.QGraphicsItem.ItemSendsGeometryChanges)
-        self.name = name
+        self.component = Component(name, obj.__class__, obj.get_config(), self)
         self.obj = obj
-        self.config = self.obj.get_config()
-        self.config_dialog = None
-        help_text = inspect.getdoc(self.obj)
-        if help_text:
-            help_text = strip_sphinx_domains(help_text)
-            help_text = docutils.core.publish_parts(
-                help_text, writer_name='html')['html_body']
-        else:
-            help_text = '<p>Undocumented</p>'
-        help_text = '<h4>{}()</h4>\n{}\n<p>File: {}</p>'.format(
-            self.obj.__class__.__name__, help_text,
-            inspect.getfile(self.obj.__class__))
-        self.setToolTip(help_text)
         # context menu actions
         self.context_menu_actions = [
-            ('Rename',    self.rename_self),
-            ('Delete',    self.delete_self),
-            ('Configure', self.do_config),
+            ('Rename',    self.component.rename),
+            ('Delete',    self.component.delete),
+            ('Configure', self.component.do_config),
             ]
-
-    def get_data(self):
-        return self.name, self.obj.__class__, dict(self.config)
 
     def draw_icon(self):
         # name label
-        self.name_label = QtWidgets.QGraphicsSimpleTextItem(self.name, self)
+        self.name_label = QtWidgets.QGraphicsSimpleTextItem(
+            self.component.name, self)
         font = self.name_label.font()
         font.setBold(True)
         self.name_label.setFont(font)
@@ -542,7 +604,7 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
             # expanded compound component, put type on same line
             max_width -= self.name_label.boundingRect().width() + 5
         text.setText(QtGui.QFontMetrics(font).elidedText(
-            self.obj.__class__.__name__ + '()',
+            self.component.class_.__name__ + '()',
             QtCore.Qt.ElideRight, max_width))
         text_width = text.boundingRect().width()
         if self.width > 120:
@@ -551,21 +613,14 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
             text.setPos(5, 30)
         # inputs
         self.inputs = {}
-        for idx, name in enumerate(self.obj.inputs):
+        for idx, name in enumerate(self.component.inputs):
             self.inputs[name] = InputIcon(name, parent=self)
             self.inputs[name].setPos(0, 60 + (idx * 20))
         # outputs
         self.outputs = {}
-        for idx, name in enumerate(self.obj.outputs):
+        for idx, name in enumerate(self.component.outputs):
             self.outputs[name] = OutputIcon(name, parent=self)
             self.outputs[name].setPos(self.width, 60 + (idx * 20))
-
-    def rename(self, name):
-        self.name = name
-        if self.config_dialog:
-            self.config_dialog.setWindowTitle(
-                '%s configuration' % self.name)
-        self.name_label.setText(self.name)
 
     def in_pos(self, name, link_pos):
         return self.inputs[name].connect_pos()
@@ -585,23 +640,9 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
             actions[action]()
         self.ungrabMouse()
 
-    def rename_self(self):
-        self.scene().rename_component(self)
-
-    def delete_self(self):
-        self.scene().delete_child(self)
-
     @catch_all
     def mouseDoubleClickEvent(self, event):
-        self.do_config()
-
-    def do_config(self):
-        if not (self.config_dialog and self.config_dialog.isVisible()):
-            self.config_dialog = ConfigDialog(self)
-            self.config_dialog.new_config.connect(self.scene().new_config)
-            self.config_dialog.show()
-        self.config_dialog.raise_()
-        self.config_dialog.activateWindow()
+        self.component.do_config()
 
     @catch_all
     def itemChange(self, change, value):
@@ -769,8 +810,8 @@ class CompoundIcon(BasicComponentIcon):
             self.height = (y_max - y_min) + dy + 30
         else:
             self.width = 100
-            self.height = 60 + (
-                20 * max(2, len(self.obj.inputs), len(self.obj.outputs)))
+            self.height = 60 + (20 * max(
+                2, len(self.component.inputs), len(self.component.outputs)))
         # draw boundary
         self.setPolygon(QtGui.QPolygonF([QtCore.QPointF(0, 0),
                                          QtCore.QPointF(self.width, 0),
@@ -882,6 +923,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                 name, obj, parent=parent, expanded=expanded)
         else:
             component = ComponentIcon(name, obj, parent=parent)
+        component.component.new_config.connect(self.do_new_config)
         component.setPos(position)
         if not parent:
             self.addItem(component)
@@ -891,35 +933,9 @@ class NetworkArea(QtWidgets.QGraphicsScene):
 
     @QtCore.pyqtSlot(six.text_type, dict)
     @catch_all
-    def new_config(self, name, config):
+    def do_new_config(self, name, config):
         if self.runnable:
             self.runnable.set_config({name: config})
-
-    def rename_component(self, component):
-        old_name = component.name
-        component.name = None
-        name = self.get_unique_name(old_name)
-        component.name = old_name
-        if name:
-            component.rename(name)
-
-    def get_unique_name(self, base_name):
-        while True:
-            name, OK = QtWidgets.QInputDialog.getText(
-                self.views()[0], 'Component name',
-                'Please enter a unique component name', text=base_name)
-            if not OK:
-                return ''
-            name = str(name)
-            if not self.name_in_use(name):
-                return name
-
-    def name_in_use(self, name):
-        for child in self.matching_items(BasicComponentIcon):
-            child_name, class_, config = child.get_data()
-            if child_name == name:
-                return True
-        return False
 
     def matching_items(self, klass):
         for child in self.items():
@@ -932,8 +948,8 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         # create compound component and run it
         components = {}
         for child in self.matching_items(BasicComponentIcon):
-            name, class_, config = child.get_data()
-            components[name] = class_(config=config)
+            comp = child.component
+            components[comp.name] = comp.class_(config=comp.config)
         linkages = defaultdict(list)
         for child in self.matching_items(ComponentLink):
             src, outbox, dest, inbox = child.get_data()
@@ -999,13 +1015,6 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                 self.addItem(link)
         self.views()[0].centerOn(self.itemsBoundingRect().center())
 
-    def set_config(self, cnf, key, value):
-        if isinstance(value, dict):
-            for k, v in value.items():
-                self.set_config(cnf[key], k, v)
-        else:
-            cnf[key] = value
-
     def save_script(self, file_name, needs_qt):
         components = {}
         modules = []
@@ -1013,17 +1022,17 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         expanded = {}
         with_qt = False
         for child in self.matching_items(BasicComponentIcon):
-            name, class_, config = child.get_data()
-            mod = class_.__module__
+            comp = child.component
+            mod = comp.class_.__module__
             config=('\n' + (' ' * 23)).join(pprint.pformat(
-                config, width=80-23, compact=True).splitlines())
-            components[name] = {
-                'class' : '{}.{}'.format(mod, class_.__name__),
+                dict(comp.config), width=80-23, compact=True).splitlines())
+            components[comp.name] = {
+                'class' : '{}.{}'.format(mod, comp.class_.__name__),
                 'config' : config,
                 }
-            positions[name] = (child.pos().x(), child.pos().y())
+            positions[comp.name] = (child.pos().x(), child.pos().y())
             if isinstance(child, CompoundIcon):
-                expanded[name] = child.expanded
+                expanded[comp.name] = child.expanded
             if mod not in modules:
                 modules.append(mod)
                 with_qt = with_qt or needs_qt[mod]
