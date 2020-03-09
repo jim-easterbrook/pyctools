@@ -523,7 +523,7 @@ class Component(QtCore.QObject):
     def rename(self):
         old_name = self.name
         self.name = None
-        name = self.get_unique_name(old_name)
+        name = self.network().get_unique_name(old_name)
         self.name = old_name
         if not name:
             return
@@ -531,23 +531,6 @@ class Component(QtCore.QObject):
         if self.config_dialog:
             self.config_dialog.setWindowTitle('%s configuration' % self.name)
         self.icon.name_label.setText(self.name)
-
-    def get_unique_name(self, base_name):
-        while True:
-            name, OK = QtWidgets.QInputDialog.getText(
-                self.widget(), 'Component name',
-                'Please enter a unique component name', text=base_name)
-            if not OK:
-                return ''
-            name = str(name)
-            if not self.name_in_use(name):
-                return name
-
-    def name_in_use(self, name):
-        for child in self.network().matching_items(BasicComponentIcon):
-            if child.component.name == name:
-                return True
-        return False
 
     def delete(self):
         self.network().delete_child(self.icon)
@@ -936,6 +919,23 @@ class NetworkArea(QtWidgets.QGraphicsScene):
     def do_new_config(self, name, config):
         if self.runnable:
             self.runnable.set_config({name: config})
+
+    def get_unique_name(self, base_name):
+        while True:
+            name, OK = QtWidgets.QInputDialog.getText(
+                self.views()[0], 'Component name',
+                'Please enter a unique component name', text=base_name)
+            if not OK:
+                return ''
+            name = str(name)
+            if not self.name_in_use(name):
+                return name
+
+    def name_in_use(self, name):
+        for child in self.matching_items(BasicComponentIcon):
+            if child.component.name == name:
+                return True
+        return False
 
     def matching_items(self, klass):
         for child in self.items():
