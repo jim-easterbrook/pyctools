@@ -272,32 +272,28 @@ class ConfigDialog(QtWidgets.QDialog):
         super(ConfigDialog, self).__init__(
             flags=QtCore.Qt.WindowStaysOnTopHint, **kwds)
         self.notify = notify
-        self.setLayout(QtWidgets.QGridLayout())
-        self.layout().setColumnStretch(0, 1)
+        self.setLayout(QtWidgets.QVBoxLayout())
         # central area
         self.main_area = config_widget[type(config)](config)
-        self.layout().addWidget(self.main_area, 0, 0, 1, 4)
+        self.layout().addWidget(self.main_area)
         # buttons
-        cancel_button = QtWidgets.QPushButton('Cancel')
-        cancel_button.clicked.connect(self.close)
-        self.layout().addWidget(cancel_button, 1, 1)
-        apply_button = QtWidgets.QPushButton('Apply')
-        apply_button.clicked.connect(self.apply_changes)
-        self.layout().addWidget(apply_button, 1, 2)
-        close_button = QtWidgets.QPushButton('Close')
-        close_button.clicked.connect(self.apply_and_close)
-        self.layout().addWidget(close_button, 1, 3)
+        buttons = QtWidgets.QDialogButtonBox()
+        self.close_button = buttons.addButton(
+            'Close', QtWidgets.QDialogButtonBox.AcceptRole)
+        self.apply_button = buttons.addButton(
+            'Apply', QtWidgets.QDialogButtonBox.ApplyRole)
+        self.cancel_button = buttons.addButton(
+            'Cancel', QtWidgets.QDialogButtonBox.RejectRole)
+        buttons.clicked.connect(self.button_clicked)
+        self.layout().addWidget(buttons)
 
-    @QtCore.pyqtSlot()
+    @QtCore.pyqtSlot(QtWidgets.QAbstractButton)
     @catch_all
-    def apply_and_close(self):
-        self.apply_changes()
-        self.close()
-
-    @QtCore.pyqtSlot()
-    @catch_all
-    def apply_changes(self):
-        self.notify(self.main_area.get_value())
+    def button_clicked(self, button):
+        if button in (self.apply_button, self.close_button):
+            self.notify(self.main_area.get_value())
+        if button in (self.cancel_button, self.close_button):
+            self.close()
 
 
 class ComponentLink(QtWidgets.QGraphicsItemGroup):
@@ -310,9 +306,6 @@ class ComponentLink(QtWidgets.QGraphicsItemGroup):
         self.dest = dest
         self.inbox = inbox
         self.components = []
-
-    def get_data(self):
-        return self.source.name, self.outbox, self.dest.name, self.inbox
 
     @catch_all
     def itemChange(self, change, value):
@@ -531,15 +524,15 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.scene().delete_child(self)
 
     def do_config(self):
-        if not (self.config_dialog and self.config_dialog.isVisible()):
+        if self.config_dialog and self.config_dialog.isVisible():
+            self.config_dialog.raise_()
+            self.config_dialog.activateWindow()
+        else:
             self.config_dialog = ConfigDialog(
                 self.obj.get_config(), self.new_config,
                 parent=self.scene().views()[0])
             self.config_dialog.setWindowTitle('%s configuration' % self.name)
             self.config_dialog.show()
-        else:
-            self.config_dialog.raise_()
-            self.config_dialog.activateWindow()
 
     def new_config(self, config):
         self.obj.set_config(config)
@@ -915,19 +908,24 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             if child.isEnabled() and isinstance(child, klass):
                 yield child
 
+    def get_linkages(self):
+        linkages = defaultdict(list)
+        for child in self.matching_items(ComponentLink):
+            source = child.source.name, child.outbox
+            dest = child.dest.name, child.inbox
+            linkages[source].append(dest)
+        return linkages
+
     @QtCore.pyqtSlot()
     @catch_all
     def run_graph(self):
+        self.stop_graph()
         # create compound component and run it
         components = {}
         for child in self.matching_items(BasicComponentIcon):
             name, obj = child.regenerate()
             components[name] = obj
-        linkages = defaultdict(list)
-        for child in self.matching_items(ComponentLink):
-            src, outbox, dest, inbox = child.get_data()
-            linkages[src, outbox].append((dest, inbox))
-        self.runnable = Compound(linkages=linkages, **components)
+        self.runnable = Compound(linkages=self.get_linkages(), **components)
         self.runnable.start()
 
     @QtCore.pyqtSlot()
@@ -1011,10 +1009,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             if mod not in modules:
                 modules.append(mod)
                 with_qt = with_qt or needs_qt[mod]
-        linkages = defaultdict(list)
-        for child in self.matching_items(ComponentLink):
-            src, outbox, dest, inbox = child.get_data()
-            linkages[src, outbox].append((dest, inbox))
+        linkages = self.get_linkages()
         linkages=('\n' + (' ' * 23)).join(pprint.pformat(
             dict(linkages), width=80-23).splitlines())
         positions=('\n' + (' ' * 16)).join(pprint.pformat(
