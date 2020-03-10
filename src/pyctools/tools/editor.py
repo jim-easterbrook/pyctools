@@ -352,7 +352,7 @@ class ComponentLink(QtWidgets.QGraphicsItemGroup):
                 self.addToGroup(line)
                 collisions = line.collidingItems()
                 self.removeFromGroup(line)
-                if not any([isinstance(x, BasicComponentIcon) for x in collisions]):
+                if not any([isinstance(x, ComponentIcon) for x in collisions]):
                     break
             else:
                 yc = (y2 + y3) / 2
@@ -385,8 +385,8 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
                              QtCore.QPointF(6, 0),
                              QtCore.QPointF(0, 5),
                              QtCore.QPointF(0, -5)]), self)
-        self.label = QtWidgets.QGraphicsSimpleTextItem(
-            name, parent=self.parentItem())
+        # create label
+        self.label = QtWidgets.QGraphicsSimpleTextItem(name, parent=self)
         font = self.label.font()
         font.setPointSizeF(font.pointSize() * 0.75)
         self.label.setFont(font)
@@ -443,10 +443,11 @@ class InputIcon(IOIcon):
     mime_type = _INPUT_MIMETYPE
     link_mime_type = _OUTPUT_MIMETYPE
 
-    def setPos(self, ax, ay):
+    def __init__(self, *args, **kwds):
+        super(InputIcon, self).__init__(*args, **kwds)
+        # set label position
         br = self.label.boundingRect()
-        self.label.setPos(ax + 8, ay - (br.height() / 2))
-        super(InputIcon, self).setPos(ax, ay)
+        self.label.setPos(8, -br.height() / 2)
 
     def connect_pos(self):
         return self.scenePos()
@@ -456,10 +457,11 @@ class OutputIcon(IOIcon):
     mime_type = _OUTPUT_MIMETYPE
     link_mime_type = _INPUT_MIMETYPE
 
-    def setPos(self, ax, ay):
+    def __init__(self, *args, **kwds):
+        super(OutputIcon, self).__init__(*args, **kwds)
+        # set label position
         br = self.label.boundingRect()
-        self.label.setPos(ax - 2 - br.width(), ay - (br.height() / 2))
-        super(OutputIcon, self).setPos(ax, ay)
+        self.label.setPos(-(2 + br.width()), -br.height() / 2)
 
     def connect_pos(self):
         pos = self.scenePos()
@@ -478,11 +480,67 @@ def strip_sphinx_domains(text):
     return text
 
 
-class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
-    width = 100
-
+class ComponentOutline(QtWidgets.QGraphicsRectItem):
     def __init__(self, name, obj, **kwds):
-        super(BasicComponentIcon, self).__init__(**kwds)
+        super(ComponentOutline, self).__init__(**kwds)
+        # boundary
+        self.width = 100
+        self.height = 60 + (max(2, len(obj.inputs), len(obj.outputs)) * 20)
+        self.setRect(0, 0, self.width, self.height)
+        if isinstance(obj, Compound):
+            # add dotted outside border
+            self.surround = QtWidgets.QGraphicsRectItem(
+                -3, -3, self.width + 6, self.height + 6, self)
+            pen = self.surround.pen()
+            pen.setStyle(QtCore.Qt.DashDotLine)
+            self.surround.setPen(pen)
+        # name label
+        self.name_label = QtWidgets.QGraphicsSimpleTextItem(name, parent=self)
+        font = self.name_label.font()
+        font.setBold(True)
+        self.name_label.setFont(font)
+        self.name_label.setPos(8, 8)
+        # class label
+        self.set_class_label(obj.__class__.__name__ + '()')
+        # inputs
+        self.inputs = {}
+        for idx, name in enumerate(obj.inputs):
+            self.inputs[name] = InputIcon(name, parent=self)
+            self.inputs[name].setPos(0, 60 + (idx * 20))
+        # outputs
+        self.outputs = {}
+        for idx, name in enumerate(obj.outputs):
+            self.outputs[name] = OutputIcon(name, parent=self)
+            self.outputs[name].setPos(self.width, 60 + (idx * 20))
+
+    def in_pos(self, name, link_pos):
+        return self.inputs[name].connect_pos()
+
+    def out_pos(self, name, link_pos):
+        return self.outputs[name].connect_pos()
+
+    def set_class_label(self, text):
+        class_label = QtWidgets.QGraphicsSimpleTextItem(parent=self)
+        font = class_label.font()
+        font.setPointSizeF(font.pointSize() * 0.8)
+        font.setItalic(True)
+        class_label.setFont(font)
+        max_width = self.width - 10
+        if self.width > 120:
+            # expanded compound component, put on same line as label
+            max_width -= self.name_label.boundingRect().width() + 5
+        class_label.setText(QtGui.QFontMetrics(font).elidedText(
+            text, QtCore.Qt.ElideRight, max_width))
+        text_width = class_label.boundingRect().width()
+        if self.width > 120:
+            class_label.setPos((self.width - 5) - text_width, 9)
+        else:
+            class_label.setPos(5, 30)
+
+
+class ComponentIcon(ComponentOutline):
+    def __init__(self, name, obj, **kwds):
+        super(ComponentIcon, self).__init__(name, obj, **kwds)
         self.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable |
                       QtWidgets.QGraphicsItem.ItemIsSelectable |
                       QtWidgets.QGraphicsItem.ItemSendsGeometryChanges)
@@ -542,48 +600,6 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
         self.obj = self.obj.__class__(config=config)
         return self.name, self.obj
 
-    def draw_icon(self):
-        # name label
-        self.name_label = QtWidgets.QGraphicsSimpleTextItem(self.name, self)
-        font = self.name_label.font()
-        font.setBold(True)
-        self.name_label.setFont(font)
-        self.name_label.setPos(8, 8)
-        # type label
-        text = QtWidgets.QGraphicsSimpleTextItem(self)
-        font = text.font()
-        font.setPointSizeF(font.pointSize() * 0.8)
-        font.setItalic(True)
-        text.setFont(font)
-        max_width = self.width - 10
-        if self.width > 120:
-            # expanded compound component, put type on same line
-            max_width -= self.name_label.boundingRect().width() + 5
-        text.setText(QtGui.QFontMetrics(font).elidedText(
-            self.obj.__class__.__name__ + '()',
-            QtCore.Qt.ElideRight, max_width))
-        text_width = text.boundingRect().width()
-        if self.width > 120:
-            text.setPos((self.width - 5) - text_width, 9)
-        else:
-            text.setPos(5, 30)
-        # inputs
-        self.inputs = {}
-        for idx, name in enumerate(self.obj.inputs):
-            self.inputs[name] = InputIcon(name, parent=self)
-            self.inputs[name].setPos(0, 60 + (idx * 20))
-        # outputs
-        self.outputs = {}
-        for idx, name in enumerate(self.obj.outputs):
-            self.outputs[name] = OutputIcon(name, parent=self)
-            self.outputs[name].setPos(self.width, 60 + (idx * 20))
-
-    def in_pos(self, name, link_pos):
-        return self.inputs[name].connect_pos()
-
-    def out_pos(self, name, link_pos):
-        return self.outputs[name].connect_pos()
-
     @catch_all
     def contextMenuEvent(self, event):
         event.accept()
@@ -623,38 +639,29 @@ class BasicComponentIcon(QtWidgets.QGraphicsPolygonItem):
                     self.scenePos().x(), self.scenePos().y()))
             else:
                 self.scene().parent().status.clear()
-        return super(BasicComponentIcon, self).itemChange(change, value)
+        return super(ComponentIcon, self).itemChange(change, value)
 
 
-class ComponentIcon(BasicComponentIcon):
-    def draw_icon(self):
-        super(ComponentIcon, self).draw_icon()
-        self.height = 60 + (max(2, len(self.inputs), len(self.outputs)) * 20)
-        self.setPolygon(QtGui.QPolygonF([QtCore.QPointF(0, 0),
-                                         QtCore.QPointF(self.width, 0),
-                                         QtCore.QPointF(self.width, self.height),
-                                         QtCore.QPointF(0, self.height),
-                                         QtCore.QPointF(0, 0)]))
-
-
-class CompoundIcon(BasicComponentIcon):
+class CompoundIcon(ComponentIcon):
     def __init__(self, name, obj, expanded=False, **kwds):
         self.expanded = expanded
         super(CompoundIcon, self).__init__(name, obj, **kwds)
         self.context_menu_actions.append(
             ('Expand/contract', self.expand_contract))
+        # draw internals if needed
+        self.set_expanded()
 
     def expand_contract(self):
         old_w, old_h = self.width, self.height
         self.expanded = not self.expanded
-        self.draw_icon()
+        self.set_expanded()
         delta_x = self.width - old_w
         delta_y = self.height - old_h
         # move other components
         pos = self.scenePos()
         x = pos.x()
         y = pos.y()
-        for child in self.scene().matching_items(BasicComponentIcon):
+        for child in self.scene().matching_items(ComponentIcon):
             if child == self:
                 continue
             pos = child.scenePos()
@@ -665,6 +672,7 @@ class CompoundIcon(BasicComponentIcon):
                 move[1] = delta_y
             if move != [0, 0]:
                 child.moveBy(*move)
+        self.scene().update_scene_rect(no_shrink=True)
 
     def position_component(self, component_name, pos, dx, dy):
         if component_name == 'self':
@@ -726,17 +734,21 @@ class CompoundIcon(BasicComponentIcon):
         pos[component_name] = new_pos
         self.recurse_depth[component_name] -= 1
 
-    def draw_icon(self):
-        # delete previous version
-        for child in self.childItems():
-            self.scene().removeItem(child)
+    def set_expanded(self):
+        if self.scene():
+            # delete previous version
+            for child in self.childItems():
+                if isinstance(child, IOIcon):
+                    continue
+                if child in (self.name_label, self.surround):
+                    continue
+                self.scene().removeItem(child)
         child_comps = {}
         if self.expanded and self.obj._compound_children:
             # create components and get max size
             dx, dy = 0, 0
             for name, obj in self.obj._compound_children.items():
-                child = self.scene().new_component(
-                    name, obj, QtCore.QPointF(0, 0), parent=self)
+                child = ComponentOutline(name, obj, parent=self)
                 child.setEnabled(False)
                 dx = max(dx, child.width + 40)
                 dy = max(dy, child.height + 20)
@@ -768,19 +780,15 @@ class CompoundIcon(BasicComponentIcon):
             self.width = 100
             self.height = 60 + (20 * max(
                 2, len(self.obj.inputs), len(self.obj.outputs)))
-        # draw boundary
-        self.setPolygon(QtGui.QPolygonF([QtCore.QPointF(0, 0),
-                                         QtCore.QPointF(self.width, 0),
-                                         QtCore.QPointF(self.width, self.height),
-                                         QtCore.QPointF(0, self.height),
-                                         QtCore.QPointF(0, 0)]))
-        surround = QtWidgets.QGraphicsRectItem(
-            -3, -3, self.width + 6, self.height + 6, self)
-        pen = surround.pen()
-        pen.setStyle(QtCore.Qt.DashDotLine)
-        surround.setPen(pen)
-        # draw rest of icon, including inputs and outputs
-        super(CompoundIcon, self).draw_icon()
+        # redraw boundary
+        self.setRect(0, 0, self.width, self.height)
+        self.surround.setRect(-3, -3, self.width + 6, self.height + 6)
+        # redraw class label
+        self.set_class_label(self.obj.__class__.__name__ + '()')
+        # move outputs
+        for icon in self.outputs.values():
+            y = icon.pos().y()
+            icon.setPos(self.width, y)
         # draw linkages
         if self.expanded:
             for (src, outbox), (dest, inbox) in self.obj.all_connections():
@@ -799,7 +807,6 @@ class CompoundIcon(BasicComponentIcon):
                 line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(
                     self.mapFromScene(source_pos), self.mapFromScene(dest_pos)
                     ), self)
-        self.scene().update_scene_rect(no_shrink=True)
 
 
 class NetworkArea(QtWidgets.QGraphicsScene):
@@ -845,7 +852,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                 self.delete_child(child)
 
     def delete_child(self, child):
-        if isinstance(child, BasicComponentIcon):
+        if isinstance(child, ComponentIcon):
             for link in self.matching_items(ComponentLink):
                 if link.source == child or link.dest == child:
                     self.removeItem(link)
@@ -882,7 +889,6 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         component.setPos(position)
         if not parent:
             self.addItem(component)
-        component.draw_icon()
         self.update_scene_rect()
         return component
 
@@ -898,7 +904,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                 return name
 
     def name_in_use(self, name):
-        for child in self.matching_items(BasicComponentIcon):
+        for child in self.matching_items(ComponentIcon):
             if child.name == name:
                 return True
         return False
@@ -922,7 +928,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         self.stop_graph()
         # create compound component and run it
         components = {}
-        for child in self.matching_items(BasicComponentIcon):
+        for child in self.matching_items(ComponentIcon):
             name, obj = child.regenerate()
             components[name] = obj
         self.runnable = Compound(linkages=self.get_linkages(), **components)
@@ -992,7 +998,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         positions = {}
         expanded = {}
         with_qt = False
-        for child in self.matching_items(BasicComponentIcon):
+        for child in self.matching_items(ComponentIcon):
             name = child.name
             obj = child.obj
             mod = obj.__class__.__module__
