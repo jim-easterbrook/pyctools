@@ -327,7 +327,7 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
         for item in collisions:
             if item.parentItem() != self.parentItem():
                 continue
-            if isinstance(item, ComponentIcon):
+            if isinstance(item, ComponentOutline):
                 return True
             if item == self or not isinstance(item, ComponentLink):
                 continue
@@ -349,36 +349,42 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
                         return True
         return False
 
-    def find_route(self, x0, y0, x1, xn, yn):
-        if xn - 10 < x1:
+    def find_route(self, x0, y0, xn, yn):
+        if xn - 10 < x0 + 4:
             # backwards link, 5 segments
             if yn >= y0:
                 dy = 10
             else:
                 dy = -10
-            x2 = xn - 10
-            for y1 in range(int(y0) + dy, int(yn), dy):
-                if not self.collides(x1, y1, x2, y1):
-                    return ((x0, y0), (x1, y0), (x1, y1),
-                            (x2, y1), (x2, yn), (xn, yn))
-            else:
-                # draw direct line
-                return ((x0, y0), (xn, yn))
+            for x2 in range(int(xn) - 10, int(xn) - 40, -10):
+                for x1 in range(int(x0) + 4, int(x0) + 44, 10):
+                    for y1 in range(int(y0) + dy, int(yn), dy):
+                        if not (self.collides(x1, y0, x1, y1)
+                                or self.collides(x1, y1, x2, y1)
+                                or self.collides(x2, y1, x2, yn)):
+                            return ((x0, y0), (x1, y0), (x1, y1),
+                                    (x2, y1), (x2, yn), (xn, yn))
+            # draw direct line
+            return ((x0, y0), (xn, yn))
         # try single line
         if yn == y0:
             if not self.collides(x0, y0, xn - 2, yn):
                 return ((x0, y0), (xn, yn))
         # try 3-segment line
-        if not (self.collides(x1, y0, x1, yn)
-                or self.collides(x1, yn, xn - 2, yn)):
-            return ((x0, y0), (x1, y0), (x1, yn), (xn, yn))
+        for x1 in range(int(x0) + 4, int(x0) + 44, 10):
+            if not (self.collides(x1, y0, x1, yn)
+                    or self.collides(x1, yn, xn - 2, yn)):
+                return ((x0, y0), (x1, y0), (x1, yn), (xn, yn))
         # try 5-segment line
-        x2 = xn - 10
-        for yoff in range(0, 100, 10):
-            for y1 in (y0 - yoff, y0 + yoff, yn - yoff, yn + yoff):
-                if not self.collides(x1, y1, x2, y1):
-                    return ((x0, y0), (x1, y0), (x1, y1),
-                            (x2, y1), (x2, yn), (xn, yn))
+        for x2 in range(int(xn) - 10, int(xn) - 40, -10):
+            for x1 in range(int(x0) + 4, int(x0) + 44, 10):
+                for yoff in range(0, 100, 10):
+                    for y1 in (y0 - yoff, y0 + yoff, yn - yoff, yn + yoff):
+                        if not (self.collides(x1, y0, x1, y1)
+                                or self.collides(x1, y1, x2, y1)
+                                or self.collides(x2, y1, x2, yn)):
+                            return ((x0, y0), (x1, y0), (x1, y1),
+                                    (x2, y1), (x2, yn), (xn, yn))
         # draw direct line
         return ((x0, y0), (xn, yn))
 
@@ -408,9 +414,8 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
             source_pos = self.mapFromScene(source_pos)
             dest_pos = self.mapFromScene(dest_pos)
         x0, y0 = source_pos.x() + 6, source_pos.y()
-        x1 = x0 + 4 + (self.source.output_no[self.outbox] * 10)
         xn, yn = dest_pos.x(), dest_pos.y()
-        points = self.smooth(self.find_route(x0, y0, x1, xn, yn))
+        points = self.smooth(self.find_route(x0, y0, xn, yn))
         path = QtGui.QPainterPath(QtCore.QPointF(*points[0]))
         for point in points[1:]:
             path.lineTo(*point)
@@ -495,10 +500,7 @@ class InputIcon(IOIcon):
         super(InputIcon, self).__init__(*args, **kwds)
         # set label position
         br = self.label.boundingRect()
-        self.label.setPos(8, -br.height() / 2)
-
-    def connect_pos(self):
-        return self.scenePos()
+        self.label.setPos(4, -br.height())
 
 
 class OutputIcon(IOIcon):
@@ -509,12 +511,7 @@ class OutputIcon(IOIcon):
         super(OutputIcon, self).__init__(*args, **kwds)
         # set label position
         br = self.label.boundingRect()
-        self.label.setPos(-(2 + br.width()), -br.height() / 2)
-
-    def connect_pos(self):
-        pos = self.scenePos()
-        pos.setX(pos.x() + 6)
-        return pos
+        self.label.setPos(-(2 + br.width()), -br.height())
 
 
 py_class = re.compile(':py:class:`(~[\w\.]*\.)?(.*?)`')
@@ -553,11 +550,9 @@ class ComponentOutline(QtWidgets.QGraphicsRectItem):
         self.set_class_label(obj.__class__.__name__ + '()')
         # inputs
         self.inputs = {}
-        self.input_no = {}
         for idx, name in enumerate(obj.inputs):
             self.inputs[name] = InputIcon(name, parent=self)
             self.inputs[name].setPos(0, 60 + (idx * 20))
-            self.input_no[name] = idx
         # outputs
         self.outputs = {}
         self.output_no = {}
@@ -688,14 +683,27 @@ class ComponentIcon(ComponentOutline):
         return super(ComponentIcon, self).itemChange(change, value)
 
 
+class MockIO(object):
+    pass
+
+
 class CompoundIcon(ComponentIcon):
     def __init__(self, name, obj, expanded=False, **kwds):
         self.expanded = expanded
         super(CompoundIcon, self).__init__(name, obj, **kwds)
         self.context_menu_actions.append(
             ('Expand/contract', self.expand_contract))
-        # draw internals if needed
+        # repurpose existing inputs and outputs
+        self.mock_IO = MockIO()
+        self.mock_IO.inputs = {}
+        for name, icon in self.outputs.items():
+            self.mock_IO.inputs[name] = icon
+        self.mock_IO.outputs = {}
+        for name, icon in self.inputs.items():
+            self.mock_IO.outputs[name] = icon
+        # draw internals if needed, then redraw after everything's settled
         self.set_expanded()
+        QtCore.QTimer.singleShot(0, self.set_expanded)
 
     def expand_contract(self):
         old_w, old_h = self.width, self.height
@@ -838,21 +846,20 @@ class CompoundIcon(ComponentIcon):
         if self.expanded:
             for (src, outbox), (dest, inbox) in self.obj.all_connections():
                 if src == 'self':
-                    source_pos = self.inputs[outbox].connect_pos()
-                    source_pos.setX(source_pos.x() + 6)
-                    dest_pos = child_comps[dest].inputs[inbox].connect_pos()
-                elif dest == 'self':
-                    dest_pos = self.outputs[inbox].connect_pos()
-                    dest_pos.setX(dest_pos.x() - 6)
-                    source_pos = child_comps[src].outputs[outbox].connect_pos()
+                    src_comp = self.mock_IO
                 else:
-                    link = ComponentLink(child_comps[src], outbox,
-                                         child_comps[dest], inbox, parent=self)
-                    link.setEnabled(False)
-                    continue
-                line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(
-                    self.mapFromScene(source_pos), self.mapFromScene(dest_pos)
-                    ), self)
+                    src_comp = child_comps[src]
+                if dest == 'self':
+                    dest_comp = self.mock_IO
+                else:
+                    dest_comp = child_comps[dest]
+                link = ComponentLink(
+                    src_comp, outbox, dest_comp, inbox, parent=self)
+                link.setEnabled(False)
+            # redraw to allow for collisions
+            for child in self.childItems():
+                if isinstance(child, ComponentLink):
+                    child.redraw()
         if self.scene():
             self.scene().update_scene_rect(no_shrink=True)
 
