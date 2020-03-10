@@ -322,46 +322,96 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
             self.setPen(pen)
         return super(ComponentLink, self).itemChange(change, value)
 
+    def collides(self, x0, y0, x1, y1):
+        line = QtWidgets.QGraphicsLineItem(x0, y0, x1, y1, self)
+        collisions = line.collidingItems()
+        line.setParentItem(None)
+        for item in collisions:
+            if isinstance(item, ComponentIcon):
+                return True
+            if item == self or not isinstance(item, ComponentLink):
+                continue
+            path = item.path()
+            for n in range(1, path.elementCount()):
+                p0 = path.elementAt(n - 1)
+                p1 = path.elementAt(n)
+                if x0 == x1:
+                    # vertical line
+                    if (p0.x == x0 and p1.x == x0
+                            and max(p0.y, p1.y) > min(y0, y1)
+                            and min(p0.y, p1.y) < max(y0, y1)):
+                        return True
+                else:
+                    # horizontal line
+                    if (p0.y == y0 and p1.y == y0
+                            and max(p0.x, p1.x) > min(x0, x1)
+                            and min(p0.x, p1.x) < max(x0, x1)):
+                        return True
+        return False
+
+    def find_route(self, x0, y0, x1, xn, yn):
+        if xn - 10 < x1:
+            # backwards link, 5 segments
+            if yn >= y0:
+                dy = 10
+            else:
+                dy = -10
+            x2 = xn - 10
+            for y1 in range(int(y0) + dy, int(yn), dy):
+                if not self.collides(x1, y1, x2, y1):
+                    return ((x0, y0), (x1, y0), (x1, y1),
+                            (x2, y1), (x2, yn), (xn, yn))
+            else:
+                # draw direct line
+                return ((x0, y0), (xn, yn))
+        # try single line
+        if yn == y0:
+            if not self.collides(x0, y0, xn - 2, yn):
+                return ((x0, y0), (xn, yn))
+        # try 3-segment line
+        if not (self.collides(x1, y0, x1, yn)
+                or self.collides(x1, yn, xn - 2, yn)):
+            return ((x0, y0), (x1, y0), (x1, yn), (xn, yn))
+        # try 5-segment line
+        x2 = xn - 10
+        for yoff in range(0, 100, 10):
+            for y1 in (y0 - yoff, y0 + yoff, yn - yoff, yn + yoff):
+                if not self.collides(x1, y1, x2, y1):
+                    return ((x0, y0), (x1, y0), (x1, y1),
+                            (x2, y1), (x2, yn), (xn, yn))
+        # draw direct line
+        return ((x0, y0), (xn, yn))
+
+    def smooth(self, points):
+        c = 3
+        result = [points[0]]
+        for (x0, y0), (x1, y1), (x2, y2) in zip(
+                points[:-2], points[1:-1], points[2:]):
+            if x0 == x2 or y0 == y2:
+                # straight line
+                continue
+            cx = (-c, c)[x0 < x2]
+            cy = (-c, c)[y0 < y2]
+            if y0 == y1:
+                result.append((x1 - cx, y1))
+                result.append((x1, y1 + cy))
+            else:
+                result.append((x1, y1 - cy))
+                result.append((x1 + cx, y1))
+        result.append(points[-1])
+        return result
+
     def redraw(self):
         source_pos = self.source.out_pos(self.outbox, None)
         dest_pos = self.dest.in_pos(self.inbox, source_pos)
         source_pos = self.source.out_pos(self.outbox, dest_pos)
         x0, y0 = source_pos.x(), source_pos.y()
-        x5, y5 = dest_pos.x(), dest_pos.y()
-        if x5 >= x0:
-            # draw direct line
-            path = QtGui.QPainterPath(QtCore.QPointF(x0, y0))
-            path.lineTo(x5, y5)
-        else:
-            # draw multi segment line
-            y2 = y0 - self.source.outputs[self.outbox].pos().y()
-            y3 = y5 - self.dest.inputs[self.inbox].pos().y()
-            if y5 >= y0:
-                y2 += self.source.height
-                inc = 10
-            else:
-                y3 += self.dest.height
-                inc = -10
-            # find line position that doesn't collide with components
-            for yc in range(int(y2) + inc, int(y3), inc):
-                path = QtGui.QPainterPath(QtCore.QPointF(x0, yc))
-                path.lineTo(x5, yc)
-                self.setPath(path)
-                collisions = self.collidingItems()
-                if not any([isinstance(x, ComponentIcon) for x in collisions]):
-                    break
-            else:
-                yc = (y2 + y3) / 2
-            x1, y1 = x0 + 4, y0
-            x2, y2 = x1, yc
-            x3, y3 = x5 - 10, y2
-            x4, y4 = x3, y5
-            path = QtGui.QPainterPath(QtCore.QPointF(x0, y0))
-            path.lineTo(x1, y1)
-            path.lineTo(x2, y2)
-            path.lineTo(x3, y3)
-            path.lineTo(x4, y4)
-            path.lineTo(x5, y5)
+        x1 = x0 + 4 + (self.source.output_no[self.outbox] * 10)
+        xn, yn = dest_pos.x(), dest_pos.y()
+        points = self.smooth(self.find_route(x0, y0, x1, xn, yn))
+        path = QtGui.QPainterPath(QtCore.QPointF(*points[0]))
+        for point in points[1:]:
+            path.lineTo(*point)
         self.setPath(path)
 
 
@@ -500,14 +550,18 @@ class ComponentOutline(QtWidgets.QGraphicsRectItem):
         self.set_class_label(obj.__class__.__name__ + '()')
         # inputs
         self.inputs = {}
+        self.input_no = {}
         for idx, name in enumerate(obj.inputs):
             self.inputs[name] = InputIcon(name, parent=self)
             self.inputs[name].setPos(0, 60 + (idx * 20))
+            self.input_no[name] = idx
         # outputs
         self.outputs = {}
+        self.output_no = {}
         for idx, name in enumerate(obj.outputs):
             self.outputs[name] = OutputIcon(name, parent=self)
             self.outputs[name].setPos(self.width, 60 + (idx * 20))
+            self.output_no[name] = idx
 
     def in_pos(self, name, link_pos):
         return self.inputs[name].connect_pos()
@@ -626,8 +680,8 @@ class ComponentIcon(ComponentOutline):
             self.scene().parent().status.setText(
                 'position: {}, {}'.format(value.x(), value.y()))
             for link in self.scene().matching_items(ComponentLink):
-                if link.source == self or link.dest == self:
-                    link.redraw()
+                # redraw all links in case component is now on top of one
+                link.redraw()
             self.scene().update_scene_rect(no_shrink=True)
         if change == QtWidgets.QGraphicsItem.ItemSelectedHasChanged and self.scene():
             if value:
