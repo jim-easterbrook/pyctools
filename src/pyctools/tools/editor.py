@@ -305,13 +305,11 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
         self.outbox = outbox
         self.dest = dest
         self.inbox = inbox
+        self.redraw()
 
     @catch_all
     def itemChange(self, change, value):
-        if change == QtWidgets.QGraphicsItem.ItemSceneHasChanged:
-            if self.scene():
-                self.redraw()
-        elif change == QtWidgets.QGraphicsItem.ItemSelectedHasChanged:
+        if change == QtWidgets.QGraphicsItem.ItemSelectedHasChanged:
             if isinstance(value, QtCore.QVariant):
                 value = value.toBool()
             pen = self.pen()
@@ -327,6 +325,8 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
         collisions = line.collidingItems()
         line.setParentItem(None)
         for item in collisions:
+            if item.parentItem() != self.parentItem():
+                continue
             if isinstance(item, ComponentIcon):
                 return True
             if item == self or not isinstance(item, ComponentLink):
@@ -402,10 +402,12 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
         return result
 
     def redraw(self):
-        source_pos = self.source.out_pos(self.outbox, None)
-        dest_pos = self.dest.in_pos(self.inbox, source_pos)
-        source_pos = self.source.out_pos(self.outbox, dest_pos)
-        x0, y0 = source_pos.x(), source_pos.y()
+        source_pos = self.source.outputs[self.outbox].scenePos()
+        dest_pos = self.dest.inputs[self.inbox].scenePos()
+        if self.parentItem():
+            source_pos = self.mapFromScene(source_pos)
+            dest_pos = self.mapFromScene(dest_pos)
+        x0, y0 = source_pos.x() + 6, source_pos.y()
         x1 = x0 + 4 + (self.source.output_no[self.outbox] * 10)
         xn, yn = dest_pos.x(), dest_pos.y()
         points = self.smooth(self.find_route(x0, y0, x1, xn, yn))
@@ -529,6 +531,7 @@ def strip_sphinx_domains(text):
 class ComponentOutline(QtWidgets.QGraphicsRectItem):
     def __init__(self, name, obj, **kwds):
         super(ComponentOutline, self).__init__(**kwds)
+        self.name = name
         # boundary
         self.width = 100
         self.height = 60 + (max(2, len(obj.inputs), len(obj.outputs)) * 20)
@@ -563,12 +566,6 @@ class ComponentOutline(QtWidgets.QGraphicsRectItem):
             self.outputs[name].setPos(self.width, 60 + (idx * 20))
             self.output_no[name] = idx
 
-    def in_pos(self, name, link_pos):
-        return self.inputs[name].connect_pos()
-
-    def out_pos(self, name, link_pos):
-        return self.outputs[name].connect_pos()
-
     def set_class_label(self, text):
         class_label = QtWidgets.QGraphicsSimpleTextItem(parent=self)
         font = class_label.font()
@@ -594,7 +591,6 @@ class ComponentIcon(ComponentOutline):
         self.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable |
                       QtWidgets.QGraphicsItem.ItemIsSelectable |
                       QtWidgets.QGraphicsItem.ItemSendsGeometryChanges)
-        self.name = name
         self.obj = obj
         self.config_dialog = None
         # context menu actions
@@ -785,14 +781,13 @@ class CompoundIcon(ComponentIcon):
         self.recurse_depth[component_name] -= 1
 
     def set_expanded(self):
-        if self.scene():
-            # delete previous version
-            for child in self.childItems():
-                if isinstance(child, IOIcon):
-                    continue
-                if child in (self.name_label, self.surround):
-                    continue
-                self.scene().removeItem(child)
+        # delete previous version
+        for child in self.childItems():
+            if isinstance(child, IOIcon):
+                continue
+            if child in (self.name_label, self.surround):
+                continue
+            child.setParentItem(None)
         child_comps = {}
         if self.expanded and self.obj._compound_children:
             # create components and get max size
@@ -843,20 +838,23 @@ class CompoundIcon(ComponentIcon):
         if self.expanded:
             for (src, outbox), (dest, inbox) in self.obj.all_connections():
                 if src == 'self':
-                    source_pos = self.in_pos(outbox, None)
+                    source_pos = self.inputs[outbox].connect_pos()
                     source_pos.setX(source_pos.x() + 6)
-                    dest_pos = child_comps[dest].in_pos(inbox, source_pos)
+                    dest_pos = child_comps[dest].inputs[inbox].connect_pos()
                 elif dest == 'self':
-                    dest_pos = self.out_pos(inbox, None)
+                    dest_pos = self.outputs[inbox].connect_pos()
                     dest_pos.setX(dest_pos.x() - 6)
-                    source_pos = child_comps[src].out_pos(outbox, dest_pos)
+                    source_pos = child_comps[src].outputs[outbox].connect_pos()
                 else:
-                    source_pos = child_comps[src].out_pos(outbox, None)
-                    dest_pos = child_comps[dest].in_pos(inbox, source_pos)
-                    source_pos = child_comps[src].out_pos(outbox, dest_pos)
+                    link = ComponentLink(child_comps[src], outbox,
+                                         child_comps[dest], inbox, parent=self)
+                    link.setEnabled(False)
+                    continue
                 line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(
                     self.mapFromScene(source_pos), self.mapFromScene(dest_pos)
                     ), self)
+        if self.scene():
+            self.scene().update_scene_rect(no_shrink=True)
 
 
 class NetworkArea(QtWidgets.QGraphicsScene):
@@ -1040,6 +1038,9 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                  (dest, inbox)) in network.output_connections(name):
                 link = ComponentLink(comps[src], outbox, comps[dest], inbox)
                 self.addItem(link)
+        for link in self.matching_items(ComponentLink):
+            # redraw all links in case of collisions
+            link.redraw()
         self.views()[0].centerOn(self.itemsBoundingRect().center())
 
     def save_script(self, file_name, needs_qt):
