@@ -296,7 +296,7 @@ class ConfigDialog(QtWidgets.QDialog):
             self.close()
 
 
-class ComponentLink(QtWidgets.QGraphicsItemGroup):
+class ComponentLink(QtWidgets.QGraphicsPathItem):
     def __init__(self, source, outbox, dest, inbox, **kwds):
         super(ComponentLink, self).__init__(**kwds)
         self.setFlags(QtWidgets.QGraphicsItem.ItemIsSelectable)
@@ -305,7 +305,6 @@ class ComponentLink(QtWidgets.QGraphicsItemGroup):
         self.outbox = outbox
         self.dest = dest
         self.inbox = inbox
-        self.components = []
 
     @catch_all
     def itemChange(self, change, value):
@@ -315,19 +314,15 @@ class ComponentLink(QtWidgets.QGraphicsItemGroup):
         elif change == QtWidgets.QGraphicsItem.ItemSelectedHasChanged:
             if isinstance(value, QtCore.QVariant):
                 value = value.toBool()
-            for item in self.components:
-                pen = item.pen()
-                if value:
-                    pen.setStyle(QtCore.Qt.DashLine)
-                else:
-                    pen.setStyle(QtCore.Qt.SolidLine)
-                item.setPen(pen)
+            pen = self.pen()
+            if value:
+                pen.setStyle(QtCore.Qt.DashLine)
+            else:
+                pen.setStyle(QtCore.Qt.SolidLine)
+            self.setPen(pen)
         return super(ComponentLink, self).itemChange(change, value)
 
     def redraw(self):
-        for item in self.components:
-            self.removeFromGroup(item)
-        self.components = []
         source_pos = self.source.out_pos(self.outbox, None)
         dest_pos = self.dest.in_pos(self.inbox, source_pos)
         source_pos = self.source.out_pos(self.outbox, dest_pos)
@@ -335,7 +330,8 @@ class ComponentLink(QtWidgets.QGraphicsItemGroup):
         x5, y5 = dest_pos.x(), dest_pos.y()
         if x5 >= x0:
             # draw direct line
-            self.components.append(QtWidgets.QGraphicsLineItem(x0, y0, x5, y5))
+            path = QtGui.QPainterPath(QtCore.QPointF(x0, y0))
+            path.lineTo(x5, y5)
         else:
             # draw multi segment line
             y2 = y0 - self.source.outputs[self.outbox].pos().y()
@@ -348,10 +344,10 @@ class ComponentLink(QtWidgets.QGraphicsItemGroup):
                 inc = -10
             # find line position that doesn't collide with components
             for yc in range(int(y2) + inc, int(y3), inc):
-                line = QtWidgets.QGraphicsLineItem(x0, yc, x5, yc)
-                self.addToGroup(line)
-                collisions = line.collidingItems()
-                self.removeFromGroup(line)
+                path = QtGui.QPainterPath(QtCore.QPointF(x0, yc))
+                path.lineTo(x5, yc)
+                self.setPath(path)
+                collisions = self.collidingItems()
                 if not any([isinstance(x, ComponentIcon) for x in collisions]):
                     break
             else:
@@ -360,13 +356,13 @@ class ComponentLink(QtWidgets.QGraphicsItemGroup):
             x2, y2 = x1, yc
             x3, y3 = x5 - 10, y2
             x4, y4 = x3, y5
-            self.components.append(QtWidgets.QGraphicsLineItem(x0, y0, x1, y1))
-            self.components.append(QtWidgets.QGraphicsLineItem(x1, y1, x2, y2))
-            self.components.append(QtWidgets.QGraphicsLineItem(x2, y2, x3, y3))
-            self.components.append(QtWidgets.QGraphicsLineItem(x3, y3, x4, y4))
-            self.components.append(QtWidgets.QGraphicsLineItem(x4, y4, x5, y5))
-        for item in self.components:
-            self.addToGroup(item)
+            path = QtGui.QPainterPath(QtCore.QPointF(x0, y0))
+            path.lineTo(x1, y1)
+            path.lineTo(x2, y2)
+            path.lineTo(x3, y3)
+            path.lineTo(x4, y4)
+            path.lineTo(x5, y5)
+        self.setPath(path)
 
 
 class IOIcon(QtWidgets.QGraphicsRectItem):
