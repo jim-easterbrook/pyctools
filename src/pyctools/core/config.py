@@ -343,16 +343,20 @@ class ConfigParent(object):
             for item in self._config_map[key]:
                 self[item] = value
             return
+        if key in self._value:
+            self._value[key] = self._value[key].update(value)
+            return
         child, sep, grandchild = key.partition('.')
         if grandchild:
-            self[child][grandchild] = value
+            try:
+                self[child][grandchild] = value
+                return
+            except KeyError:
+                pass
+        if isinstance(value, (ConfigLeafNode, ConfigParent)):
+            self._value[key] = value
             return
-        if key in self._value:
-            value = self._value[key].update(value)
-        elif not isinstance(value, (ConfigLeafNode, ConfigParent)):
-            logger.error('unknown config item: %s, %s', key, value)
-            return
-        self._value[key] = value
+        logger.error('unknown config item: %s, %s', key, value)
 
     def __delitem__(self, key):
         if key in self._config_map:
