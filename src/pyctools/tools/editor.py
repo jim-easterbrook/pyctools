@@ -865,18 +865,19 @@ class CompoundIcon(ComponentIcon):
             icon.setPos(self.width, y)
         # draw linkages
         if self.expanded:
-            for (src, outbox), (dest, inbox) in self.obj.all_connections():
-                if src == 'self':
-                    src_comp = self.mock_IO
-                else:
-                    src_comp = child_comps[src]
-                if dest == 'self':
-                    dest_comp = self.mock_IO
-                else:
-                    dest_comp = child_comps[dest]
-                link = ComponentLink(src_comp, outbox,
-                                     dest_comp, inbox, parent=self)
-                link.setEnabled(False)
+            for (src, outbox), dests in self.obj._compound_linkages.items():
+                for (dest, inbox) in dests:
+                    if src == 'self':
+                        src_comp = self.mock_IO
+                    else:
+                        src_comp = child_comps[src]
+                    if dest == 'self':
+                        dest_comp = self.mock_IO
+                    else:
+                        dest_comp = child_comps[dest]
+                    link = ComponentLink(src_comp, outbox,
+                                         dest_comp, inbox, parent=self)
+                    link.setEnabled(False)
             # redraw links after everything is shown to allow for collisions
             QtCore.QTimer.singleShot(0, self.redraw_links)
         if self.scene():
@@ -1065,9 +1066,8 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             comps[name] = self.new_component(
                 name, comp, QtCore.QPointF(*network.positions[name]), **kw)
         # add link icons
-        for name in comps:
-            for ((src, outbox),
-                 (dest, inbox)) in network.output_connections(name):
+        for (src, outbox), dests in network._compound_linkages.items():
+            for (dest, inbox) in dests:
                 link = ComponentLink(comps[src], outbox, comps[dest], inbox)
                 self.addItem(link)
         for link in self.matching_items(ComponentLink):
