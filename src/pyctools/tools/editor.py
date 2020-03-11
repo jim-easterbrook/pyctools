@@ -555,11 +555,9 @@ class ComponentOutline(QtWidgets.QGraphicsRectItem):
             self.inputs[name].setPos(0, 60 + (idx * 20))
         # outputs
         self.outputs = {}
-        self.output_no = {}
         for idx, name in enumerate(obj.outputs):
             self.outputs[name] = OutputIcon(name, parent=self)
             self.outputs[name].setPos(self.width, 60 + (idx * 20))
-            self.output_no[name] = idx
 
     def set_class_label(self, text):
         class_label = QtWidgets.QGraphicsSimpleTextItem(parent=self)
@@ -701,9 +699,8 @@ class CompoundIcon(ComponentIcon):
         self.mock_IO.outputs = {}
         for name, icon in self.inputs.items():
             self.mock_IO.outputs[name] = icon
-        # draw internals if needed, then redraw after everything's settled
+        # draw internals if needed
         self.set_expanded()
-        QtCore.QTimer.singleShot(0, self.set_expanded)
 
     def expand_contract(self):
         old_w, old_h = self.width, self.height
@@ -728,65 +725,52 @@ class CompoundIcon(ComponentIcon):
                 child.moveBy(*move)
         self.scene().update_scene_rect(no_shrink=True)
 
-    def position_component(self, component_name, pos, dx, dy):
-        if component_name == 'self':
+    def build_left(self, dest, pos, x, y, dx, dy):
+        dest_name, inbox = dest
+        for source, dests in self.obj._compound_linkages.items():
+            if dest not in dests:
+                continue
+            # source is connected to dest
+            src_name, outbox = source
+            if src_name in pos:
+                return
+            # find a vacant position
+            xn, yn = x - dx, y
+            while [xn, yn] in pos.values():
+                yn += dy
+            pos[src_name] = [xn, yn]
+            if src_name == 'self':
+                return
+            # cascade back from component's inputs
+            for name in self.obj._compound_children[src_name].inputs:
+                self.build_left((src_name, name), pos, xn, yn, dx, dy)
+            # cascade forward from component's outputs
+            for name in self.obj._compound_children[src_name].outputs:
+                self.build_right((src_name, name), pos, xn, yn, dx, dy)
             return
-        if self.recurse_depth[component_name] > 2:
-            return
-        self.recurse_depth[component_name] += 1
-        # find "ideal" position based on components connected to inputs
-        new_pos = None
-        in_no = 0
-        for src, dst in self.obj.input_connections(component_name):
-            connected = src[0]
-            if connected in pos:
-                out_no = 0
-                for s, d in self.obj.output_connections(connected):
-                    if d[0] == component_name:
-                        break
-                    out_no += 1
-                x = pos[connected][0] + dx
-                y = pos[connected][1] + (dy * (out_no - in_no))
-                if new_pos:
-                    new_pos = [max(new_pos[0], x), min(new_pos[1], y)]
-                else:
-                    new_pos = [x, y]
-            in_no += 1
-        # if no connected input, use connected outputs
-        if not new_pos:
-            out_no = 0
-            for src, dst in self.obj.output_connections(component_name):
-                connected = dst[0]
-                if connected in pos:
-                    in_no = 0
-                    for s, d in self.obj.input_connections(connected):
-                        if s[0] == component_name:
-                            break
-                        in_no += 1
-                    x = pos[connected][0] - dx
-                    y = pos[connected][1] - (dy * (out_no - in_no))
-                    if new_pos:
-                        new_pos = [min(new_pos[0], x), max(new_pos[1], y)]
-                    else:
-                        new_pos = [x, y]
-                out_no += 1
-        # if no connected output, use origin
-        if not new_pos:
-            new_pos = [0, 0]
-        pos[component_name] = new_pos
-        # position components connected to inputs
-        for src, dst in self.obj.input_connections(component_name):
-            self.position_component(src[0], pos, dx, dy)
-        # position components connected to outputs
-        for src, dst in self.obj.output_connections(component_name):
-            self.position_component(dst[0], pos, dx, dy)
-        # final check for collisions
-        new_pos = pos[component_name]
-        del pos[component_name]
-        while new_pos in pos.values():
-            new_pos[1] += dy
-        pos[component_name] = new_pos
-        self.recurse_depth[component_name] -= 1
+
+    def build_right(self, source, pos, x, y, dx, dy):
+        src_name, outbox = source
+        for dest in self.obj._compound_linkages[source]:
+            dest_name, inbox = dest
+            # source is connected to dest
+            if dest_name in pos:
+                continue
+            # find a vacant position
+            idx = 0
+            xn, yn = x, y
+            while [xn, yn] in pos.values():
+                idx += 1
+                xn, yn = x + ((idx % 2) * dx), y + ((idx // 2) * dy)
+            pos[dest_name] = [xn, yn]
+            if dest_name == 'self':
+                continue
+            # cascade forward from component's outputs
+            for name in self.obj._compound_children[dest_name].outputs:
+                self.build_right((dest_name, name), pos, xn, yn, dx, dy)
+            # cascade back from component's inputs
+            for name in self.obj._compound_children[dest_name].inputs:
+                self.build_left((dest_name, name), pos, xn, yn, dx, dy)
 
     def set_expanded(self):
         # delete previous version
@@ -803,31 +787,68 @@ class CompoundIcon(ComponentIcon):
             for name, obj in self.obj._compound_children.items():
                 child = ComponentOutline(name, obj, parent=self)
                 child.setEnabled(False)
-                dx = max(dx, child.width + 40)
-                dy = max(dy, child.height + 20)
+                dx = max(dx, child.width + 30)
+                dy = max(dy, child.height + 30)
                 child_comps[name] = child
             # position components according to linkages
             pos = {}
-            self.recurse_depth = defaultdict(int)
-            while len(pos) < len(child_comps):
-                for name in child_comps:
-                    if name not in pos:
-                        self.position_component(name, pos, dx, dy)
-                        break
-            x_min, y_min = pos[list(pos.keys())[0]]
-            x_max, y_max = x_min, y_min
-            for i in pos:
-                x_min = min(x_min, pos[i][0])
-                y_min = min(y_min, pos[i][1])
-                x_max = max(x_max, pos[i][0])
-                y_max = max(y_max, pos[i][1])
-            for i in pos:
-                pos[i][0] += 40 - x_min
-                pos[i][1] += 30 - y_min
+            # start by working back from outputs
+            x, y = 0, 0
+            for name in self.obj.outputs:
+                self.build_left(('self', name), pos, x, y, dx, dy)
+            if 'self' in pos:
+                x, y = pos['self']
+                del pos['self']
+            # then work forwards from inputs
+            for name in self.obj.inputs:
+                self.build_right(('self', name), pos, x, y, dx, dy)
+            if 'self' in pos:
+                x, y = pos['self']
+                del pos['self']
+            # work backwards from any unplaced components
+            for dest_name in child_comps:
+                if dest_name in pos:
+                    continue
+                for name in self.obj._compound_children[dest_name].inputs:
+                    self.build_left((dest_name, name), pos, x, y, dx, dy)
+            if 'self' in pos:
+                x, y = pos['self']
+                del pos['self']
+            # work forwards from any unplaced components
+            for src_name in child_comps:
+                if src_name in pos:
+                    continue
+                for name in self.obj._compound_children[src_name].outputs:
+                    self.build_right((src_name, name), pos, x, y, dx, dy)
+            if 'self' in pos:
+                del pos['self']
+            # move components to close gaps
+            x_max = max([x[0] for x in pos.values()])
+            changed = True
+            while changed:
+                changed = False
+                for name in pos:
+                    new_pos = [pos[name][0] + dx, pos[name][1]]
+                    if new_pos[0] <= x_max and new_pos not in pos.values():
+                        pos[name] = new_pos
+                        changed = True
+            x_min = min([x[0] for x in pos.values()])
+            changed = True
+            while changed:
+                changed = False
+                for name in pos:
+                    new_pos = [pos[name][0] - dx, pos[name][1]]
+                    if new_pos[0] >= x_min and new_pos not in pos.values():
+                        pos[name] = new_pos
+                        changed = True
             # reposition components
-            for name in pos:
-                child_comps[name].setPos(*pos[name])
-            self.width = (x_max - x_min) + dx + 40
+            x_min = min([x[0] for x in pos.values()])
+            x_max = max([x[0] for x in pos.values()])
+            y_min = min([x[1] for x in pos.values()])
+            y_max = max([x[1] for x in pos.values()])
+            for name, [x, y] in pos.items():
+                child_comps[name].setPos(x + 40 - x_min, y + 30 - y_min)
+            self.width = (x_max - x_min) + dx + 50
             self.height = (y_max - y_min) + dy + 30
         else:
             self.width = 100
@@ -853,15 +874,19 @@ class CompoundIcon(ComponentIcon):
                     dest_comp = self.mock_IO
                 else:
                     dest_comp = child_comps[dest]
-                link = ComponentLink(
-                    src_comp, outbox, dest_comp, inbox, parent=self)
+                link = ComponentLink(src_comp, outbox,
+                                     dest_comp, inbox, parent=self)
                 link.setEnabled(False)
-            # redraw to allow for collisions
-            for child in self.childItems():
-                if isinstance(child, ComponentLink):
-                    child.redraw()
+            # redraw links after everything is shown to allow for collisions
+            QtCore.QTimer.singleShot(0, self.redraw_links)
         if self.scene():
             self.scene().update_scene_rect(no_shrink=True)
+
+    @catch_all
+    def redraw_links(self):
+        for child in self.childItems():
+            if isinstance(child, ComponentLink):
+                child.redraw()
 
 
 class NetworkArea(QtWidgets.QGraphicsScene):
