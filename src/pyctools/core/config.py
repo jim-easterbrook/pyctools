@@ -300,12 +300,13 @@ class ConfigParent(object):
     one config value.
 
     """
-    default = {}
+    _attributes = ('_config_map', '_value', 'default')
 
     def __init__(self, config_map={}):
         super(ConfigParent, self).__init__()
         self._config_map = config_map
         self._value = {}
+        self.default = {}
 
     def __repr__(self):
         result = []
@@ -315,12 +316,12 @@ class ConfigParent(object):
         return '{' + ', '.join(result) + '}'
 
     def __getattr__(self, name):
-        if name[0] != '_':
+        if name not in self._attributes:
             return self[name]
         return super(ConfigParent, self).__getattr__(name)
 
     def __setattr__(self, name, value):
-        if name[0] != '_':
+        if name not in self._attributes:
             self[name] = value
             return
         super(ConfigParent, self).__setattr__(name, value)
@@ -357,16 +358,6 @@ class ConfigParent(object):
             self._value[key] = value
             return
         logger.error('unknown config item: %s, %s', key, value)
-
-    def __delitem__(self, key):
-        if key in self._config_map:
-            del self._config_map[key]
-            return
-        child, sep, grandchild = key.partition('.')
-        if grandchild:
-            del self[child][grandchild]
-            return
-        del self._value[key]
 
     def __iter__(self):
         if self._config_map:
