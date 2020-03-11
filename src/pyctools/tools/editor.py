@@ -1075,9 +1075,9 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             name = child.name
             obj = child.obj
             mod = obj.__class__.__module__
-            config = obj.get_config()
+            config = obj.get_config().to_dict(ignore_default=True)
             config=('\n' + (' ' * 23)).join(pprint.pformat(
-                dict(config), width=80-23, compact=True).splitlines())
+                config, width=80-23, compact=True).splitlines())
             components[name] = {
                 'class' : '{}.{}'.format(mod, obj.__class__.__name__),
                 'config' : config,
