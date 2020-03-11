@@ -742,10 +742,10 @@ class CompoundIcon(ComponentIcon):
             if src_name == 'self':
                 return
             # cascade back from component's inputs
-            for name in self.obj._compound_children[src_name].inputs:
+            for name in self.obj.children[src_name].inputs:
                 self.build_left((src_name, name), pos, xn, yn, dx, dy)
             # cascade forward from component's outputs
-            for name in self.obj._compound_children[src_name].outputs:
+            for name in self.obj.children[src_name].outputs:
                 self.build_right((src_name, name), pos, xn, yn, dx, dy)
             return
 
@@ -766,10 +766,10 @@ class CompoundIcon(ComponentIcon):
             if dest_name == 'self':
                 continue
             # cascade forward from component's outputs
-            for name in self.obj._compound_children[dest_name].outputs:
+            for name in self.obj.children[dest_name].outputs:
                 self.build_right((dest_name, name), pos, xn, yn, dx, dy)
             # cascade back from component's inputs
-            for name in self.obj._compound_children[dest_name].inputs:
+            for name in self.obj.children[dest_name].inputs:
                 self.build_left((dest_name, name), pos, xn, yn, dx, dy)
 
     def set_expanded(self):
@@ -781,10 +781,10 @@ class CompoundIcon(ComponentIcon):
                 continue
             child.setParentItem(None)
         child_comps = {}
-        if self.expanded and self.obj._compound_children:
+        if self.expanded and self.obj.children:
             # create components and get max size
             dx, dy = 0, 0
-            for name, obj in self.obj._compound_children.items():
+            for name, obj in self.obj.children.items():
                 child = ComponentOutline(name, obj, parent=self)
                 child.setEnabled(False)
                 dx = max(dx, child.width + 30)
@@ -809,7 +809,7 @@ class CompoundIcon(ComponentIcon):
             for dest_name in child_comps:
                 if dest_name in pos:
                     continue
-                for name in self.obj._compound_children[dest_name].inputs:
+                for name in self.obj.children[dest_name].inputs:
                     self.build_left((dest_name, name), pos, x, y, dx, dy)
             if 'self' in pos:
                 x, y = pos['self']
@@ -818,7 +818,7 @@ class CompoundIcon(ComponentIcon):
             for src_name in child_comps:
                 if src_name in pos:
                     continue
-                for name in self.obj._compound_children[src_name].outputs:
+                for name in self.obj.children[src_name].outputs:
                     self.build_right((src_name, name), pos, x, y, dx, dy)
             if 'self' in pos:
                 del pos['self']
@@ -1059,7 +1059,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             return
         comps = {}
         # add component icons
-        for name, comp in network._compound_children.items():
+        for name, comp in network.children.items():
             kw = {'config': comp.get_config()}
             if name in network.expanded:
                 kw['expanded'] = network.expanded[name]

@@ -118,12 +118,10 @@ class Compound(object):
         self.inputs = []
         self.outputs = []
         # get child components
-        self._compound_children = {}
-        for key, value in kw.items():
-            self._compound_children[key] = value
+        self.children = kw
         # set config
         self.config = ConfigParent(config_map=config_map)
-        for name, child in self._compound_children.items():
+        for name, child in self.children.items():
             self.config[name] = child.get_config()
         if config:
             self.set_config(config)
@@ -143,15 +141,14 @@ class Compound(object):
                         self.logger.critical(
                             'cannot link (%s, %s) to more than one target',
                             src, outbox)
-                    setattr(self, outbox,
-                            getattr(self._compound_children[dest], inbox))
+                    setattr(self, outbox, getattr(self.children[dest], inbox))
                     self.inputs.append(outbox)
                 elif dest == 'self':
                     self._compound_outputs[inbox] = (src, outbox)
                     self.outputs.append(inbox)
                 else:
-                    self._compound_children[src].connect(
-                        outbox, getattr(self._compound_children[dest], inbox))
+                    self.children[src].connect(
+                        outbox, getattr(self.children[dest], inbox))
 
     def connect(self, output_name, input_method):
         """Connect an output to any callable object.
@@ -164,7 +161,7 @@ class Compound(object):
 
         """
         src, outbox = self._compound_outputs[output_name]
-        self._compound_children[src].connect(outbox, input_method)
+        self.children[src].connect(outbox, input_method)
 
     def bind(self, source, dest, destmeth):
         """Guild compatible version of :py:meth:`connect`.
@@ -182,7 +179,7 @@ class Compound(object):
     def set_config(self, config):
         """See :py:meth:`pyctools.core.config.ConfigMixin.set_config`."""
         self.config = self.config.update(config)
-        for name, child in self._compound_children.items():
+        for name, child in self.children.items():
             child.set_config(self.config[name])
 
     def go(self):
@@ -192,13 +189,13 @@ class Compound(object):
 
     def start(self):
         """Start the component running."""
-        for name, child in self._compound_children.items():
+        for name, child in self.children.items():
             self.logger.debug('start %s (%s)', name, child.__class__.__name__)
             child.start()
 
     def stop(self):
         """Thread-safe method to stop the component."""
-        for name, child in self._compound_children.items():
+        for name, child in self.children.items():
             self.logger.debug('stop %s (%s)', name, child.__class__.__name__)
             child.stop()
 
@@ -210,7 +207,7 @@ class Compound(object):
             normal for some components not to terminate.
 
         """
-        for name, child in self._compound_children.items():
+        for name, child in self.children.items():
             if end_comps and not child.is_pipe_end():
                 continue
             self.logger.debug('join %s (%s)', name, child.__class__.__name__)
@@ -218,6 +215,6 @@ class Compound(object):
 
     def is_pipe_end(self):
         for src, outbox in self._compound_outputs.values():
-            if not self._compound_children[src].is_pipe_end():
+            if not self.children[src].is_pipe_end():
                 return False
         return True
