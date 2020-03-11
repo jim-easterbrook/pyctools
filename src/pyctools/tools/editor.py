@@ -726,14 +726,9 @@ class CompoundIcon(ComponentIcon):
         self.scene().update_scene_rect(no_shrink=True)
 
     def build_left(self, dest, pos, x, y, dx, dy):
-        dest_name, inbox = dest
-        for source, dests in self.obj._compound_linkages.items():
-            if dest not in dests:
+        for (src_name, outbox), (dest_name, inbox) in self.obj.links:
+            if src_name in pos or (dest_name, inbox) != dest:
                 continue
-            # source is connected to dest
-            src_name, outbox = source
-            if src_name in pos:
-                return
             # find a vacant position
             xn, yn = x - dx, y
             while [xn, yn] in pos.values():
@@ -750,11 +745,8 @@ class CompoundIcon(ComponentIcon):
             return
 
     def build_right(self, source, pos, x, y, dx, dy):
-        src_name, outbox = source
-        for dest in self.obj._compound_linkages[source]:
-            dest_name, inbox = dest
-            # source is connected to dest
-            if dest_name in pos:
+        for (src_name, outbox), (dest_name, inbox) in self.obj.links:
+            if dest_name in pos or (src_name, outbox) != source:
                 continue
             # find a vacant position
             idx = 0
@@ -865,19 +857,18 @@ class CompoundIcon(ComponentIcon):
             icon.setPos(self.width, y)
         # draw linkages
         if self.expanded:
-            for (src, outbox), dests in self.obj._compound_linkages.items():
-                for (dest, inbox) in dests:
-                    if src == 'self':
-                        src_comp = self.mock_IO
-                    else:
-                        src_comp = child_comps[src]
-                    if dest == 'self':
-                        dest_comp = self.mock_IO
-                    else:
-                        dest_comp = child_comps[dest]
-                    link = ComponentLink(src_comp, outbox,
-                                         dest_comp, inbox, parent=self)
-                    link.setEnabled(False)
+            for (src, outbox), (dest, inbox) in self.obj.links:
+                if src == 'self':
+                    src_comp = self.mock_IO
+                else:
+                    src_comp = child_comps[src]
+                if dest == 'self':
+                    dest_comp = self.mock_IO
+                else:
+                    dest_comp = child_comps[dest]
+                link = ComponentLink(src_comp, outbox,
+                                     dest_comp, inbox, parent=self)
+                link.setEnabled(False)
             # redraw links after everything is shown to allow for collisions
             QtCore.QTimer.singleShot(0, self.redraw_links)
         if self.scene():
@@ -1066,10 +1057,9 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             comps[name] = self.new_component(
                 name, comp, QtCore.QPointF(*network.positions[name]), **kw)
         # add link icons
-        for (src, outbox), dests in network._compound_linkages.items():
-            for (dest, inbox) in dests:
-                link = ComponentLink(comps[src], outbox, comps[dest], inbox)
-                self.addItem(link)
+        for (src, outbox), (dest, inbox) in network.links:
+            link = ComponentLink(comps[src], outbox, comps[dest], inbox)
+            self.addItem(link)
         for link in self.matching_items(ComponentLink):
             # redraw all links in case of collisions
             link.redraw()

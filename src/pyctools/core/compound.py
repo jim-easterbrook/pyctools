@@ -63,7 +63,9 @@ class Compound(object):
     Note the use of ``'self'`` in the ``linkages`` parameter to denote
     the compound object's own inputs and outputs. These are connected
     directly to the child components with no runtime overhead. There is
-    no performance disadvantage from using compound objects.
+    no performance disadvantage from using compound objects. The
+    ``'self'`` inboxes and outboxes are added to the component's
+    :py:attr:`~Compound.inputs` and :py:attr:`~Compound.outputs` lists.
 
     All the child components' configuration objects are gathered into
     one :py:class:`~.config.ConfigParent`. The child names are used to
@@ -99,6 +101,15 @@ class Compound(object):
     created by passing a :py:class:`dict` containing additional values.
     This allows the component's user to over-ride the default values.
 
+    The compound component's child components are stored in the
+    :py:attr:`~Compound.children` dict. This must not be modified but
+    may be useful if you need to know about the component's internals.
+
+    The component's internal links are stored in the
+    :py:attr:`~Compound.links` list. This also must not be modified but
+    can be used for introspection. Each element is a ``(src_name,
+    outbox), (dest_name, inbox)`` tuple.
+
     :keyword Component name: Add ``Component`` to the network as
         ``name``. Can be repeated with different values of ``name``.
 
@@ -112,6 +123,11 @@ class Compound(object):
         to child component configuration names.
 
     """
+    inputs = []     #:
+    outputs = []    #:
+    children = {}   #:
+    links = []      #:
+
     def __init__(self, config={}, config_map={}, linkages={}, **kw):
         super(Compound, self).__init__()
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -126,15 +142,13 @@ class Compound(object):
         if config:
             self.set_config(config)
         # set up linkages
-        self._compound_linkages = {}
         self._compound_outputs = {}
-        for source in linkages:
-            src, outbox = source
-            targets = linkages[source]
+        self.links = []
+        for source, targets in linkages.items():
             if isinstance(targets[0], six.string_types):
                 # not a list of pairs, so make it into one
                 targets = list(zip(targets[0::2], targets[1::2]))
-            self._compound_linkages[source] = targets
+            src, outbox = source
             for dest, inbox in targets:
                 if src == 'self':
                     if hasattr(self, outbox):
@@ -149,6 +163,7 @@ class Compound(object):
                 else:
                     self.children[src].connect(
                         outbox, getattr(self.children[dest], inbox))
+                self.links.append(((src, outbox), (dest, inbox)))
 
     def connect(self, output_name, input_method):
         """Connect an output to any callable object.
