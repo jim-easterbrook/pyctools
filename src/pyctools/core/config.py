@@ -309,11 +309,7 @@ class ConfigParent(object):
         self.default = {}
 
     def __repr__(self):
-        result = []
-        for key, value in self.items():
-            if value != value.default:
-                result.append("'{}': {!r}".format(key, value))
-        return '{' + ', '.join(result) + '}'
+        return repr(self._value)
 
     def __getattr__(self, name):
         if name not in self._attributes:
@@ -379,12 +375,17 @@ class ConfigParent(object):
 
     def to_dict(self, ignore_default=True):
         result = {}
-        for key, value in self.items():
-            if isinstance(value, ConfigLeafNode):
-                if value != value.default or not ignore_default:
+        for key, value in self._value.items():
+            if isinstance(value, ConfigParent):
+                child_value = value.to_dict(ignore_default=ignore_default)
+                if child_value:
+                    result[key] = child_value
+            elif key in self.default:
+                if value != self.default[key] or not ignore_default:
                     result[key] = value
             else:
-                result[key] = value.to_dict(ignore_default=ignore_default)
+                if value != value.default or not ignore_default:
+                    result[key] = value
         return result
 
     def audit_string(self):
@@ -439,6 +440,16 @@ class ConfigParent(object):
         for key, value in vars(args).items():
             self[key] = value
 
+    def set_default(self, config={}, **kwds):
+        default = {}
+        default.update(config, **kwds)
+        self.update(default)
+        for key, value in self._value.items():
+            if isinstance(value, ConfigParent):
+                value.set_default()
+            else:
+                self.default[key] = value
+
     def update(self, value):
         for key, value in value.items():
             self[key] = value
@@ -448,6 +459,7 @@ class ConfigParent(object):
         copy = self.__class__(config_map=self._config_map)
         for key, value in self._value.items():
             copy._value[key] = value.copy()
+        copy.default = self.default
         return copy
 
 

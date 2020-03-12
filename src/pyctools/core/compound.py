@@ -139,8 +139,7 @@ class Compound(object):
         self.config = ConfigParent(config_map=config_map)
         for name, child in self.children.items():
             self.config[name] = child.get_config()
-        if config:
-            self.set_config(config)
+        self.config.set_default(config=config)
         # set up linkages
         self._compound_outputs = {}
         self.links = []

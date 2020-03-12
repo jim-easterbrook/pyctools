@@ -226,10 +226,7 @@ class Component(ConfigMixin):
         self.initialise()
         if self.with_outframe_pool:
             self.config['outframe_pool_len'] = ConfigInt(3, min_value=2)
-        for key, value in config.items():
-            self.config[key] = value
-        for key, value in kwds.items():
-            self.config[key] = value
+        self.config.set_default(config=config, **kwds)
         # create a threadsafe buffer for each input and adopt its input method
         for name in self.inputs:
             self.input_buffer[name] = InputBuffer(self.new_frame)
