@@ -636,7 +636,8 @@ class ComponentIcon(ComponentOutline):
 
     def regenerate(self):
         config = self.obj.get_config()
-        self.obj = self.obj.__class__(config=config)
+        self.obj = self.obj.__class__()
+        self.obj.set_config(config)
         return self.name, self.obj
 
     @catch_all
@@ -949,18 +950,13 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         if name:
             self.new_component(name, klass(), position)
 
-    def new_component(self, name, obj, position, expanded=False,
-                      parent=None, config={}):
-        if config:
-            obj.set_config(config)
+    def new_component(self, name, obj, position, expanded=False):
         if isinstance(obj, Compound):
-            component = CompoundIcon(
-                name, obj, parent=parent, expanded=expanded)
+            component = CompoundIcon(name, obj, expanded=expanded)
         else:
-            component = ComponentIcon(name, obj, parent=parent)
+            component = ComponentIcon(name, obj)
         component.setPos(position)
-        if not parent:
-            self.addItem(component)
+        self.addItem(component)
         self.update_scene_rect()
         return component
 
@@ -1034,30 +1030,50 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         if ComponentNetwork:
             logger.info('New style network')
             network = ComponentNetwork()
+            components = network.children
+            positions = network.positions
+            expanded = network.expanded
+            links = network.links
+            if hasattr(network, 'user_config'):
+                network.set_config(network.user_config)
+            else:
+                # reinstantiate components without config constructor arguments
+                for name, comp in components.items():
+                    config = comp.get_config()
+                    components[name] = comp.__class__()
+                    components[name].set_config(config)
         elif Network:
             logger.info('Old style network')
-            factory = Network()
-            network = factory.make()
-            network.positions = {}
-            network.expanded = {}
-            for name, comp in factory.components.items():
-                network.positions[name] = comp['pos']
-                if 'expanded' in comp:
-                    network.expanded[name] = comp['expanded']
+            components = {}
+            positions = {}
+            expanded = {}
+            for name, details in Network.components.items():
+                components[name] = eval(details['class'])()
+                components[name].set_config(eval(details['config']))
+                positions[name] = details['pos']
+                if 'expanded' in details:
+                    expanded[name] = details['expanded']
+            links = []
+            for source, dests in Network.linkages.items():
+                if isinstance(dests[0], six.string_types):
+                    # not a list of pairs, so make it into one
+                    dests = list(zip(dests[0::2], dests[1::2]))
+                for dest in dests:
+                    links.append((source, dest))
         else:
             # not a recognised script
             logger.error('Script not recognised')
             return
         comps = {}
         # add component icons
-        for name, comp in network.children.items():
-            kw = {'config': comp.get_config()}
-            if name in network.expanded:
-                kw['expanded'] = network.expanded[name]
+        for name, comp in components.items():
+            kw = {}
+            if name in expanded:
+                kw['expanded'] = expanded[name]
             comps[name] = self.new_component(
-                name, comp, QtCore.QPointF(*network.positions[name]), **kw)
+                name, comp, QtCore.QPointF(*positions[name]), **kw)
         # add link icons
-        for (src, outbox), (dest, inbox) in network.links:
+        for (src, outbox), (dest, inbox) in links:
             link = ComponentLink(comps[src], outbox, comps[dest], inbox)
             self.addItem(link)
         for link in self.matching_items(ComponentLink):
@@ -1068,6 +1084,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
     def save_script(self, file_name, needs_qt):
         components = {}
         modules = []
+        user_config = {}
         positions = {}
         expanded = {}
         with_qt = False
@@ -1075,25 +1092,29 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             name = child.name
             obj = child.obj
             mod = obj.__class__.__module__
-            config = obj.get_config().to_dict(ignore_default=True)
-            config=('\n' + (' ' * 23)).join(pprint.pformat(
-                config, width=80-23, compact=True).splitlines())
-            components[name] = {
-                'class' : '{}.{}'.format(mod, obj.__class__.__name__),
-                'config' : config,
-                }
+            user_config[name] = obj.get_config().to_dict(ignore_default=True)
+            components[name] = '{}.{}'.format(mod, obj.__class__.__name__)
             positions[name] = (child.pos().x(), child.pos().y())
             if isinstance(child, CompoundIcon):
                 expanded[name] = child.expanded
             if mod not in modules:
                 modules.append(mod)
                 with_qt = with_qt or needs_qt[mod]
+        user_config_str = '{'
+        for name, value in user_config.items():
+            if not value:
+                continue
+            indent = len(name) + 12
+            user_config_str += "\n        '{}': {},".format(
+                name, ('\n' + (' ' * indent)).join(
+                    pprint.pformat(value, width=80-indent).splitlines()))
+        user_config_str += '\n        }\n'
         linkages = self.get_linkages()
-        linkages=('\n' + (' ' * 23)).join(pprint.pformat(
+        linkages = ('\n' + (' ' * 23)).join(pprint.pformat(
             dict(linkages), width=80-23).splitlines())
-        positions=('\n' + (' ' * 16)).join(pprint.pformat(
+        positions = ('\n' + (' ' * 16)).join(pprint.pformat(
             positions, width=80-16).splitlines())
-        expanded=('\n' + (' ' * 15)).join(pprint.pformat(
+        expanded = ('\n' + (' ' * 15)).join(pprint.pformat(
             expanded, width=80-15, compact=True).splitlines())
         modules.sort()
         with open(file_name, 'w') as of:
@@ -1113,17 +1134,17 @@ import logging
 class ComponentNetwork(Compound):
     positions = {positions}
     expanded = {expanded}
+    user_config = {user_config}
 
-    def __init__(self, config={{}}, **kwds):
+    def __init__(self):
         super(ComponentNetwork, self).__init__("""
-                     .format(positions=positions, expanded=expanded))
+                     .format(positions=positions, expanded=expanded,
+                             user_config=user_config_str))
             for name, component in components.items():
-                of.write("""
-            {name} = {class}(
-                config={config}),""".format(name=name, **component))
+                of.write("\n            {} = {}(),".format(name, component))
             of.write("""
-            linkages = {linkages},
-            config = config, **kwds)
+            linkages = {linkages}
+            )
 
 if __name__ == '__main__':
 """
@@ -1133,6 +1154,7 @@ if __name__ == '__main__':
                          '    app = QtWidgets.QApplication(sys.argv)\n')
             of.write("""
     comp = ComponentNetwork()
+    comp.set_config(comp.user_config)
     cnf = comp.get_config()
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
