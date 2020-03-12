@@ -193,7 +193,7 @@ class Compound(object):
 
     def set_config(self, config):
         """See :py:meth:`pyctools.core.config.ConfigMixin.set_config`."""
-        self.config = self.config.update(config)
+        self.config.update(config)
         for name, child in self.children.items():
             child.set_config(self.config[name])
 

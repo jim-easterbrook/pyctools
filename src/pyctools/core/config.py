@@ -458,6 +458,7 @@ class ConfigMixin(object):
     def __init__(self, **kwds):
         super(ConfigMixin, self).__init__(**kwds)
         self.config = ConfigParent()
+        self._shadow_config = None
         self._configmixin_queue = collections.deque()
 
     def get_config(self):
@@ -473,10 +474,10 @@ class ConfigMixin(object):
         :rtype: :py:class:`ConfigParent`
 
         """
-        # get any queued changes
-        self.update_config()
         # make copy to allow changes without affecting running component
-        return self.config.copy()
+        if self._shadow_config is None:
+            self._shadow_config = self.config.copy()
+        return self._shadow_config.copy()
 
     def set_config(self, config={}, **kwds):
         """Update the component's configuration.
@@ -492,12 +493,13 @@ class ConfigMixin(object):
 
         """
         # get copy of current config
-        cfg = self.get_config()
+        if self._shadow_config is None:
+            self._shadow_config = self.config.copy()
         # update it with new values
-        cfg = cfg.update(config)
-        cfg = cfg.update(kwds)
+        self._shadow_config.update(config)
+        self._shadow_config.update(kwds)
         # put modified copy on queue for running component
-        self._configmixin_queue.append(cfg)
+        self._configmixin_queue.append(self._shadow_config)
         # notify component, using thread safe method
         self.new_config()
 
@@ -507,9 +509,6 @@ class ConfigMixin(object):
         Call this from within your component before using any config
         values to ensure you have the latest values set by the user.
 
-        :return: Whether the config was updated.
-        :rtype: bool
-
         """
         while self._configmixin_queue:
-            self.config = self._configmixin_queue.popleft()
+            self.config.update(self._configmixin_queue.popleft())
