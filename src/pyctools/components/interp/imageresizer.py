@@ -42,8 +42,7 @@ class ImageResizerX(Compound):
     """
     def __init__(self, config={}, **kwds):
         cfg = {'aperture': 16}
-        cfg.update(config)
-        cfg.update(kwds)
+        cfg.update(config, **kwds)
         super(ImageResizerX, self).__init__(
             filgen = FilterGenerator(),
             resize = Resize(),
@@ -81,8 +80,7 @@ class ImageResizerY(Compound):
     """
     def __init__(self, config={}, **kwds):
         cfg = {'aperture': 16}
-        cfg.update(config)
-        cfg.update(kwds)
+        cfg.update(config, **kwds)
         super(ImageResizerY, self).__init__(
             filgen = FilterGenerator(),
             resize = Resize(),
@@ -127,8 +125,7 @@ class ImageResizer2D(Compound):
     """
     def __init__(self, config={}, **kwds):
         cfg = {'xaperture': 16, 'yaperture': 16}
-        cfg.update(config)
-        cfg.update(kwds)
+        cfg.update(config, **kwds)
         super(ImageResizer2D, self).__init__(
             xfilgen = FilterGenerator(),
             yfilgen = FilterGenerator(),
