@@ -172,6 +172,9 @@ class ConfigBool(ConfigInt):
     def __repr__(self):
         return str(bool(self))
 
+    def __str__(self):
+        return str(bool(self))
+
     @staticmethod
     def _parser_kw():
         return {'type' : bool, 'metavar' : 'b'}
