@@ -221,6 +221,10 @@ class ConfigStr(ConfigLeafNode, six.text_type):
     :keyword str default: Default value of the node.
 
     """
+
+    def __new__(cls, value='', default=None, **kwds):
+        return super(ConfigStr, cls).__new__(cls, value, default, **kwds)
+
     @staticmethod
     def _parser_kw():
         return {'metavar' : 'str'}
