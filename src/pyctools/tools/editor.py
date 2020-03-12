@@ -305,10 +305,12 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
         self.outbox = outbox
         self.dest = dest
         self.inbox = inbox
-        self.redraw()
 
     @catch_all
     def itemChange(self, change, value):
+        if change == QtWidgets.QGraphicsItem.ItemSceneHasChanged:
+            if self.scene():
+                self.redraw()
         if change == QtWidgets.QGraphicsItem.ItemSelectedHasChanged:
             if isinstance(value, QtCore.QVariant):
                 value = value.toBool()
@@ -349,6 +351,21 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
                         return True
         return False
 
+    def five_segment_link(self, x0, y0, x1, x2, xn, yn):
+        dy = (-10, 10)[y0 < yn]
+        for count in (int(abs(y0 - yn)) // 20, 30):
+            yoff = 0
+            for j in range(count):
+                for y1 in (y0 + yoff, yn - yoff):
+                    if not (self.collides(x1, y1, x2, y1)
+                            or self.collides(x1, y0, x1, y1)
+                            or self.collides(x2, y1, x2, yn)):
+                        return ((x0, y0), (x1, y0), (x1, y1),
+                                (x2, y1), (x2, yn), (xn, yn))
+                yoff += dy
+            dy = -dy
+        return None
+
     def find_route(self, x0, y0, xn, yn):
         if xn - 10 < x0 + 4:
             # backwards link, 5 segments
@@ -358,12 +375,9 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
                 dy = -10
             for x2 in range(int(xn) - 10, int(xn) - 40, -10):
                 for x1 in range(int(x0) + 4, int(x0) + 44, 10):
-                    for y1 in range(int(y0) + dy, int(yn), dy):
-                        if not (self.collides(x1, y0, x1, y1)
-                                or self.collides(x1, y1, x2, y1)
-                                or self.collides(x2, y1, x2, yn)):
-                            return ((x0, y0), (x1, y0), (x1, y1),
-                                    (x2, y1), (x2, yn), (xn, yn))
+                    result = self.five_segment_link(x0, y0, x1, x2, xn, yn)
+                    if result:
+                        return result
             # draw direct line
             return ((x0, y0), (xn, yn))
         # try single line
@@ -378,13 +392,9 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
         # try 5-segment line
         for x2 in range(int(xn) - 10, int(xn) - 40, -10):
             for x1 in range(int(x0) + 4, int(x0) + 44, 10):
-                for yoff in range(0, 100, 10):
-                    for y1 in (y0 - yoff, y0 + yoff, yn - yoff, yn + yoff):
-                        if not (self.collides(x1, y0, x1, y1)
-                                or self.collides(x1, y1, x2, y1)
-                                or self.collides(x2, y1, x2, yn)):
-                            return ((x0, y0), (x1, y0), (x1, y1),
-                                    (x2, y1), (x2, yn), (xn, yn))
+                result = self.five_segment_link(x0, y0, x1, x2, xn, yn)
+                if result:
+                    return result
         # draw direct line
         return ((x0, y0), (xn, yn))
 
@@ -451,7 +461,7 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
     def mouseMoveEvent(self, event):
         start_pos = event.buttonDownScreenPos(QtCore.Qt.LeftButton)
         if (QtCore.QLineF(event.screenPos(), start_pos).length() <
-                                        QtWidgets.QApplication.startDragDistance()):
+                                    QtWidgets.QApplication.startDragDistance()):
             return
         start_pos = event.buttonDownScenePos(QtCore.Qt.LeftButton)
         drag = QtGui.QDrag(event.widget())
@@ -468,7 +478,8 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
     def dropEvent(self, event):
         if not event.mimeData().hasFormat(self.link_mime_type):
             return super(IOIcon, self).dropEvent(event)
-        start_pos = cPickle.loads(event.mimeData().data(self.link_mime_type).data())
+        start_pos = cPickle.loads(
+            event.mimeData().data(self.link_mime_type).data())
         link_from = self.scene().itemAt(start_pos, self.transform())
         while link_from and not isinstance(link_from, IOIcon):
             link_from = link_from.parentItem()
@@ -577,6 +588,29 @@ class ComponentOutline(QtWidgets.QGraphicsRectItem):
         else:
             class_label.setPos(5, 30)
 
+    @catch_all
+    def itemChange(self, change, value):
+        if change == QtWidgets.QGraphicsItem.ItemPositionChange:
+            if isinstance(value, QtCore.QVariant):
+                value = value.toPointF()
+            value.setX(value.x() + 5 - ((value.x() + 5) % 10))
+            value.setY(value.y() + 5 - ((value.y() + 5) % 10))
+            return value
+        if self.scene():
+            if change == QtWidgets.QGraphicsItem.ItemSceneHasChanged:
+                self.redraw()
+            if change == QtWidgets.QGraphicsItem.ItemPositionHasChanged:
+                # redraw all links in case component is now on top of one
+                for link in self.scene().matching_items(ComponentLink):
+                    link.redraw()
+                self.scene().update_scene_rect(no_shrink=True)
+        return super(ComponentOutline, self).itemChange(change, value)
+
+    def redraw(self):
+        # do anything needed after component has been added to a scene
+        # e.g. anything requiring collision detection
+        pass
+
 
 class ComponentIcon(ComponentOutline):
     def __init__(self, name, obj, **kwds):
@@ -656,31 +690,6 @@ class ComponentIcon(ComponentOutline):
     def mouseDoubleClickEvent(self, event):
         self.do_config()
 
-    @catch_all
-    def itemChange(self, change, value):
-        if change == QtWidgets.QGraphicsItem.ItemPositionChange:
-            if isinstance(value, QtCore.QVariant):
-                value = value.toPointF()
-            value.setX(value.x() + 5 - ((value.x() + 5) % 10))
-            value.setY(value.y() + 5 - ((value.y() + 5) % 10))
-            return value
-        if change == QtWidgets.QGraphicsItem.ItemPositionHasChanged and self.scene():
-            if isinstance(value, QtCore.QVariant):
-                value = value.toPointF()
-            self.scene().parent().status.setText(
-                'position: {}, {}'.format(value.x(), value.y()))
-            for link in self.scene().matching_items(ComponentLink):
-                # redraw all links in case component is now on top of one
-                link.redraw()
-            self.scene().update_scene_rect(no_shrink=True)
-        if change == QtWidgets.QGraphicsItem.ItemSelectedHasChanged and self.scene():
-            if value:
-                self.scene().parent().status.setText('position: {}, {}'.format(
-                    self.scenePos().x(), self.scenePos().y()))
-            else:
-                self.scene().parent().status.clear()
-        return super(ComponentIcon, self).itemChange(change, value)
-
 
 class MockIO(object):
     pass
@@ -700,13 +709,11 @@ class CompoundIcon(ComponentIcon):
         self.mock_IO.outputs = {}
         for name, icon in self.inputs.items():
             self.mock_IO.outputs[name] = icon
-        # draw internals if needed
-        self.set_expanded()
 
     def expand_contract(self):
         old_w, old_h = self.width, self.height
         self.expanded = not self.expanded
-        self.set_expanded()
+        self.redraw()
         delta_x = self.width - old_w
         delta_y = self.height - old_h
         # move other components
@@ -765,7 +772,7 @@ class CompoundIcon(ComponentIcon):
             for name in self.obj.children[dest_name].inputs:
                 self.build_left((dest_name, name), pos, xn, yn, dx, dy)
 
-    def set_expanded(self):
+    def redraw(self):
         # delete previous version
         for child in self.childItems():
             if isinstance(child, IOIcon):
@@ -870,16 +877,8 @@ class CompoundIcon(ComponentIcon):
                 link = ComponentLink(src_comp, outbox,
                                      dest_comp, inbox, parent=self)
                 link.setEnabled(False)
-            # redraw links after everything is shown to allow for collisions
-            QtCore.QTimer.singleShot(0, self.redraw_links)
-        if self.scene():
-            self.scene().update_scene_rect(no_shrink=True)
-
-    @catch_all
-    def redraw_links(self):
-        for child in self.childItems():
-            if isinstance(child, ComponentLink):
-                child.redraw()
+                link.redraw()
+        self.scene().update_scene_rect(no_shrink=True)
 
 
 class NetworkArea(QtWidgets.QGraphicsScene):
@@ -898,19 +897,15 @@ class NetworkArea(QtWidgets.QGraphicsScene):
     def dragLeaveEvent(self, event):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
             return super(NetworkArea, self).dragMoveEvent(event)
-        self.parent().status.clear()
 
     def dragMoveEvent(self, event):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
             return super(NetworkArea, self).dragMoveEvent(event)
-        self.parent().status.setText('position: {}, {}'.format(
-            event.scenePos().x(), event.scenePos().y()))
 
     @catch_all
     def dropEvent(self, event):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
             return super(NetworkArea, self).dropEvent(event)
-        self.parent().status.clear()
         data = event.mimeData().data(_COMP_MIMETYPE).data()
         klass = cPickle.loads(data)
         self.add_component(klass, event.scenePos())
@@ -1076,9 +1071,6 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         for (src, outbox), (dest, inbox) in links:
             link = ComponentLink(comps[src], outbox, comps[dest], inbox)
             self.addItem(link)
-        for link in self.matching_items(ComponentLink):
-            # redraw all links in case of collisions
-            link.redraw()
         self.views()[0].centerOn(self.itemsBoundingRect().center())
 
     def save_script(self, file_name, needs_qt):
