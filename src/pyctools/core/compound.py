@@ -40,8 +40,8 @@ class Compound(object):
 
         def ImageResizer(config={}, **kwds):
             cfg = {'aperture': 16}
-            cfg.update(kwds)
             cfg.update(config)
+            cfg.update(kwds)
             return Compound(
                 filgen = FilterGenerator(),
                 resize = Resize(),
