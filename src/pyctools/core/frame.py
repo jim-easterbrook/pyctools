@@ -253,8 +253,10 @@ class Metadata(object):
         audit += text
         if with_config:
             audit += with_config.audit_string()
+        if not isinstance(component, type):
+            component = component.__class__
         audit += '    <{}.{}>\n'.format(
-            component.__module__, component.__class__.__name__)
+            component.__module__, component.__name__)
         if with_date:
             audit += '    <{}>\n'.format(datetime.now().isoformat())
         self.set('audit', audit)
