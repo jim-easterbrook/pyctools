@@ -396,6 +396,15 @@ class ConfigParent(object):
         return result
 
     def audit_string(self):
+        """Generate a string suitable for use in an audit trail.
+
+        Converts a component's configuration settings to a
+        :py:class:`~.frame.Metadata` audit trail string. This is a
+        convenient way to add to the audit trail in a "standard" format.
+        Only the non-default settings are shown, to keep the audit trail
+        short but useful.
+
+        """
         result = ''
         details = []
         for key, value in self._value.items():

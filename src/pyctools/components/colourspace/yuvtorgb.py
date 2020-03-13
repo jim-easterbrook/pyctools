@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-19  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -125,15 +125,7 @@ class YUVtoRGB(Component):
         out_frame.data = numpy.dstack((R, G, B))
         out_frame.type = 'RGB'
         # audit
-        audit = 'Y = {\n'
-        for line in Y_frame.metadata.get('audit').splitlines():
-            audit += '    ' + line + '\n'
-        audit += '    }\n'
-        audit += 'UV = {\n'
-        for line in UV_frame.metadata.get('audit').splitlines():
-            audit += '    ' + line + '\n'
-        audit += '    }\n'
-        audit += 'data = YUVtoRGB(Y, UV)\n'
-        audit += '    matrix: {}\n'.format(matrix)
-        out_frame.metadata.set('audit', audit)
+        out_frame.merge_audit({'Y': Y_frame, 'UV': UV_frame})
+        out_frame.set_audit(
+            self, 'data = YUVtoRGB(Y, UV)\n    matrix: {}\n'.format(matrix))
         return True

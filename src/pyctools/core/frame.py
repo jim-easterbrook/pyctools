@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-19  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -20,6 +20,7 @@
 __all__ = ['Frame', 'Metadata']
 __docformat__ = 'restructuredtext en'
 
+from datetime import datetime
 import os
 import threading
 
@@ -40,6 +41,7 @@ import numpy
 import PIL.Image
 
 from pyctools.core.types import pt_float
+
 
 # register our XMP namespace from main thread
 GExiv2.Metadata.register_xmp_namespace(
@@ -87,6 +89,14 @@ class Frame(object):
         self.data = other.data
         self.type = other.type
         self.metadata.copy(other.metadata)
+
+    def set_audit(self, *args, **kwds):
+        """See :py:meth:`Metadata.set_audit`."""
+        self.metadata.set_audit(*args, **kwds)
+
+    def merge_audit(self, *args, **kwds):
+        """See :py:meth:`Metadata.merge_audit`."""
+        self.metadata.merge_audit(*args, **kwds)
 
     def size(self):
         """Return image dimensions (height, width)"""
@@ -205,6 +215,97 @@ class Metadata(object):
         super(Metadata, self).__init__(**kwds)
         self.data = {}
         self.set('audit', '')
+
+    def set_audit(self, component, text,
+                  with_history=True, with_date=False, with_config=None):
+        r"""Set audit trail.
+
+        This is a convenient way to add to the audit trail in a
+        "standard" format. The component's module and class names are
+        added to the audit trail to record which component did the
+        processing. The text should describe what was done and finish
+        with a newline, e.g. ``data = FFT(data)\n``. Using the word
+        ``data`` to describe single input or output data keeps the audit
+        trail consistent. If you are combining two or more inputs you
+        can "rename" each one with the :py:meth:`merge_audit` method.
+
+        :param Component component: The component that's processing the
+            frame.
+
+        :param str text: Text to be added to the audit trail.
+
+        :param bool with_history: Whether to include the previous audit
+            trail.
+
+        :param bool with_date: Whether to include the current date &
+            time in the audit trail. This is primarily used when writing
+            files.
+
+        :param ConfigParent with_config: Whether to add the component's
+            configuration options with
+            :py:meth:`.config.ConfigParent.audit_string`.
+
+        """
+        if with_history:
+            audit = self.get('audit')
+        else:
+            audit = ''
+        audit += text
+        if with_config:
+            audit += with_config.audit_string()
+        audit += '    <{}.{}>\n'.format(
+            component.__module__, component.__class__.__name__)
+        if with_date:
+            audit += '    <{}>\n'.format(datetime.now().isoformat())
+        self.set('audit', audit)
+
+    def merge_audit(self, parts):
+        r"""Merge audit trails from two or more frames.
+
+        The audit trail from each frame is indented and wrapped with
+        braces (``{}``). This makes the audit trail easier to read when
+        a component uses two or more inputs.
+
+        The ``parts`` parameter is a :py:class:`dict` of
+        :py:class:`Frame` or :py:class:`Metadata` objects. The
+        :py:class:`dict` keys are used to label each indented audit trail.
+
+        For example, this Python code::
+
+            out_frame.merge_audit({'Y': Y_frame, 'UV': UV_frame})
+            out_frame.set_audit(
+                self, 'data = YUVtoRGB(Y, UV)\n    matrix: {}\n'.format(matrix))
+
+        could produce this audit trail:
+
+        .. code-block:: none
+
+            Y = {
+                data = test.y
+                    path: '/home/jim/Videos/test.y', looping: 'repeat', noaudit: True
+                    <pyctools.components.io.videofilereader.VideoFileReader>
+                }
+            UV = {
+                data = test.uv
+                    path: '/home/jim/Videos/test.uv', looping: 'repeat', noaudit: True
+                    <pyctools.components.io.videofilereader.VideoFileReader>
+                }
+            data = YUVtoRGB(Y, UV)
+                matrix: 601
+                <pyctools.components.colourspace.yuvtorgb.YUVtoRGB>
+
+        :param dict parts: The inputs to merge.
+
+        """
+        audit = ''
+        for name, metadata in parts.items():
+            if isinstance(metadata, Frame):
+                metadata = metadata.metadata
+            audit += name + ' = {\n'
+            for line in metadata.get('audit').splitlines():
+                audit += '    ' + line + '\n'
+            audit += '    }\n'
+        self.set('audit', audit)
 
     def from_file(self, path):
         """Read metadata from an XMP sidecar file or, if there is no

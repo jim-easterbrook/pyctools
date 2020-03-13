@@ -103,18 +103,10 @@ class RGBtoYUV(Component):
         Y_frame.type = 'Y'
         UV_frame.type = 'CbCr'
         # audit
-        if audit_out in ('both', 'Y'):
-            audit = Y_frame.metadata.get('audit')
-        else:
-            audit = ''
-        audit += 'data = RGBtoY(data)\n'
-        audit += '    matrix: {}\n'.format(matrix)
-        Y_frame.metadata.set('audit', audit)
-        if audit_out in ('both', 'UV'):
-            audit = UV_frame.metadata.get('audit')
-        else:
-            audit = ''
-        audit += 'data = RGBtoUV(data)\n'
-        audit += '    matrix: {}\n'.format(matrix)
-        UV_frame.metadata.set('audit', audit)
+        Y_frame.set_audit(
+            self, 'data = RGBtoY(data)\n    matrix: {}\n'.format(matrix),
+            with_history=audit_out in ('both', 'Y'))
+        UV_frame.set_audit(
+            self, 'data = RGBtoUV(data)\n    matrix: {}\n'.format(matrix),
+            with_history=audit_out in ('both', 'UV'))
         return True

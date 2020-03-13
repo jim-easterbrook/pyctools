@@ -107,11 +107,8 @@ class VideoFileWriter(Transformer):
                 'Cannot write %s frame with %d components', in_frame.type, bpc)
             return
         md = Metadata().copy(in_frame.metadata)
-        audit = md.get('audit')
-        audit += '{} = VideoFileWriter(data)\n'.format(os.path.basename(path))
-        audit += self.config.audit_string()
-        audit += '    time: {}\n'.format(datetime.now().isoformat())
-        md.set('audit', audit)
+        md.set_audit(self, '{} = data\n'.format(os.path.basename(path)),
+                     with_date=True, with_config=self.config)
         md.to_file(path)
         with self.subprocess(
                 ['ffmpeg', '-v', 'warning', '-y', '-an',

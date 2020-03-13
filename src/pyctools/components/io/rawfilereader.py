@@ -121,13 +121,9 @@ class RawFileReader(Component):
         metadata = Metadata().from_file(path)
         fourcc = metadata.get('fourcc')
         xlen, ylen = metadata.image_size()
-        if self.config['noaudit']:
-            audit = ''
-        else:
-            audit = metadata.get('audit')
-        audit += 'data = RawFileReader({})\n'.format(os.path.basename(path))
-        audit += self.config.audit_string()
-        metadata.set('audit', audit)
+        metadata.set_audit(
+            self, 'data = {}\n'.format(os.path.basename(path)),
+            with_history=not self.config['noaudit'], with_config=self.config)
         # set params according to dimensions and fourcc
         if fourcc not in self.params:
             self.logger.critical("Can't read '%s' files", fourcc)
