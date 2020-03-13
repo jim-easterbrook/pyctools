@@ -48,6 +48,10 @@ class RGBtoYUV(Component):
     components to convert the RGB input or Y output. The UV output is in
     the range -112..112.
 
+    .. _Rec. 601: https://en.wikipedia.org/wiki/Rec._601
+    .. _Rec. 709: https://en.wikipedia.org/wiki/Rec._709
+    .. _YCbCr:    https://en.wikipedia.org/wiki/YCbCr
+
     """
 
     outputs = ['output_Y', 'output_UV']     #:

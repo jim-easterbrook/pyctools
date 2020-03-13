@@ -161,16 +161,8 @@ class FilterDesign(Component):
         else:
             fil_frame.data = coefs.reshape((-1, 1, 1))
         fil_frame.type = 'fil'
-        audit = fil_frame.metadata.get('audit')
-        audit += 'data = FilterCoefficients()\n'
-        audit += '    frequency: {}\n'.format(self.config['frequency'])
-        audit += '    gain: {}\n'.format(self.config['gain'])
-        if self.config['weight']:
-            audit += '    weight: {}\n'.format(self.config['weight'])
-        audit += '    aperture: {}\n'.format(aperture)
-        audit += '    interp: {}\n'.format(self.config['interp'])
-        audit += '    direction: {}\n'.format(self.config['direction'])
-        fil_frame.metadata.set('audit', audit)
+        fil_frame.set_audit(self, 'data = OptimumFilterCoefficients()\n',
+                            with_config=self.config)
         self.send('filter', fil_frame)
         # compute actual response
         padded = numpy.zeros(pad_len * 2, dtype=numpy.double)
@@ -195,14 +187,6 @@ class FilterDesign(Component):
                  numpy.real(response).astype(pt_float)))
             labels = 'normalised frequency', 'ideal gain', 'actual gain'
         resp_frame.metadata.set('labels', repr(labels))
-        audit = resp_frame.metadata.get('audit')
-        audit += 'data = FilterResponse()\n'
-        audit += '    frequency: {}\n'.format(self.config['frequency'])
-        audit += '    gain: {}\n'.format(self.config['gain'])
-        if self.config['weight']:
-            audit += '    weight: {}\n'.format(self.config['weight'])
-        audit += '    aperture: {}\n'.format(aperture)
-        audit += '    interp: {}\n'.format(self.config['interp'])
-        audit += '    direction: {}\n'.format(self.config['direction'])
-        resp_frame.metadata.set('audit', audit)
+        resp_frame.set_audit(self, 'data = OptimumFilterResponse()\n',
+                             with_config=self.config)
         self.send('response', resp_frame)

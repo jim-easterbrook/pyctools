@@ -77,8 +77,7 @@ class RGBtoY(Transformer):
                           (RGB[:,:,2:3] * mat[0,2]))
         out_frame.type = 'Y'
         # audit
-        audit = out_frame.metadata.get('audit')
-        audit += 'data = RGBtoY(data)\n'
-        audit += '    matrix: {}\n'.format(matrix)
-        out_frame.metadata.set('audit', audit)
+        out_frame.set_audit(
+            self, 'data = RGBtoY(data)\n    matrix: {}\n'.format(matrix),
+            with_history=audit_out in ('both', 'Y'))
         return True

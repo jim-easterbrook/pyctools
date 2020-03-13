@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-19  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -57,9 +57,7 @@ class Arithmetic(Transformer):
         func = self.config['func']
         data = in_frame.as_numpy()
         out_frame.data = eval(func)
-        audit = out_frame.metadata.get('audit')
-        audit += 'data = %s\n' % func
-        out_frame.metadata.set('audit', audit)
+        out_frame.set_audit(self, 'data = {}\n'.format(func))
         return True
 
 
@@ -89,14 +87,6 @@ class Arithmetic2(Component):
         out_frame.initialise(in_frame1)
         out_frame.data = eval(func)
         # audit
-        audit = 'data1 = {\n'
-        for line in in_frame1.metadata.get('audit').splitlines():
-            audit += '    ' + line + '\n'
-        audit += '    }\n'
-        audit += 'data2 = {\n'
-        for line in in_frame2.metadata.get('audit').splitlines():
-            audit += '    ' + line + '\n'
-        audit += '    }\n'
-        audit += 'data = {}\n'.format(func)
-        out_frame.metadata.set('audit', audit)
+        out_frame.merge_audit({'data1': in_frame1, 'data2': in_frame2})
+        out_frame.set_audit(self, 'data = {}\n'.format(func))
         self.send('output', out_frame)

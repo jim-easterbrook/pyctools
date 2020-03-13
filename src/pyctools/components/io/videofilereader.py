@@ -139,14 +139,9 @@ class VideoFileReader(Component):
                     'Reading %s data as 8 bit', header['pix_fmt'])
             # update metadata
             metadata = Metadata().from_file(path)
-            if noaudit:
-                audit = ''
-            else:
-                audit = metadata.get('audit')
-            audit += 'data = VideoFileReader({})\n'.format(
-                os.path.basename(path))
-            audit += self.config.audit_string()
-            metadata.set('audit', audit)
+            metadata.set_audit(
+                self, 'data = {}\n'.format(os.path.basename(path)),
+                with_history=not noaudit, with_config=self.config)
             # set data parameters
             bps = {'RGB': 3, 'Y': 1}[frame_type]
             pix_fmt = {'RGB': ('rgb24', 'rgb48le'),

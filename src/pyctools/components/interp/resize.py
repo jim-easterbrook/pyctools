@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-19  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -28,6 +28,7 @@ import numpy
 from pyctools.core.config import ConfigInt
 from pyctools.core.base import Transformer
 from .resizecore import resize_frame
+
 
 class Resize(Transformer):
     """Filter an image and/or resize with interpolation.
@@ -111,17 +112,18 @@ class Resize(Transformer):
         norm_filter = self.filter_coefs * numpy.float32(x_up * y_up)
         out_frame.data = resize_frame(
             in_data, norm_filter, x_up, x_down, y_up, y_down)
-        audit = out_frame.metadata.get('audit')
-        audit += 'data = Resize(data)\n'
+        audit = 'data = filter(data)\n'
         if x_up != 1 or x_down != 1:
+            audit = 'data = resize(data)\n'
             audit += '    x_up: %d, x_down: %d\n' % (x_up, x_down)
         if y_up != 1 or y_down != 1:
+            audit = 'data = resize(data)\n'
             audit += '    y_up: %d, y_down: %d\n' % (y_up, y_down)
-        audit += '    filter: {\n'
-        for line in self.filter_frame.metadata.get('audit').splitlines():
-            audit += '        ' + line + '\n'
-        audit += '        }\n'
-        out_frame.metadata.set('audit', audit)
+        audit += '    filter = {\n        '
+        audit += '\n        '.join(
+            self.filter_frame.metadata.get('audit').splitlines())
+        audit += '\n        }\n'
+        out_frame.set_audit(self, audit)
         return True
 
 
