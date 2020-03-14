@@ -63,7 +63,7 @@ import docutils.core
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 import pyctools.components
-from pyctools.core.compound import Compound
+from pyctools.core.compound import Compound, RunnableNetwork
 from pyctools.core.config import *
 from pyctools.core.qt import catch_all
 
@@ -994,7 +994,8 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         for child in self.matching_items(ComponentIcon):
             name, obj = child.regenerate()
             components[name] = obj
-        self.runnable = Compound(linkages=self.get_linkages(), **components)
+        self.runnable = RunnableNetwork(
+            linkages=self.get_linkages(), **components)
         self.runnable.start()
 
     @QtCore.pyqtSlot()

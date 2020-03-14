@@ -16,7 +16,7 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-__all__ = ['Compound']
+__all__ = ['Compound', 'RunnableNetwork']
 __docformat__ = 'restructuredtext en'
 
 import logging
@@ -25,7 +25,94 @@ import six
 from .config import ConfigParent
 
 
-class Compound(object):
+class RunnableNetwork(object):
+    """Encapsulate several components into one.
+
+    This is the basic runnable network part of a :py:class:`Compound`
+    component.
+
+    :keyword Component name: Add ``Component`` to the network as
+        ``name``. Can be repeated with different values of ``name``.
+
+    :keyword dict linkages: A mapping from component outputs to
+        component inputs.
+
+    """
+    inputs = []     #:
+    outputs = []    #:
+    children = {}   #:
+    links = []      #:
+
+    def __init__(self, linkages={}, **kw):
+        super(RunnableNetwork, self).__init__()
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.inputs = []
+        self.outputs = []
+        # get child components
+        self.children = kw
+        # set up linkages
+        self._compound_outputs = {}
+        self.links = []
+        for source, targets in linkages.items():
+            if isinstance(targets[0], six.string_types):
+                # not a list of pairs, so make it into one
+                targets = list(zip(targets[0::2], targets[1::2]))
+            src, outbox = source
+            for dest, inbox in targets:
+                if src == 'self':
+                    if hasattr(self, outbox):
+                        self.logger.critical(
+                            'cannot link (%s, %s) to more than one target',
+                            src, outbox)
+                    setattr(self, outbox, getattr(self.children[dest], inbox))
+                    self.inputs.append(outbox)
+                elif dest == 'self':
+                    self._compound_outputs[inbox] = (src, outbox)
+                    self.outputs.append(inbox)
+                else:
+                    self.children[src].connect(
+                        outbox, getattr(self.children[dest], inbox))
+                self.links.append(((src, outbox), (dest, inbox)))
+
+    def go(self):
+        """Guild compatible version of :py:meth:`start`."""
+        self.start()
+        return self
+
+    def start(self):
+        """Start the component running."""
+        for name, child in self.children.items():
+            self.logger.debug('start %s (%s)', name, child.__class__.__name__)
+            child.start()
+
+    def stop(self):
+        """Thread-safe method to stop the component."""
+        for name, child in self.children.items():
+            self.logger.debug('stop %s (%s)', name, child.__class__.__name__)
+            child.stop()
+
+    def join(self, end_comps=False):
+        """Wait for the compound component's children to stop running.
+
+        :param bool end_comps: only wait for the components that end a
+            pipeline. This is useful for complex graphs where it is
+            normal for some components not to terminate.
+
+        """
+        for name, child in self.children.items():
+            if end_comps and not child.is_pipe_end():
+                continue
+            self.logger.debug('join %s (%s)', name, child.__class__.__name__)
+            child.join()
+
+    def is_pipe_end(self):
+        for src, outbox in self._compound_outputs.values():
+            if not self.children[src].is_pipe_end():
+                return False
+        return True
+
+
+class Compound(RunnableNetwork):
     """Encapsulate several components into one.
 
     Closely modeled on `Kamaelia's 'Graphline' component
@@ -123,46 +210,13 @@ class Compound(object):
         to child component configuration names.
 
     """
-    inputs = []     #:
-    outputs = []    #:
-    children = {}   #:
-    links = []      #:
-
     def __init__(self, config={}, config_map={}, linkages={}, **kw):
-        super(Compound, self).__init__()
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.inputs = []
-        self.outputs = []
-        # get child components
-        self.children = kw
+        super(Compound, self).__init__(linkages=linkages, **kw)
         # set config
         self.config = ConfigParent(config_map=config_map)
         for name, child in self.children.items():
             self.config[name] = child.get_config()
         self.config.set_default(config=config)
-        # set up linkages
-        self._compound_outputs = {}
-        self.links = []
-        for source, targets in linkages.items():
-            if isinstance(targets[0], six.string_types):
-                # not a list of pairs, so make it into one
-                targets = list(zip(targets[0::2], targets[1::2]))
-            src, outbox = source
-            for dest, inbox in targets:
-                if src == 'self':
-                    if hasattr(self, outbox):
-                        self.logger.critical(
-                            'cannot link (%s, %s) to more than one target',
-                            src, outbox)
-                    setattr(self, outbox, getattr(self.children[dest], inbox))
-                    self.inputs.append(outbox)
-                elif dest == 'self':
-                    self._compound_outputs[inbox] = (src, outbox)
-                    self.outputs.append(inbox)
-                else:
-                    self.children[src].connect(
-                        outbox, getattr(self.children[dest], inbox))
-                self.links.append(((src, outbox), (dest, inbox)))
 
     def connect(self, output_name, input_method):
         """Connect an output to any callable object.
@@ -195,40 +249,3 @@ class Compound(object):
         self.config.update(config)
         for name, child in self.children.items():
             child.set_config(self.config[name])
-
-    def go(self):
-        """Guild compatible version of :py:meth:`start`."""
-        self.start()
-        return self
-
-    def start(self):
-        """Start the component running."""
-        for name, child in self.children.items():
-            self.logger.debug('start %s (%s)', name, child.__class__.__name__)
-            child.start()
-
-    def stop(self):
-        """Thread-safe method to stop the component."""
-        for name, child in self.children.items():
-            self.logger.debug('stop %s (%s)', name, child.__class__.__name__)
-            child.stop()
-
-    def join(self, end_comps=False):
-        """Wait for the compound component's children to stop running.
-
-        :param bool end_comps: only wait for the components that end a
-            pipeline. This is useful for complex graphs where it is
-            normal for some components not to terminate.
-
-        """
-        for name, child in self.children.items():
-            if end_comps and not child.is_pipe_end():
-                continue
-            self.logger.debug('join %s (%s)', name, child.__class__.__name__)
-            child.join()
-
-    def is_pipe_end(self):
-        for src, outbox in self._compound_outputs.values():
-            if not self.children[src].is_pipe_end():
-                return False
-        return True
