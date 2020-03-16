@@ -327,11 +327,11 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
         collisions = line.collidingItems()
         line.setParentItem(None)
         for item in collisions:
-            if item.parentItem() != self.parentItem():
+            if item == self or item.parentItem() != self.parentItem():
                 continue
             if isinstance(item, ComponentOutline):
-                return True
-            if item == self or not isinstance(item, ComponentLink):
+                return item.mapRectToParent(item.boundingRect())
+            if not isinstance(item, ComponentLink):
                 continue
             path = item.path()
             for n in range(1, path.elementCount()):
@@ -342,42 +342,84 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
                     if (p0.x == x0 and p1.x == x0
                             and max(p0.y, p1.y) > min(y0, y1)
                             and min(p0.y, p1.y) < max(y0, y1)):
-                        return True
+                        return QtCore.QRectF(
+                            p0.x - 0.5, min(p0.y, p1.y) - 0.5,
+                            1.0, abs(p1.y - p0.y) + 1.0)
                 else:
                     # horizontal line
                     if (p0.y == y0 and p1.y == y0
                             and max(p0.x, p1.x) > min(x0, x1)
                             and min(p0.x, p1.x) < max(x0, x1)):
-                        return True
-        return False
+                        return QtCore.QRectF(
+                            min(p0.x, p1.x) - 0.5, p0.y - 0.5,
+                            abs(p1.x - p0.x) + 1.0, 1.0)
+        return None
 
-    def five_segment_link(self, x0, y0, x1, x2, xn, yn):
-        dy = (-10, 10)[y0 < yn]
-        for count in (int(abs(y0 - yn)) // 20, 30):
-            yoff = 0
+    def five_segment_link(self, x0, y0, xn, yn):
+        dy = (10, -10)[yn < y0]
+        # cache for positions of vertical lines
+        x1_c = {}
+        x2_c = {}
+        # maximum positions between y0 and yn
+        steps = int(yn - y0) // dy
+        steps = (steps + 1) // 2
+        # try between y0 & yn, then outside that range
+        for count in steps, 5:
+            y1 = y0
+            y2 = yn
             for j in range(count):
-                for y1 in (y0 + yoff, yn - yoff):
-                    if not (self.collides(x1, y1, x2, y1)
-                            or self.collides(x1, y0, x1, y1)
-                            or self.collides(x2, y1, x2, yn)):
-                        return ((x0, y0), (x1, y0), (x1, y1),
-                                (x2, y1), (x2, yn), (xn, yn))
-                yoff += dy
+                # try y1, then y2
+                for b in True, False:
+                    y = (y1, y2)[b]
+                    # get non-colliding position of first vertical
+                    if y in x1_c:
+                        x1 = x1_c[y]
+                    else:
+                        x1 = x0 + 4
+                        collision = self.collides(x1, y0, x1, y)
+                        while collision:
+                            while x1 <= collision.right():
+                                x1 += 10
+                            collision = self.collides(x1, y0, x1, y)
+                        x1_c[y] = x1
+                    # get non-colliding position of second vertical
+                    if y in x2_c:
+                        x2 = x2_c[y]
+                    else:
+                        x2 = xn - 10
+                        collision = self.collides(x2, y, x2, yn)
+                        while collision:
+                            while x2 >= collision.left():
+                                x2 -= 10
+                            collision = self.collides(x2, y, x2, yn)
+                        x2_c[y] = x2
+                    # test a horizontal joining the two verticals
+                    collision = self.collides(x1, y, x2, y)
+                    if not collision:
+                        return ((x0, y0), (x1, y0), (x1, y),
+                                (x2, y), (x2, yn), (xn, yn))
+                    # move beyond colliding item
+                    if dy > 0:
+                        while y <= collision.bottom():
+                            y += 10
+                    else:
+                        while y >= collision.top():
+                            y -= 10
+                    if b:
+                        y2 = y
+                    else:
+                        y1 = y
+                if (count == steps) and ((y2 <= y1) == (yn > y0)):
+                    break
             dy = -dy
         return None
 
     def find_route(self, x0, y0, xn, yn):
         if xn - 10 < x0 + 4:
             # backwards link, 5 segments
-            if yn >= y0:
-                dy = 10
-            else:
-                dy = -10
-            for x2 in range(int(xn) - 10, int(xn) - 40, -10):
-                for x1 in range(int(x0) + 4, int(x0) + 44, 10):
-                    result = self.five_segment_link(x0, y0, x1, x2, xn, yn)
-                    if result:
-                        return result
+            result = self.five_segment_link(x0, y0, xn, yn)
+            if result:
+                return result
             # draw direct line
             return ((x0, y0), (xn, yn))
         # try single line
@@ -389,12 +431,14 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
             if not (self.collides(x1, y0, x1, yn)
                     or self.collides(x1, yn, xn - 2, yn)):
                 return ((x0, y0), (x1, y0), (x1, yn), (xn, yn))
+        for x1 in range(int(xn) - 10, int(xn) - 40, -10):
+            if not (self.collides(x1, y0, x1, yn)
+                    or self.collides(x0, y0, x1, y0)):
+                return ((x0, y0), (x1, y0), (x1, yn), (xn, yn))
         # try 5-segment line
-        for x2 in range(int(xn) - 10, int(xn) - 40, -10):
-            for x1 in range(int(x0) + 4, int(x0) + 44, 10):
-                result = self.five_segment_link(x0, y0, x1, x2, xn, yn)
-                if result:
-                    return result
+        result = self.five_segment_link(x0, y0, xn, yn)
+        if result:
+            return result
         # draw direct line
         return ((x0, y0), (xn, yn))
 
