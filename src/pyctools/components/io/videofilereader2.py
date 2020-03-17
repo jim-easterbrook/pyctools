@@ -106,7 +106,10 @@ class VideoFileReader2(Component):
         self.update_config()
         path = self.config['path']
         noaudit = self.config['noaudit']
-        # probe file to get dimensions and format
+        # get metadata
+        Y_metadata = Metadata().from_file(path)
+        # probe file with FFmpeg to get dimensions and format
+        header = {}
         cmd = ['ffprobe', '-hide_banner', '-loglevel', 'warning',
                '-show_streams', '-select_streams', 'v:0',
                '-print_format', 'json', path]
@@ -116,48 +119,89 @@ class VideoFileReader2(Component):
         if p.returncode:
             error = error.decode('utf-8')
             error = error.splitlines()[0]
-            self.logger.critical('ffprobe: %s', error)
+            self.logger.info('ffprobe: %s', error)
+        else:
+            output = output.decode('utf-8')
+            header = json.loads(output)['streams'][0]
+            xlen = header['width']
+            ylen = header['height']
+            if 'nb_frames' in header:
+                zlen = int(header['nb_frames'])
+            else:
+                zlen = header['duration_ts']
+            in_fmt = header['pix_fmt']
+            input_opts = ['-an']
+        if not header:
+            # possibly a raw video file
+            fourcc = Y_metadata.get('fourcc')
+            xlen = Y_metadata.get('xlen')
+            ylen = Y_metadata.get('ylen')
+            if fourcc and xlen and ylen:
+                header = {'pix_fmt': fourcc}
+                xlen = int(xlen)
+                ylen = int(ylen)
+                zlen = None
+                # choose FFmpeg input format according to fourcc code
+                if fourcc == 'RGB[24]':
+                    in_fmt = 'rgb24'
+                elif fourcc == 'BGR[24]':
+                    in_fmt = 'bgr24'
+                elif fourcc in ('HDYC', 'UYNV', 'UYVY', 'Y422'):
+                    in_fmt = 'uyvy422'
+                elif fourcc == 'Y16':
+                    in_fmt = 'gray16le'
+                elif fourcc in ('GREY', 'Y800', 'Y8'):
+                    in_fmt = 'gray'
+                elif fourcc in ('YUNV', 'YUYV', 'YUY2'):
+                    in_fmt = 'yuyv422'
+                elif fourcc == 'YVYU':
+                    in_fmt = 'yvyu422'
+                elif fourcc in ('I420', 'IYUV', 'YV12'):
+                    in_fmt = 'yuv411p'
+                elif fourcc == 'YV16':
+                    in_fmt = 'yuv422p'
+                else:
+                    in_fmt = fourcc
+                input_opts = ['-v', 'error', '-f', 'rawvideo',
+                              '-s', '{}x{}'.format(xlen, ylen),
+                              '-r', '25', '-pix_fmt', in_fmt]
+        if not header:
+            # unrecognised file
+            self.logger.critical('Unrecognised file type %s', path)
             return
-        output = output.decode('utf-8')
-        header = json.loads(output)['streams'][0]
-        xlen = header['width']
-        ylen = header['height']
-        if 'nb_frames' in header:
-            zlen = int(header['nb_frames'])
-        else:
-            zlen = header['duration_ts']
         # choose FFmpeg output format according to file's format
-        pix_fmt = header['pix_fmt']
-        if pix_fmt in ('gray16be', 'gray16le'):
-            pix_fmt, bps = 'gray16le', 16
-        elif pix_fmt in ('gray', ):
-            pix_fmt, bps = 'gray', 8
-        elif pix_fmt in ('rgb48be', 'rgb48le', 'bgr48be', 'bgr48le'):
-            pix_fmt, bps = 'rgb48le', 48
-        elif pix_fmt in ('rgb24', 'bgr24', 'gbrp',
-                         '0rgb', 'rgb0', '0bgr', 'bgr0'):
-            pix_fmt, bps = 'rgb24', 24
-        elif pix_fmt in ('yuv422p16be', 'yuv422p16le',
-                         'yuv422p14be', 'yuv422p14le',
-                         'yuv422p12be', 'yuv422p12le',
-                         'yuv422p10be', 'yuv422p10le'):
-            pix_fmt, bps = 'yuv422p16le', 32
-        elif pix_fmt in ('yuyv422', 'yuv422p', 'yuvj422p',
-                         'uyvy422', 'yvyu422'):
-            pix_fmt, bps = 'yuv422p', 16
+        if in_fmt in ('gray16be', 'gray16le'):
+            out_fmt, bps = 'gray16le', 16
+        elif in_fmt in ('gray', ):
+            out_fmt, bps = 'gray', 8
+        elif in_fmt in ('rgb48be', 'rgb48le', 'bgr48be', 'bgr48le'):
+            out_fmt, bps = 'rgb48le', 48
+        elif in_fmt in ('rgb24', 'bgr24', 'gbrp',
+                        '0rgb', 'rgb0', '0bgr', 'bgr0'):
+            out_fmt, bps = 'rgb24', 24
+        elif in_fmt in ('yuv422p16be', 'yuv422p16le',
+                        'yuv422p14be', 'yuv422p14le',
+                        'yuv422p12be', 'yuv422p12le',
+                        'yuv422p10be', 'yuv422p10le'):
+            out_fmt, bps = 'yuv422p16le', 32
+        elif in_fmt in ('yuyv422', 'yuv422p', 'yuvj422p', 'uyvy422', 'yvyu422'):
+            out_fmt, bps = 'yuv422p', 16
         else:
-            self.logger.critical('Cannot read "%s" pixel format', pix_fmt)
+            self.logger.critical(
+                'Cannot read "%s" pixel format', header['pix_fmt'])
             return
         bytes_per_frame = (xlen * ylen * bps) // 8
+        if zlen is None:
+            zlen = os.path.getsize(path) // bytes_per_frame
         # get metadata
         Y_metadata = Metadata().from_file(path)
-        if pix_fmt in ('yuv422p16le', 'yuv422p'):
+        if out_fmt in ('yuv422p16le', 'yuv422p'):
             if not self.UV_connected:
                 self.logger.warning('"output_UV" not connected')
             UV_metadata = Metadata().copy(Y_metadata)
             UV_metadata.set_audit(
                 self, 'data = {}[UV]\n    FFmpeg: {} -> {}\n'.format(
-                    os.path.basename(path), header['pix_fmt'], pix_fmt),
+                    os.path.basename(path), header['pix_fmt'], out_fmt),
                 with_history=not noaudit, with_config=self.config)
             Y_audit = 'data = {}[Y]\n'
         else:
@@ -169,7 +213,7 @@ class VideoFileReader2(Component):
         Y_audit += '    FFmpeg: {} -> {}\n'
         Y_metadata.set_audit(
             self, Y_audit.format(
-                os.path.basename(path), header['pix_fmt'], pix_fmt),
+                os.path.basename(path), header['pix_fmt'], out_fmt),
             with_history=not noaudit, with_config=self.config)
         # read file repeatedly to allow looping
         frame_no = 0
@@ -185,15 +229,17 @@ class VideoFileReader2(Component):
             if zlen > zperiod and zperiod > 1 and looping != 'off':
                 frames -= (frame_no + zlen) % zperiod
             # open file to read data
-            cmd = ['ffmpeg', '-v', 'warning', '-an', '-i', path,
-                   '-f', 'image2pipe', '-c:v', 'rawvideo']
-            if pix_fmt in ('yuv422p16le', 'yuv422p'):
+            cmd = ['ffmpeg', '-v', 'warning'] + input_opts
+            cmd += ['-i', path]
+            if out_fmt in ('yuv422p16le', 'yuv422p'):
                 # UV data range from ffmpeg is half what I expect
                 # this filter option doubles it
                 cmd += ['-filter:v', 'eq=saturation=2']
-            cmd += ['-pix_fmt', pix_fmt, '-']
+            cmd += ['-c:v', 'rawvideo', '-pix_fmt', out_fmt,
+                    '-f', 'image2pipe', '-']
             with self.subprocess(
-                    cmd, stdout=subprocess.PIPE, bufsize=bytes_per_frame) as sp:
+                    cmd, stdin=open(os.devnull), stdout=subprocess.PIPE,
+                    bufsize=bytes_per_frame) as sp:
                 for z in range(frames):
                     try:
                         raw_data = sp.stdout.read(bytes_per_frame)
@@ -209,7 +255,7 @@ class VideoFileReader2(Component):
                             'Adjusting zlen from %d to %d', zlen, z)
                         zlen = z - 1
                         break
-                    if pix_fmt in ('gray16le', 'rgb48le', 'yuv422p16le'):
+                    if out_fmt in ('gray16le', 'rgb48le', 'yuv422p16le'):
                         image = numpy.ndarray(
                             shape=(bytes_per_frame // 2,), dtype='<u2',
                             buffer=raw_data)
@@ -220,12 +266,12 @@ class VideoFileReader2(Component):
                             buffer=raw_data)
                     Y_frame = self.outframe_pool['output_Y_RGB'].get()
                     Y_frame.metadata.copy(Y_metadata)
-                    if pix_fmt in ('rgb48le', 'rgb24'):
+                    if out_fmt in ('rgb48le', 'rgb24'):
                         Y_frame.type = 'RGB'
                     else:
                         Y_frame.type = 'Y'
                     Y_frame.frame_no = frame_no
-                    if pix_fmt in ('yuv422p16le', 'yuv422p'):
+                    if out_fmt in ('yuv422p16le', 'yuv422p'):
                         UV_frame = self.outframe_pool['output_UV'].get()
                         UV_frame.metadata.copy(UV_metadata)
                         UV_frame.type = 'CbCr'
