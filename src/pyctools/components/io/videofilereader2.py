@@ -43,7 +43,12 @@ class VideoFileReader2(Component):
 
     This component uses FFmpeg_ to read video from a wide variety of
     formats. Make sure you have installed FFmpeg before attempting to
-    use :py:class:`VideoFileReader`.
+    use :py:class:`VideoFileReader2`.
+
+    Unlike :py:class:`~.videofilereader.VideoFileReader` the file data
+    is not converted to Y or RGB video format. This may be useful if you
+    want to process the YUV data directly, rather than having to convert
+    it from RGB to YUV again.
 
     The ``zperiod`` config item can be used to adjust the repeat period
     so it is an integer multiple of a chosen number, e.g. 4 frames for a
@@ -98,7 +103,6 @@ class VideoFileReader2(Component):
             sp.wait()
 
     def file_reader(self):
-        """Generator process to read file"""
         self.update_config()
         path = self.config['path']
         noaudit = self.config['noaudit']
