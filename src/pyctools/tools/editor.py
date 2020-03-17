@@ -356,21 +356,20 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
         return None
 
     def five_segment_link(self, x0, y0, xn, yn):
-        dy = (10, -10)[yn < y0]
         # cache for positions of vertical lines
         x1_c = {}
         x2_c = {}
         # maximum positions between y0 and yn
-        steps = int(yn - y0) // dy
+        steps = abs(int(yn - y0)) // 10
         steps = (steps + 1) // 2
         # try between y0 & yn, then outside that range
-        for count in steps, 5:
+        for converge in True, False:
             y1 = y0
             y2 = yn
-            for j in range(count):
+            for j in range(steps):
                 # try y1, then y2
-                for b in True, False:
-                    y = (y1, y2)[b]
+                for try1 in True, False:
+                    y = (y2, y1)[try1]
                     # get non-colliding position of first vertical
                     if y in x1_c:
                         x1 = x1_c[y]
@@ -399,19 +398,21 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
                         return ((x0, y0), (x1, y0), (x1, y),
                                 (x2, y), (x2, yn), (xn, yn))
                     # move beyond colliding item
-                    if dy > 0:
+                    if (try1 == converge) == (yn >= y0):
                         while y <= collision.bottom():
                             y += 10
                     else:
                         while y >= collision.top():
                             y -= 10
-                    if b:
-                        y2 = y
-                    else:
+                    if try1:
                         y1 = y
-                if (count == steps) and ((y2 <= y1) == (yn > y0)):
+                    else:
+                        y2 = y
+                if y2 == y1:
+                    pass
+                elif converge and ((y2 <= y1) == (yn > y0)):
                     break
-            dy = -dy
+            steps = 5
         return None
 
     def find_route(self, x0, y0, xn, yn):
