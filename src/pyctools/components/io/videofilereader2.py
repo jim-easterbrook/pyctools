@@ -179,13 +179,21 @@ class VideoFileReader2(Component):
         elif in_fmt in ('rgb24', 'bgr24', 'gbrp',
                         '0rgb', 'rgb0', '0bgr', 'bgr0'):
             out_fmt, bps = 'rgb24', 24
+        elif in_fmt in ('yuv444p', ):
+            out_fmt, bps = 'yuv444p', 24
+            UV_shape = 2, ylen, xlen, 1
         elif in_fmt in ('yuv422p16be', 'yuv422p16le',
                         'yuv422p14be', 'yuv422p14le',
                         'yuv422p12be', 'yuv422p12le',
                         'yuv422p10be', 'yuv422p10le'):
             out_fmt, bps = 'yuv422p16le', 32
+            UV_shape = 2, ylen, xlen // 2, 1
         elif in_fmt in ('yuyv422', 'yuv422p', 'yuvj422p', 'uyvy422', 'yvyu422'):
             out_fmt, bps = 'yuv422p', 16
+            UV_shape = 2, ylen, xlen // 2, 1
+        elif in_fmt in ('yuv420p', 'yuv411p'):
+            out_fmt, bps = 'yuv411p', 12
+            UV_shape = 2, ylen // 2, xlen // 2, 1
         else:
             self.logger.critical(
                 'Cannot read "%s" pixel format', header['pix_fmt'])
@@ -195,7 +203,7 @@ class VideoFileReader2(Component):
             zlen = os.path.getsize(path) // bytes_per_frame
         # get metadata
         Y_metadata = Metadata().from_file(path)
-        if out_fmt in ('yuv422p16le', 'yuv422p'):
+        if out_fmt.startswith('yuv'):
             if not self.UV_connected:
                 self.logger.warning('"output_UV" not connected')
             UV_metadata = Metadata().copy(Y_metadata)
@@ -231,7 +239,7 @@ class VideoFileReader2(Component):
             # open file to read data
             cmd = ['ffmpeg', '-v', 'warning'] + input_opts
             cmd += ['-i', path]
-            if out_fmt in ('yuv422p16le', 'yuv422p'):
+            if out_fmt.startswith('yuv'):
                 # UV data range from ffmpeg is half what I expect
                 # this filter option doubles it
                 cmd += ['-filter:v', 'eq=saturation=2']
@@ -271,7 +279,7 @@ class VideoFileReader2(Component):
                     else:
                         Y_frame.type = 'Y'
                     Y_frame.frame_no = frame_no
-                    if out_fmt in ('yuv422p16le', 'yuv422p'):
+                    if out_fmt.startswith('yuv'):
                         UV_frame = self.outframe_pool['output_UV'].get()
                         UV_frame.metadata.copy(UV_metadata)
                         UV_frame.type = 'CbCr'
@@ -279,7 +287,7 @@ class VideoFileReader2(Component):
                         Y = image[0:xlen * ylen]
                         UV = image[xlen * ylen:]
                         Y_frame.data = Y.reshape((ylen, xlen, 1))
-                        UV = UV.reshape((2, ylen, xlen // 2, 1))
+                        UV = UV.reshape(UV_shape)
                         UV = numpy.dstack((UV[0], UV[1]))
                         # remove offset
                         UV_frame.data = UV.astype(pt_float) - pt_float(128.0)
