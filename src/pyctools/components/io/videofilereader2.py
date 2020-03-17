@@ -46,9 +46,14 @@ class VideoFileReader2(Component):
     use :py:class:`VideoFileReader2`.
 
     Unlike :py:class:`~.videofilereader.VideoFileReader` the file data
-    is not converted to Y or RGB video format. This may be useful if you
-    want to process the YUV data directly, rather than having to convert
-    it from RGB to YUV again.
+    is not always converted to Y or RGB video format. This may be useful
+    if you want to process the YUV data directly, rather than having to
+    convert it from RGB to YUV again.
+
+    The ``format`` config item can be used to force conversion to a
+    particular format. This can be useful if most of your sources are in
+    the same format but you'd like your script to work with sources in
+    any format.
 
     The ``zperiod`` config item can be used to adjust the repeat period
     so it is an integer multiple of a chosen number, e.g. 4 frames for a
@@ -58,6 +63,7 @@ class VideoFileReader2(Component):
     Config
     ===========  ====  ====
     ``path``     str   Path name of file to be read.
+    ``format``   str   Force output format. Can be ``'native'``, ``'RGB'``, ``'Y'``, ``'YUV444'``, ``'YUV422'``, or ``'YUV420'``.
     ``looping``  str   Whether to play continuously. Can be ``'off'`` or ``'repeat'``.
     ``noaudit``  bool  Don't output file's "audit trail" metadata.
     ``zperiod``  int   Adjust repeat period to an integer multiple of ``zperiod``.
@@ -72,6 +78,8 @@ class VideoFileReader2(Component):
 
     def initialise(self):
         self.config['path'] = ConfigPath()
+        self.config['format'] = ConfigEnum(choices=(
+            'native', 'RGB', 'Y', 'YUV444', 'YUV422', 'YUV420'))
         self.config['looping'] = ConfigEnum(choices=('off', 'repeat'))
         self.config['noaudit'] = ConfigBool()
         self.config['zperiod'] = ConfigInt(min_value=0)
@@ -106,6 +114,7 @@ class VideoFileReader2(Component):
         self.update_config()
         path = self.config['path']
         noaudit = self.config['noaudit']
+        force_fmt = self.config['format']
         # get metadata
         Y_metadata = Metadata().from_file(path)
         # probe file with FFmpeg to get dimensions and format
@@ -143,9 +152,9 @@ class VideoFileReader2(Component):
                 zlen = None
                 # choose FFmpeg input format according to fourcc code
                 if fourcc == 'RGB[24]':
-                    in_fmt = 'rgb24'
-                elif fourcc == 'BGR[24]':
                     in_fmt = 'bgr24'
+                elif fourcc == 'BGR[24]':
+                    in_fmt = 'rgb24'
                 elif fourcc in ('HDYC', 'UYNV', 'UYVY', 'Y422'):
                     in_fmt = 'uyvy422'
                 elif fourcc == 'Y16':
@@ -171,38 +180,69 @@ class VideoFileReader2(Component):
             return
         # choose FFmpeg output format according to file's format
         if in_fmt in ('gray16be', 'gray16le'):
-            out_fmt, bps = 'gray16le', 16
+            out_fmt = 'gray16le'
         elif in_fmt in ('gray', ):
-            out_fmt, bps = 'gray', 8
+            out_fmt = 'gray'
         elif in_fmt in ('rgb48be', 'rgb48le', 'bgr48be', 'bgr48le'):
-            out_fmt, bps = 'rgb48le', 48
+            out_fmt = 'rgb48le'
         elif in_fmt in ('rgb24', 'bgr24', 'gbrp',
                         '0rgb', 'rgb0', '0bgr', 'bgr0'):
-            out_fmt, bps = 'rgb24', 24
+            out_fmt = 'rgb24'
         elif in_fmt in ('yuv444p', ):
-            out_fmt, bps = 'yuv444p', 24
-            UV_shape = 2, ylen, xlen, 1
+            out_fmt = 'yuv444p'
         elif in_fmt in ('yuv422p16be', 'yuv422p16le',
                         'yuv422p14be', 'yuv422p14le',
                         'yuv422p12be', 'yuv422p12le',
                         'yuv422p10be', 'yuv422p10le'):
-            out_fmt, bps = 'yuv422p16le', 32
-            UV_shape = 2, ylen, xlen // 2, 1
+            out_fmt = 'yuv422p16le'
         elif in_fmt in ('yuyv422', 'yuv422p', 'yuvj422p', 'uyvy422', 'yvyu422'):
-            out_fmt, bps = 'yuv422p', 16
-            UV_shape = 2, ylen, xlen // 2, 1
+            out_fmt = 'yuv422p'
         elif in_fmt in ('yuv420p', 'yuv411p'):
-            out_fmt, bps = 'yuv411p', 12
-            UV_shape = 2, ylen // 2, xlen // 2, 1
+            out_fmt = 'yuv420p'
         else:
             self.logger.critical(
                 'Cannot read "%s" pixel format', header['pix_fmt'])
             return
+        # user over-ride of output format
+        native_fmt = out_fmt
+        if force_fmt == 'RGB' and out_fmt not in ('rgb48le', 'rgb24'):
+            out_fmt = 'rgb48le'
+        elif force_fmt == 'Y' and out_fmt not in ('gray16le', 'gray'):
+            out_fmt = 'gray16le'
+        elif force_fmt == 'YUV444' and out_fmt not in ('yuv444p', ):
+            out_fmt = 'yuv444p'
+        elif force_fmt == 'YUV422' and out_fmt not in ('yuv422p16le', 'yuv422p'):
+            out_fmt = 'yuv422p16le'
+        elif force_fmt == 'YUV420' and out_fmt not in ('yuv420p', ):
+            out_fmt = 'yuv420p'
+        if native_fmt != out_fmt:
+            self.logger.warning(
+                'Converting "%s" to "%s" in FFmpeg', header['pix_fmt'], out_fmt)
+        # set bits per sample from output format
+        if out_fmt == 'gray16le':
+            bps = 16
+        elif out_fmt == 'gray':
+            bps = 8
+        elif out_fmt == 'rgb48le':
+            bps = 48
+        elif out_fmt == 'rgb24':
+            bps = 24
+        elif out_fmt == 'yuv444p':
+            bps = 24
+            UV_shape = 2, ylen, xlen, 1
+        elif out_fmt == 'yuv422p16le':
+            bps = 32
+            UV_shape = 2, ylen, xlen // 2, 1
+        elif out_fmt == 'yuv422p':
+            bps = 16
+            UV_shape = 2, ylen, xlen // 2, 1
+        elif out_fmt == 'yuv420p':
+            bps = 12
+            UV_shape = 2, ylen // 2, xlen // 2, 1
         bytes_per_frame = (xlen * ylen * bps) // 8
         if zlen is None:
             zlen = os.path.getsize(path) // bytes_per_frame
         # get metadata
-        Y_metadata = Metadata().from_file(path)
         if out_fmt.startswith('yuv'):
             if not self.UV_connected:
                 self.logger.warning('"output_UV" not connected')
