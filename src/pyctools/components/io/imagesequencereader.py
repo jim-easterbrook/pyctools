@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2019  Pyctools contributors
+#  Copyright (C) 2019-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -72,11 +72,10 @@ class ImageSequenceReader(Component):
             last_name = self.config['lastfile']
             # read metadata
             self.metadata = Metadata().from_file(first_name)
-            audit = self.metadata.get('audit')
-            audit += 'data = {}..{}\n'.format(
-                os.path.basename(first_name), os.path.basename(last_name))
-            audit += self.config.audit_string()
-            self.metadata.set('audit', audit)
+            self.metadata.set_audit(
+                self, 'data = {}..{}\n'.format(
+                    os.path.basename(first_name), os.path.basename(last_name)),
+                with_config=self.config)
             # compare file names
             prefix = ''
             for a, b in zip(first_name, last_name):

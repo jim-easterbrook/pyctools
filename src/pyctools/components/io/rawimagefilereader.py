@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-19  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -156,11 +156,9 @@ class RawImageFileReader(Component):
         out_frame.type = 'RGB'
         out_frame.frame_no = 0
         out_frame.metadata.from_file(path)
-        audit = out_frame.metadata.get('audit')
-        audit += 'data = RawImageFileReader({})\n'.format(
-            os.path.basename(path))
-        audit += self.config.audit_string()
-        out_frame.metadata.set('audit', audit)
+        out_frame.metadata.set_audit(
+            self, 'data = raw->RGB({})\n'.format(os.path.basename(path)),
+            with_config=self.config)
         self.send('output', out_frame)
         # shut down pipeline
         self.stop()

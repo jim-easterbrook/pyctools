@@ -121,9 +121,6 @@ class RawFileReader(Component):
         metadata = Metadata().from_file(path)
         fourcc = metadata.get('fourcc')
         xlen, ylen = metadata.image_size()
-        metadata.set_audit(
-            self, 'data = {}\n'.format(os.path.basename(path)),
-            with_history=not self.config['noaudit'], with_config=self.config)
         # set params according to dimensions and fourcc
         if fourcc not in self.params:
             self.logger.critical("Can't read '%s' files", fourcc)
@@ -177,6 +174,7 @@ class RawFileReader(Component):
                 Y_frame.metadata.copy(metadata)
                 Y_frame.frame_no = frame_no
                 Y_frame.type = 'Y'
+                Y_audit = 'data = {}\n    fourcc: {}\n'
                 UV_frame = None
                 if fourcc in ('Y16', 'Y8'):
                     Y = data.reshape((ylen, xlen, 1))
@@ -186,8 +184,14 @@ class RawFileReader(Component):
                     Y = numpy.dstack((R, G, B))
                 else:
                     # YUV data
+                    Y_audit = 'data = demultiplex({})[Y]\n    fourcc: {}\n'
+                    UV_audit = 'data = demultiplex({})[UV]\n    fourcc: {}\n'
                     UV_frame = self.outframe_pool['output_UV'].get()
                     UV_frame.metadata.copy(metadata)
+                    UV_frame.set_audit(
+                        self, UV_audit.format(os.path.basename(path), fourcc),
+                        with_history=not self.config['noaudit'],
+                        with_config=self.config)
                     UV_frame.frame_no = frame_no
                     UV_frame.type = 'CbCr'
                     if planar:
@@ -219,6 +223,10 @@ class RawFileReader(Component):
                     UV = numpy.dstack((U, V))
                     # remove offset
                     UV_frame.data = UV.astype(pt_float) - pt_float(128.0)
+                Y_frame.set_audit(
+                    self, Y_audit.format(os.path.basename(path), fourcc),
+                    with_history=not self.config['noaudit'],
+                    with_config=self.config)
                 Y_frame.data = Y
                 yield Y_frame, UV_frame
                 frame_no += 1

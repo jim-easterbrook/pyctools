@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016-19  Pyctools contributors
+#  Copyright (C) 2016-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -94,9 +94,8 @@ class ImageFileReaderCV(Component):
         out_frame.data = image
         out_frame.frame_no = 0
         out_frame.metadata.from_file(path)
-        audit = out_frame.metadata.get('audit')
-        audit += 'data = {}\n'.format(path)
-        out_frame.metadata.set('audit', audit)
+        out_frame.set_audit(self, 'data = {}\n'.format(os.path.basename(path)),
+                            with_config=self.config)
         self.send('output', out_frame)
         # shut down pipeline
         self.stop()
@@ -174,10 +173,8 @@ class ImageFileWriterCV(Transformer):
         cv2.imwrite(path, image, params)
         # save metadata
         md = Metadata().copy(in_frame.metadata)
-        audit = md.get('audit')
-        audit += '{} = data\n'.format(os.path.basename(path))
-        audit += self.config.audit_string()
-        md.set('audit', audit)
+        md.set_audit(self, '{} = data\n'.format(os.path.basename(path)),
+                     with_date=True, with_config=self.config)
         md.to_file(path)
         self.done = True
         return True

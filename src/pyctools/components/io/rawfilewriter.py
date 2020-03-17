@@ -101,21 +101,13 @@ class RawFileWriter(Component):
         metadata.set('xlen', str(xlen))
         metadata.set('ylen', str(ylen))
         if UV_frame:
-            audit = 'Y = {\n'
-            for line in Y_frame.metadata.get('audit').splitlines():
-                audit += '    ' + line + '\n'
-            audit += '    }\n'
-            audit += 'UV = {\n'
-            for line in UV_frame.metadata.get('audit').splitlines():
-                audit += '    ' + line + '\n'
-            audit += '    }\n'
-            audit += '{} = RawFileWriter(Y, UV)\n'.format(os.path.basename(path))
+            metadata.merge_audit({'Y': Y_frame, 'UV': UV_frame})
+            in_name = 'multiplex(Y, UV)'
         else:
-            audit = metadata.get('audit')
-            audit += '{} = RawFileWriter(data)\n'.format(os.path.basename(path))
-        audit += self.config.audit_string()
-        audit += '    time: {}\n'.format(datetime.now().isoformat())
-        metadata.set('audit', audit)
+            in_name = 'data'
+        metadata.set_audit(
+            self, '{} = {}\n'.format(os.path.basename(path), in_name),
+            with_date=True, with_config=self.config)
         metadata.to_file(path)
         # save data
         with open(path, 'wb') as raw_file:

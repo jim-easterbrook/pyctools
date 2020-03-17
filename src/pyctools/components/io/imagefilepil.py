@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-19  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -61,10 +61,8 @@ class ImageFileReaderPIL(Component):
         out_frame.type = image.mode
         out_frame.frame_no = 0
         out_frame.metadata.from_file(path)
-        audit = out_frame.metadata.get('audit')
-        audit += 'data = {}\n'.format(os.path.basename(path))
-        audit += self.config.audit_string()
-        out_frame.metadata.set('audit', audit)
+        out_frame.set_audit(self, 'data = {}\n'.format(os.path.basename(path)),
+                            with_config=self.config)
         self.send('output', out_frame)
         # shut down pipeline
         self.stop()
@@ -120,10 +118,8 @@ class ImageFileWriterPIL(Transformer):
         image.save(path, format=fmt, **options)
         # save metadata
         md = Metadata().copy(in_frame.metadata)
-        audit = md.get('audit')
-        audit += '{} = data\n'.format(os.path.basename(path))
-        audit += self.config.audit_string()
-        md.set('audit', audit)
+        md.set_audit(self, '{} = data\n'.format(os.path.basename(path)),
+                     with_date=True, with_config=self.config)
         if self.config['set_thumbnail']:
             w, h = image.size
             if w >= h:
