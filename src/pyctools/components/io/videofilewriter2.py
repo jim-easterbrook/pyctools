@@ -82,7 +82,7 @@ class VideoFileWriter2(Component):
         }
 
     codecs = {
-        'raw'    : ['-c:v', 'rawvideo'],
+        'raw'    : ['-c:v', 'rawvideo', '-f', 'rawvideo'],
         'FFV1'   : ['-c:v', 'ffv1'],
         'H264'   : ['-c:v', 'libx264', '-qp', '0'],
         'H264rgb': ['-c:v', 'libx264rgb', '-qp', '0'],
