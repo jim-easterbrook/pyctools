@@ -41,6 +41,9 @@ from pyctools.core.types import pt_float
 class VideoFileReader(Component):
     """Read conventional video files (mp4, flv, AVI, etc.).
 
+    :py:class:`VideoFileReader` has been superseded by
+    :py:class:`~.videofilereader2.VideoFileReader2`.
+
     This component uses FFmpeg_ to read video from a wide variety of
     formats. Make sure you have installed FFmpeg before attempting to
     use :py:class:`VideoFileReader`.
@@ -67,6 +70,8 @@ class VideoFileReader(Component):
     inputs = []
 
     def initialise(self):
+        print('Deprecation warning: '
+              'please use VideoFileReader2 instead of VideoFileReader')
         self.config['path'] = ConfigPath()
         self.config['looping'] = ConfigEnum(choices=('off', 'repeat'))
         self.config['type'] = ConfigEnum(choices=('RGB', 'Y'))

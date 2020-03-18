@@ -33,6 +33,9 @@ from pyctools.core.types import pt_float
 class RawFileReader(Component):
     """Read "raw" YUV or RGB files.
 
+    :py:class:`RawFileReader` has been superseded by
+    :py:class:`~.videofilereader2.VideoFileReader2`.
+
     Video is usually stored in file formats (such as AVI) with a complex
     structure to allow a mix of audio, video and other data. These can
     be read with the
@@ -77,6 +80,8 @@ class RawFileReader(Component):
     outputs = ['output_Y_RGB', 'output_UV']     #:
 
     def initialise(self):
+        print('Deprecation warning: '
+              'please use VideoFileReader2 instead of RawFileReader')
         self.config['path'] = ConfigPath()
         self.config['looping'] = ConfigEnum(choices=('off', 'repeat', 'reverse'))
         self.config['noaudit'] = ConfigBool()
