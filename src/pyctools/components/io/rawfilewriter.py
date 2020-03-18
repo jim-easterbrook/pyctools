@@ -32,6 +32,9 @@ from pyctools.core.types import pt_float
 class RawFileWriter(Component):
     """Write "raw" Y, YUV, or RGB files.
 
+    :py:class:`RawFileWriter` has been superseded by
+    :py:class:`~.videofilewriter2.VideoFileWriter2`.
+
     The ``input_Y_RGB`` input accepts images with 1 or 3 components as Y
     or RGB. The ``input_UV`` input accepts UV images with 2 components.
     The ``fourcc`` config specifies how the data is arranged in the
@@ -65,6 +68,8 @@ class RawFileWriter(Component):
         ', '.join(["``'" + x + "'``"for x in single_modes + dual_modes]))
 
     def initialise(self):
+        print('Deprecation warning: '
+              'please use VideoFileWriter2 instead of RawFileWriter')
         self.config['path'] = ConfigPath(exists=False)
         self.config['fourcc'] = ConfigEnum(
             choices=self.single_modes + self.dual_modes)

@@ -34,6 +34,9 @@ from pyctools.core.types import pt_float
 class VideoFileWriter(Transformer):
     """Write video files.
 
+    :py:class:`VideoFileWriter` has been superseded by
+    :py:class:`~.videofilewriter2.VideoFileWriter2`.
+
     This component uses `FFmpeg <https://www.ffmpeg.org/>`_ to write
     video to a variety of formats. Make sure you have installed FFmpeg
     before attempting to use :py:class:`VideoFileWriter`.
@@ -63,6 +66,8 @@ class VideoFileWriter(Transformer):
     """
 
     def initialise(self):
+        print('Deprecation warning: '
+              'please use VideoFileWriter2 instead of VideoFileWriter')
         self.generator = None
         self.config['path'] = ConfigPath(exists=False)
         self.config['encoder'] = ConfigEnum(choices=(
