@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-19  Pyctools contributors
+#  Copyright (C) 2014-20  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -17,15 +17,18 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-from Cython.Distutils import build_ext
 from distutils.command.upload import upload
 import numpy
 import os
-from setuptools import setup, Extension
+from setuptools import setup
 import sys
+
+# import Cython after distutils/setuptools
+from Cython.Build import cythonize
 
 version = '0.5.1'
 
+# import common Pyctools setup
 with open(os.path.join('src', 'pyctools', 'setup.py')) as f:
     exec(f.read())
 
@@ -44,10 +47,10 @@ for name in os.listdir(os.path.join('src', 'pyctools', 'tools')):
     console_scripts.append(
         'pyctools-{name} = pyctools.tools.{name}:main'.format(name=base))
 
-ext_modules = find_ext_modules()
+ext_modules = cythonize(find_ext_modules())
 
-# Use Cython version of 'build_ext' command
-cmdclass = {'build_ext': build_ext}
+# Add / modify setuptools commands
+cmdclass = {}
 command_options = {}
 
 # if sphinx is installed, add command to build documentation
@@ -70,7 +73,7 @@ command_options['upload_docs'] = {
     }
 
 # modify upload command to add appropriate tag
-# requires GitPython - 'sudo pip install gitpython --pre'
+# requires GitPython - 'sudo pip install gitpython'
 try:
     import git
 except ImportError:
@@ -112,8 +115,6 @@ setup(name = 'pyctools.core',
           'Intended Audience :: Science/Research',
           'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
           'Operating System :: OS Independent',
-          'Programming Language :: Python :: 2',
-          'Programming Language :: Python :: 2.7',
           'Programming Language :: Python :: 3',
           'Topic :: Multimedia :: Graphics',
           'Topic :: Multimedia :: Video',
