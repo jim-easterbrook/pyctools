@@ -107,6 +107,9 @@ class VideoFileWriter(Transformer):
                 'Cannot write %s frame with %d components', in_frame.type, bpc)
             return
         md = Metadata().copy(in_frame.metadata)
+        md.set('fourcc', None)
+        md.set('xlen', None)
+        md.set('ylen', None)
         md.set_audit(self, '{} = data\n'.format(os.path.basename(path)),
                      with_date=True, with_config=self.config)
         md.to_file(path)

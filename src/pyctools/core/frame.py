@@ -403,7 +403,9 @@ class Metadata(object):
                     md.set_xmp_tag_struct(container, type_)
             if tag == 'Xmp.pyctools.audit' and value[0] != '\n':
                 value = '\n' + value
-            if isinstance(value, list):
+            if value is None:
+                md.clear_tag(tag)
+            elif isinstance(value, list):
                 md.set_tag_multiple(tag, value)
             else:
                 md.set_tag_string(tag, value)
