@@ -24,7 +24,7 @@ import subprocess
 
 import numpy
 
-from pyctools.core.config import ConfigPath, ConfigEnum
+from pyctools.core.config import ConfigEnum, ConfigFloat, ConfigPath
 from pyctools.core.frame import Frame, Metadata
 from pyctools.core.base import Component
 from pyctools.core.types import pt_float
@@ -61,6 +61,7 @@ class VideoFileWriter2(Component):
     ``input``    str  The input video format. Can be ``'RGB'``, ``'YUV'``, or ``'Y'``.
     ``codec``    str  Codec name. Possible values: {}.
     ``pix_fmt``  str  Pixel format. Possible values: {}.
+    ``fps``      int  Video frame rate. Only affects how file is replayed.
     ===========  ===  ====
 
     .. _FFmpeg: https://www.ffmpeg.org/
@@ -81,10 +82,10 @@ class VideoFileWriter2(Component):
         }
 
     codecs = {
-        'raw'    : ['rawvideo'],
-        'FFV1'   : ['ffv1'],
-        'H264'   : ['libx264', '-qp', '0'],
-        'H264rgb': ['libx264rgb', '-qp', '0'],
+        'raw'    : ['-c:v', 'rawvideo'],
+        'FFV1'   : ['-c:v', 'ffv1'],
+        'H264'   : ['-c:v', 'libx264', '-qp', '0'],
+        'H264rgb': ['-c:v', 'libx264rgb', '-qp', '0'],
         }
 
     pix_fmts = ('rgb24', 'rgb48le', 'uyvy422', 'yuv422p', 'yuv422p10le',
@@ -99,6 +100,7 @@ class VideoFileWriter2(Component):
         self.config['input'] = ConfigEnum(choices=('RGB', 'YUV', 'Y'))
         self.config['codec'] = ConfigEnum(choices=(self.codecs.keys()))
         self.config['pix_fmt'] = ConfigEnum(choices=self.pix_fmts)
+        self.config['fps'] = ConfigFloat(value=25, min_value=1, decimals=2)
 
     def on_start(self):
         # start generator to write data
@@ -133,6 +135,7 @@ class VideoFileWriter2(Component):
         input_ = self.config['input']
         codec = self.config['codec']
         out_fmt = self.config['pix_fmt']
+        fps = self.config['fps']
         # if no UV input expected, create a dummy "static" frame
         if input_ != 'YUV':
             self.input_UV(Frame())
@@ -218,10 +221,10 @@ class VideoFileWriter2(Component):
         # save data
         with self.subprocess(
                 ['ffmpeg', '-v', 'error', '-y', '-an',
-                 '-f', 'rawvideo',
-                 '-s', '{}x{}'.format(xlen, ylen),
-                 '-r', '25', '-pix_fmt', in_fmt, '-i', '-',
-                 '-c:v'] + self.codecs[codec] + ['-pix_fmt', out_fmt, path],
+                 '-f', 'rawvideo', '-s', '{}x{}'.format(xlen, ylen),
+                 '-r', '{}'.format(fps), '-pix_fmt', in_fmt, '-i', '-']
+                + self.codecs[codec]
+                + ['-r', '{}'.format(fps), '-pix_fmt', out_fmt, path],
                 stdin=subprocess.PIPE) as sp:
             while True:
                 if bit16:
