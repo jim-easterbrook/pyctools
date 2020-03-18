@@ -58,6 +58,7 @@ from six.moves import cPickle
 import pkgutil
 import sys
 import types
+import warnings
 
 import docutils.core
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -1439,10 +1440,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('-s', '--script', metavar='file_name',
                         help='a script to load at startup')
+    parser.add_argument('-t', '--test', action='store_true',
+                        help='turn on extra warnings useful to a developer')
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help='increase verbosity of log messages')
     args = parser.parse_args(sys.argv[1:])
     logging.basicConfig(level=logging.ERROR - (args.verbose * 10))
+    if args.test:
+        warnings.simplefilter('default')
     # create GUI and run application event loop
     main = MainWindow(script=args.script)
     main.show()
