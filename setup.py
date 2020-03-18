@@ -47,7 +47,8 @@ for name in os.listdir(os.path.join('src', 'pyctools', 'tools')):
     console_scripts.append(
         'pyctools-{name} = pyctools.tools.{name}:main'.format(name=base))
 
-ext_modules = cythonize(find_ext_modules())
+ext_modules = cythonize(find_ext_modules(), compiler_directives={
+    'language_level' : sys.version_info[0]})
 
 # Add / modify setuptools commands
 cmdclass = {}
