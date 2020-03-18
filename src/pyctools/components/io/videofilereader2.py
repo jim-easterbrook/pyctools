@@ -39,11 +39,12 @@ from pyctools.core.types import pt_float
 
 
 class VideoFileReader2(Component):
-    """Read conventional video files (mp4, flv, AVI, etc.).
+    """Read raw or conventional (mp4, flv, AVI, etc.) video files.
 
     This component uses FFmpeg_ to read video from a wide variety of
-    formats. Make sure you have installed FFmpeg before attempting to
-    use :py:class:`VideoFileReader2`.
+    formats, including "raw" files without a header. Make sure you have
+    installed FFmpeg before attempting to use
+    :py:class:`VideoFileReader2`.
 
     Unlike :py:class:`~.videofilereader.VideoFileReader` the file data
     is not always converted to Y or RGB video format. This may be useful
@@ -59,6 +60,25 @@ class VideoFileReader2(Component):
     so it is an integer multiple of a chosen number, e.g. 4 frames for a
     PAL encoded sequence. It has no effect if ``looping`` is ``off``.
 
+    **"Raw" video files**
+
+    Video is usually stored in file formats (such as AVI) with a complex
+    structure to allow a mix of audio, video and other data. "Raw" files
+    contain nothing but the picture data. Even the image dimensions have
+    to be stored in a separate "metadata" file. (Use the
+    :py:mod:`pyctools-setmetadata <pyctools.tools.setmetadata>` tool to
+    create or modify the metadata file.)
+
+    There are many possible arrangements of data in raw files. For
+    example, the colour components can be packed (multiplexed) together
+    or stored in separate planes. The formats are labelled with a short
+    string known as a fourcc_ code. This code needs to be in the
+    metadata file with the image dimensions.
+
+    Note that when reading "YUV" formats the U & V outputs are offset by
+    128 to restore their range to -128..127 (from the file range of
+    0..255). This makes subsequent processing a lot easier.
+
     ===========  ====  ====
     Config
     ===========  ====  ====
@@ -70,6 +90,7 @@ class VideoFileReader2(Component):
     ===========  ====  ====
 
     .. _FFmpeg: https://www.ffmpeg.org/
+    .. _fourcc: https://www.fourcc.org/
 
     """
 
