@@ -125,9 +125,14 @@ class VideoFileWriter2(Component):
             yield sp
         finally:
             if sp:
-                sp.stdin.flush()
-                sp.stdin.close()
+                if sp.stdin:
+                    sp.stdin.flush()
+                for pipe in sp.stdin, sp.stdout, sp.stderr:
+                    if pipe:
+                        pipe.close()
                 sp.wait()
+                if sp.returncode:
+                    self.logger.critical('FFmpeg return code %d', sp.returncode)
 
     def file_writer(self):
         self.update_config()
@@ -219,13 +224,12 @@ class VideoFileWriter2(Component):
             with_date=True, with_config=self.config)
         metadata.to_file(path)
         # save data
-        with self.subprocess(
-                ['ffmpeg', '-v', 'error', '-y', '-an',
-                 '-f', 'rawvideo', '-s', '{}x{}'.format(xlen, ylen),
-                 '-r', '{}'.format(fps), '-pix_fmt', in_fmt, '-i', '-']
-                + self.codecs[codec]
-                + ['-r', '{}'.format(fps), '-pix_fmt', out_fmt, path],
-                stdin=subprocess.PIPE) as sp:
+        cmd = ['ffmpeg', '-v', 'error', '-y', '-an',
+               '-f', 'rawvideo', '-s', '{}x{}'.format(xlen, ylen),
+               '-r', '{}'.format(fps), '-pix_fmt', in_fmt, '-i', '-']
+        cmd += self.codecs[codec]
+        cmd += ['-r', '{}'.format(fps), '-pix_fmt', out_fmt, path]
+        with self.subprocess(cmd, stdin=subprocess.PIPE) as sp:
             while True:
                 if bit16:
                     Y_data = Y_data.astype(pt_float) * pt_float(256.0)

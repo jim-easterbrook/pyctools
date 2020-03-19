@@ -121,15 +121,20 @@ class VideoFileReader2(Component):
 
     @contextmanager
     def subprocess(self, *arg, **kw):
+        sp = None
         try:
             sp = subprocess.Popen(*arg, **kw)
             yield sp
         finally:
-            sp.send_signal(signal.SIGINT)
-            sp.stdout.close()
-            if sp.stderr:
-                sp.stderr.close()
-            sp.wait()
+            if sp:
+                if sp.stdin:
+                    sp.stdin.flush()
+                for pipe in sp.stdin, sp.stdout, sp.stderr:
+                    if pipe:
+                        pipe.close()
+                sp.wait()
+                if sp.returncode:
+                    self.logger.critical('FFmpeg return code %d', sp.returncode)
 
     def file_reader(self):
         self.update_config()
@@ -298,8 +303,7 @@ class VideoFileReader2(Component):
             if zlen > zperiod and zperiod > 1 and looping != 'off':
                 frames -= (frame_no + zlen) % zperiod
             # open file to read data
-            cmd = ['ffmpeg', '-v', 'warning'] + input_opts
-            cmd += ['-i', path]
+            cmd = ['ffmpeg', '-v', 'warning'] + input_opts + ['-i', path]
             if out_fmt.startswith('yuv'):
                 # UV data range from ffmpeg is half what I expect
                 # this filter option doubles it
