@@ -433,16 +433,12 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
             if not self.collides(x0, y0, xn - 2, yn, shareable=True):
                 return ((x0, y0), (xn, yn))
         # try 3-segment line
-        for x1 in range(int(xn) - 10, int(xn) - 40, -10):
-            if not (self.collides(x1, y0, x1, yn)
-                    or self.collides(x0, y0, x1, y0, shareable=True)
-                    or self.collides(x1, yn, xn - 2, yn)):
-                return ((x0, y0), (x1, y0), (x1, yn), (xn, yn))
-        for x1 in range(int(x0) + 4, int(x0) + 44, 10):
-            if not (self.collides(x1, y0, x1, yn)
-                    or self.collides(x0, y0, x1, y0, shareable=True)
-                    or self.collides(x1, yn, xn - 2, yn)):
-                return ((x0, y0), (x1, y0), (x1, yn), (xn, yn))
+        for dx in range(10, min(40, 1 + (int(xn + 6 - x0) // 2)), 10):
+            for x1 in int(xn) - dx, int(x0 - 6) + dx:
+                if not (self.collides(x1, y0, x1, yn)
+                        or self.collides(x0, y0, x1, y0, shareable=True)
+                        or self.collides(x1, yn, xn - 2, yn)):
+                    return ((x0, y0), (x1, y0), (x1, yn), (xn, yn))
         # try 5-segment line
         result = self.five_segment_link(x0, y0, xn, yn)
         if result:
