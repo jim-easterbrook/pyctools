@@ -323,7 +323,8 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
             self.setPen(pen)
         return super(ComponentLink, self).itemChange(change, value)
 
-    def collides(self, x0, y0, x1, y1):
+    def collides(self, x0, y0, x1, y1, shareable=False):
+        # shareable: multiple links can start at one output
         line = QtWidgets.QGraphicsLineItem(x0, y0, x1, y1, self)
         collisions = line.collidingItems()
         line.setParentItem(None)
@@ -351,6 +352,9 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
                     if (p0.y == y0 and p1.y == y0
                             and max(p0.x, p1.x) > min(x0, x1)
                             and min(p0.x, p1.x) < max(x0, x1)):
+                        if (shareable and item.source == self.source
+                                      and item.outbox == self.outbox):
+                            continue
                         return QtCore.QRectF(
                             min(p0.x, p1.x) - 0.5, p0.y - 0.5,
                             abs(p1.x - p0.x) + 1.0, 1.0)
@@ -426,16 +430,18 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
             return ((x0, y0), (xn, yn))
         # try single line
         if yn == y0:
-            if not self.collides(x0, y0, xn - 2, yn):
+            if not self.collides(x0, y0, xn - 2, yn, shareable=True):
                 return ((x0, y0), (xn, yn))
         # try 3-segment line
-        for x1 in range(int(x0) + 4, int(x0) + 44, 10):
-            if not (self.collides(x1, y0, x1, yn)
-                    or self.collides(x1, yn, xn - 2, yn)):
-                return ((x0, y0), (x1, y0), (x1, yn), (xn, yn))
         for x1 in range(int(xn) - 10, int(xn) - 40, -10):
             if not (self.collides(x1, y0, x1, yn)
-                    or self.collides(x0, y0, x1, y0)):
+                    or self.collides(x0, y0, x1, y0, shareable=True)
+                    or self.collides(x1, yn, xn - 2, yn)):
+                return ((x0, y0), (x1, y0), (x1, yn), (xn, yn))
+        for x1 in range(int(x0) + 4, int(x0) + 44, 10):
+            if not (self.collides(x1, y0, x1, yn)
+                    or self.collides(x0, y0, x1, y0, shareable=True)
+                    or self.collides(x1, yn, xn - 2, yn)):
                 return ((x0, y0), (x1, y0), (x1, yn), (xn, yn))
         # try 5-segment line
         result = self.five_segment_link(x0, y0, xn, yn)
