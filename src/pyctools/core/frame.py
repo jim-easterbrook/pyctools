@@ -323,7 +323,7 @@ class Metadata(object):
             with exiv2_lock:
                 im = exiv2.ImageFactory.open(xmp_path)
                 im.readMetadata()
-        except exiv2.Error as ex:
+        except exiv2.Exiv2Error as ex:
             print(xmp_path, str(ex))
             return self
         self.exif_data.clear()
@@ -356,7 +356,7 @@ class Metadata(object):
             with exiv2_lock:
                 im = exiv2.ImageFactory.open(md_path)
                 im.readMetadata()
-        except exiv2.Error:
+        except exiv2.Exiv2Error:
             # file type does not support metadata so use XMP sidecar
             writable = False
         writable = writable and (
