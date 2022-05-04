@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2019  Pyctools contributors
+#  Copyright (C) 2019-22  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -68,14 +68,18 @@ class Reorient(Transformer):
         orientation = self.orientations[self.config['orientation']]
         if not orientation:
             orientation = 1
-            for tag in ('Exif.Image.Orientation', 'Xmp.tiff.Orientation'):
-                if tag in out_frame.metadata.data:
-                    orientation = int(out_frame.metadata.data[tag])
+            for tag, data in (
+                    ('Exif.Image.Orientation', out_frame.metadata.exif_data),
+                    ('Xmp.tiff.Orientation', out_frame.metadata.xmp_data)):
+                if tag in data:
+                    orientation = int(data[tag])
                     break
         # clear metadata orientation flag
-        for tag in ('Exif.Image.Orientation', 'Xmp.tiff.Orientation'):
-            if tag in out_frame.metadata.data:
-                del out_frame.metadata.data[tag]
+        for tag, data in (
+                ('Exif.Image.Orientation', out_frame.metadata.exif_data),
+                ('Xmp.tiff.Orientation', out_frame.metadata.xmp_data)):
+            if tag in data:
+                del data[tag]
         # do transformation
         orient_bits = orientation - 1
         if orient_bits:

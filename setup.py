@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-20  Pyctools contributors
+#  Copyright (C) 2014-22  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -26,7 +26,7 @@ import sys
 # import Cython after distutils/setuptools
 from Cython.Build import cythonize
 
-version = '0.5.1'
+version = '0.6.0'
 
 # import common Pyctools setup
 with open(os.path.join('src', 'pyctools', 'setup.py')) as f:
@@ -130,7 +130,7 @@ setup(name = 'pyctools.core',
       entry_points = {
           'console_scripts' : console_scripts,
           },
-      install_requires = ['cython', 'numpy', 'setuptools'],
+      install_requires = ['cython', 'exiv2>=0.11.0', 'numpy', 'setuptools'],
       cmdclass = cmdclass,
       command_options = command_options,
       zip_safe = False,

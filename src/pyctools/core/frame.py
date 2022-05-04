@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-20  Pyctools contributors
+#  Copyright (C) 2014-22  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -24,27 +24,18 @@ from datetime import datetime
 import os
 import threading
 
-try:
-    import pgi
-    pgi.install_as_gi()
-except ImportError:
-    pass
-import gi
-for gexiv2_vsn in ('0.10', '0.4'):
-    try:
-        gi.require_version('GExiv2', gexiv2_vsn)
-        break
-    except ValueError:
-        pass
-from gi.repository import GExiv2, GLib
+import exiv2
 import numpy
 import PIL.Image
 
 from pyctools.core.types import pt_float
 
 
+# initialise exiv2
+exiv2.LogMsg.setLevel(exiv2.LogMsg.info)
+exiv2.XmpParser.initialize()
 # register our XMP namespace from main thread
-GExiv2.Metadata.register_xmp_namespace(
+exiv2.XmpProperties.registerNs(
     'https://github.com/jim-easterbrook/pyctools', 'pyctools')
 
 # create a lock to serialise Exiv2 calls
@@ -213,7 +204,9 @@ class Metadata(object):
     """
     def __init__(self, **kwds):
         super(Metadata, self).__init__(**kwds)
-        self.data = {}
+        self.exif_data = exiv2.ExifData()
+        self.iptc_data = exiv2.IptcData()
+        self.xmp_data = exiv2.XmpData()
         self.set('audit', '')
 
     def set_audit(self, component, text,
@@ -326,26 +319,24 @@ class Metadata(object):
         xmp_path = path + '.xmp'
         if not os.path.exists(xmp_path):
             xmp_path = path
-        md = GExiv2.Metadata()
         try:
             with exiv2_lock:
-                md.open_path(xmp_path)
-        except GLib.GError as ex:
+                im = exiv2.ImageFactory.open(xmp_path)
+                im.readMetadata()
+        except exiv2.Error as ex:
             print(xmp_path, str(ex))
             return self
-        tags = md.get_exif_tags() + md.get_iptc_tags() + md.get_xmp_tags()
-        for tag in tags:
-            if tag.startswith('Exif.Thumbnail'):
-                continue
-            if tag.startswith('Xmp.xmp.Thumbnails'):
-                continue
-            count = tags.count(tag)
-            if count > 1 or md.get_tag_type(tag) in ('XmpBag', 'XmpSeq'):
-                self.data[tag] = md.get_tag_multiple(tag)
-            else:
-                self.data[tag] = md.get_tag_string(tag)
-            if tag == 'Xmp.pyctools.audit':
-                self.data[tag] = self.data[tag].strip()
+        self.exif_data.clear()
+        self.iptc_data.clear()
+        self.xmp_data.clear()
+        for datum in im.exifData():
+            self.exif_data.add(datum)
+        for datum in im.iptcData():
+            self.iptc_data.add(datum)
+        for datum in im.xmpData():
+            self.xmp_data.add(datum)
+        audit = self.get('audit') or ''
+        self.set('audit', audit)
         return self
 
     def to_file(self, path, thumbnail=None):
@@ -359,59 +350,37 @@ class Metadata(object):
         if os.path.exists(xmp_path):
             os.unlink(xmp_path)
         # attempt to open image/video file for metadata
+        writable = True
         md_path = path
-        md = GExiv2.Metadata()
         try:
             with exiv2_lock:
-                md.open_path(md_path)
-            if thumbnail:
-                md.set_exif_thumbnail_from_buffer(thumbnail)
-        except GLib.GError:
+                im = exiv2.ImageFactory.open(md_path)
+                im.readMetadata()
+        except exiv2.Error:
             # file type does not support metadata so use XMP sidecar
+            writable = False
+        writable = writable and (
+            self.exif_data.empty() or im.checkMode(exiv2.MetadataId.Exif) in (
+                exiv2.AccessMode.Write, exiv2.AccessMode.ReadWrite))
+        writable = writable and (
+            self.iptc_data.empty() or im.checkMode(exiv2.MetadataId.Iptc) in (
+                exiv2.AccessMode.Write, exiv2.AccessMode.ReadWrite))
+        writable = writable and (
+            self.xmp_data.empty() or im.checkMode(exiv2.MetadataId.Xmp) in (
+                exiv2.AccessMode.Write, exiv2.AccessMode.ReadWrite))
+        if not writable:
             md_path = xmp_path
-            # create empty XMP file
-            with open(md_path, 'w') as of:
-                of.write('''<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
-<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="XMP Core 4.4.0-Exiv2">
- <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-  <rdf:Description rdf:about=""
-    xmlns:xmp="http://ns.adobe.com/xap/1.0/"
-   xmp:CreatorTool=""/>
- </rdf:RDF>
-</x:xmpmeta>
-<?xpacket end="w"?>''')
-            md = GExiv2.Metadata()
             with exiv2_lock:
-                md.open_path(md_path)
-        # copy metadata
-        for tag, value in self.data.items():
-            if '[' in tag:
-                # XMP structured tag, need to create container
-                container = tag.split('[')[0]
-                for t in md.get_xmp_tags():
-                    if t.startswith(container):
-                        # container already exists
-                        break
-                else:
-                    type_ = md.get_tag_type(container)
-                    if type_ == 'XmpBag':
-                        type_ = GExiv2.StructureType.BAG
-                    elif type_ == 'XmpSeq':
-                        type_ = GExiv2.StructureType.SEQ
-                    else:
-                        type_ = GExiv2.StructureType.ALT
-                    md.set_xmp_tag_struct(container, type_)
-            if tag == 'Xmp.pyctools.audit' and value[0] != '\n':
-                value = '\n' + value
-            if value is None:
-                md.clear_tag(tag)
-            elif isinstance(value, list):
-                md.set_tag_multiple(tag, value)
-            else:
-                md.set_tag_string(tag, value)
-        # save file
+                # create empty XMP file
+                im = exiv2.ImageFactory.create(exiv2.ImageType.xmp, md_path)
+        if thumbnail:
+            thumb = exiv2.ExifThumb(self.exif_data)
+            thumb.setJpegThumbnail(thumbnail)
+        im.setExifData(self.exif_data)
+        im.setIptcData(self.iptc_data)
+        im.setXmpData(self.xmp_data)
         with exiv2_lock:
-            md.save_file(md_path)
+            im.writeMetadata()
 
     def copy(self, other):
         """Copy metadata from another :py:class:`Metadata` object.
@@ -427,7 +396,23 @@ class Metadata(object):
 
         """
         # copy from other to self
-        self.data.update(other.data)
+        for datum in other.exif_data:
+            tag = datum.key()
+            if tag in self.exif_data:
+                del self.exif_data[tag]
+            self.exif_data.add(datum)
+        for datum in other.iptc_data:
+            tag = datum.key()
+            if (tag in self.iptc_data
+                    and not exiv2.IptcDataSets.dataSetRepeatable(
+                                        datum.tag(), datum.record())):
+                del self.iptc_data[tag]
+            self.iptc_data.add(datum)
+        for datum in other.xmp_data:
+            tag = datum.key()
+            if tag in self.xmp_data:
+                del self.xmp_data[tag]
+            self.xmp_data.add(datum)
         return self
 
     def image_size(self):
@@ -445,15 +430,19 @@ class Metadata(object):
         """
         xlen = None
         ylen = None
-        for tag in ('Xmp.pyctools.xlen', 'Exif.Photo.PixelXDimension',
-                    'Exif.Image.ImageWidth', 'Xmp.tiff.ImageWidth'):
-            if tag in self.data:
-                xlen = int(self.data[tag])
+        for tag, data in (('Xmp.pyctools.xlen', self.xmp_data),
+                          ('Exif.Photo.PixelXDimension', self.exif_data),
+                          ('Exif.Image.ImageWidth', self.exif_data),
+                          ('Xmp.tiff.ImageWidth', self.xmp_data)):
+            if tag in data:
+                xlen = data[tag].toLong()
                 break
-        for tag in ('Xmp.pyctools.ylen', 'Exif.Photo.PixelYDimension',
-                    'Exif.Image.ImageLength', 'Xmp.tiff.ImageLength'):
-            if tag in self.data:
-                ylen = int(self.data[tag])
+        for tag, data in (('Xmp.pyctools.ylen', self.xmp_data),
+                          ('Exif.Photo.PixelYDimension', self.exif_data),
+                          ('Exif.Image.ImageLength', self.exif_data),
+                          ('Xmp.tiff.ImageLength', self.xmp_data)):
+            if tag in data:
+                ylen = data[tag].toLong()
                 break
         if xlen and ylen:
             return xlen, ylen
@@ -475,8 +464,8 @@ class Metadata(object):
 
         """
         full_tag = 'Xmp.pyctools.' + tag
-        if full_tag in self.data:
-            return self.data[full_tag]
+        if full_tag in self.xmp_data:
+            return self.xmp_data[full_tag].toString()
         return default
 
     def set(self, tag, value):
@@ -493,4 +482,7 @@ class Metadata(object):
 
         """
         full_tag = 'Xmp.pyctools.' + tag
-        self.data[full_tag] = value
+        if value is None:
+            del self.xmp_data[full_tag]
+        else:
+            self.xmp_data[full_tag] = str(value)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-20  Pyctools contributors
+#  Copyright (C) 2014-22  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,8 +16,6 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
-
-from __future__ import print_function
 
 __all__ = ['DumpMetadata', 'Stats']
 __docformat__ = 'restructuredtext en'
@@ -89,13 +87,20 @@ class DumpMetadata(Transformer):
 
     def transform(self, in_frame, out_frame):
         self.update_config()
-        if self.last_metadata and in_frame.metadata.data == self.last_metadata.data:
+        this_metadata = []
+        if self.config['raw']:
+            for datum in in_frame.metadata.exif_data:
+                this_metadata.append(str(datum))
+            for datum in in_frame.metadata.iptc_data:
+                this_metadata.append(str(datum))
+            for datum in in_frame.metadata.xmp_data:
+                this_metadata.append(str(datum))
+        else:
+            this_metadata.append(in_frame.metadata.get('audit'))
+        if this_metadata == self.last_metadata:
             return True
-        self.last_metadata = in_frame.metadata
+        self.last_metadata = this_metadata
         print('Frame %04d' % in_frame.frame_no)
         print('==========')
-        if self.config['raw']:
-            pprint.pprint(in_frame.metadata.data)
-        else:
-            print(in_frame.metadata.get('audit'), end='')
+        print('\n'.join(this_metadata))
         return True
