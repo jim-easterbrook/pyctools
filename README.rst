@@ -26,8 +26,7 @@ Essential
 * `NumPy <http://www.numpy.org/>`_ for its powerful multi-dimensional array object.
 * `Python Imaging Library <http://www.pythonware.com/products/pil/>`_ for image file reading and writing. (The `pillow <http://python-pillow.github.io/>`_ fork of PIL is recommended.)
 * `Cython <http://cython.org/>`_ to build fast extensions for Python.
-* `gexiv2 <https://wiki.gnome.org/Projects/gexiv2>`_ to handle metadata.
-* `pgi <https://github.com/pygobject/pgi>`_ **or** `PyGObject <https://pygobject.readthedocs.io/>`_ Python wrapper for gexiv2.
+* `python-exiv2 <https://pypi.org/project/exiv2/>`_ to handle metadata.
 
 Optional
 ^^^^^^^^
@@ -48,7 +47,7 @@ Licence
 
 | Pyctools - a picture processing algorithm development kit.
 | http://github.com/jim-easterbrook/pyctools
-| Copyright (C) 2014-19  Pyctools contributors
+| Copyright (C) 2014-22  Pyctools contributors
 
 This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as

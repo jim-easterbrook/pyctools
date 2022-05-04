@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-19  Pyctools contributors
+   Copyright (C) 2014-22  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -34,19 +34,19 @@ The ``pip`` command should be used to install packages from PyPI.
 `Python <https://www.python.org/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can test which version of Python is installed on your system with ``python --version``.
-Any version from 2.7 onwards is suitable, but Python 3 is preferred.
+You can test which version of Python is installed on your system with ``python3 --version``.
+Any version from 3.5 onwards is suitable.
 
 `NumPy <http://www.numpy.org/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If NumPy is already installed, the command ``python -c 'import numpy'`` should run without error.
+If NumPy is already installed, the command ``python3 -c 'import numpy'`` should run without error.
 
 NumPy should be installable with your system's package manager.
 Be sure to get the "development headers" version (probably has ``-dev`` or ``-devel`` in the name) to allow Cython extensions that use NumPy to be compiled.
 Alternatively it can be installed with ``pip``::
 
-  sudo pip install -U numpy
+  pip3 install --user -U numpy
 
 (The ``-U`` option will upgrade any existing installation.)
 
@@ -59,25 +59,22 @@ Pyctools has been tested with version 0.19.1, but newer versions should work.
 Cython should be installable with your system's package manager.
 Alternatively it can be installed with ``pip``::
 
-  sudo pip install -U cython
+  pip3 install --user -U cython
 
-`GExiv2 <https://wiki.gnome.org/Projects/gexiv2>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+`python-exiv2 <https://pypi.org/project/exiv2/>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If GExiv2 and `PyGObject <https://wiki.gnome.org/Projects/PyGObject>`_ (or `pgi <https://github.com/pygobject/pgi>`_) have been correctly installed, the command ``python -c 'from gi.repository import GObject, GExiv2'`` (or ``python -c 'from pgi.repository import GObject, GExiv2'``) should run without error.
+Use ``pip`` to install python-exiv2::
 
-GExiv2 should be installable with your system's package manager.
-You need to install the "introspection" bindings as well as the core library.
-You may also need to install GObject and its introspection bindings.
+  pip3 install --user -U exiv2
 
 `OpenCV <http://opencv.org/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 OpenCV is an optional dependency.
 If it is not installed then some Pyctools components will not be usable.
-Version 2 or 3 can be used, but only version 3 has bindings for Python 3.
 
-If OpenCV is already installed the ``python -c 'import cv2'`` command will run without error.
+If OpenCV is already installed the ``python3 -c 'import cv2'`` command will run without error.
 
 OpenCV should be installable with your system's package manager.
 You need to install the Python bindings as well as the core library.
@@ -99,7 +96,7 @@ FFmpeg should be installable with your system's package manager.
 The :py:mod:`pyctools.components.io.rawimagefilereader` component uses ``rawkit`` to read raw image files such as the CR2 format produced by Canon cameras.
 If you need to process raw images you can install ``rawkit`` using ``pip``::
 
-  sudo pip install rawkit
+  pip3 install --user rawkit
 
 `rawpy <https://letmaik.github.io/rawpy/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -107,7 +104,7 @@ If you need to process raw images you can install ``rawkit`` using ``pip``::
 The :py:mod:`pyctools.components.io.rawimagefilereader2` component uses ``rawpy`` to read raw image files such as the CR2 format produced by Canon cameras.
 If you need to process raw images you can install ``rawpy`` using ``pip``::
 
-  sudo pip install rawpy
+  pip3 install --user rawpy
 
 `PyQt5 <https://riverbankcomputing.com/software/pyqt/intro>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -115,7 +112,7 @@ If you need to process raw images you can install ``rawpy`` using ``pip``::
 PyQt5 is an optional dependency.
 If it is not installed then the :py:mod:`Pyctools visual editor <pyctools.tools.editor>` will not be usable.
 
-If PyQt5 is already installed the ``python -c 'import PyQt5'`` command will run without error.
+If PyQt5 is already installed the ``python3 -c 'import PyQt5'`` command will run without error.
 
 PyQt5 should be installable with your system's package manager.
 
@@ -125,7 +122,7 @@ PyQt5 should be installable with your system's package manager.
 PyOpenGL is an optional dependency.
 If it is not installed then the :py:mod:`pyctools.components.qt.qtdisplay` component will not be usable.
 
-If PyOpenGL is already installed the ``python -c 'import OpenGL'`` command will run without error.
+If PyOpenGL is already installed the ``python3 -c 'import OpenGL'`` command will run without error.
 
 PyOpenGL should be installable with your system's package manager.
 It may be called ``python-opengl`` or similar.
@@ -135,13 +132,7 @@ It may be called ``python-opengl`` or similar.
 
 The easiest way to install pillow is with ``pip``::
 
-  sudo pip install pillow
-
-or::
-
-  pip install --user pillow
-
-for a personal, non system-wide installation.
+  pip3 install --user pillow
 
 Pyctools core
 -------------
@@ -154,12 +145,7 @@ Clone the repos and install Pyctools as follows::
 
   git clone https://github.com/jim-easterbrook/pyctools.git
   cd pyctools
-  python setup.py build
-  sudo python setup.py install
-
-As before, a "local" installation can be done instead of a system-wide installation::
-
-  python setup.py install --user
+  pip3 install --user .
 
 Documentation
 ^^^^^^^^^^^^^
@@ -169,12 +155,12 @@ A local copy may be more up to date and should include documentation of all your
 The documentation is built using a package called `Sphinx <http://sphinx-doc.org/>`_, available from PyPI.
 You will also need the `mock <https://github.com/testing-cabal/mock>`_ package::
 
-  sudo pip install Sphinx mock
+  pip3 install --user Sphinx mock
 
 Having installed Sphinx you can use ``setup.py`` to build the documentation::
 
   cd pyctools
-  python setup.py build_sphinx
+  python3 setup.py build_sphinx
 
 The documentation can be read with any web browser.
 The start page is ``doc/html/index.html``.
@@ -189,12 +175,10 @@ They are installed in the usual way::
 
   git clone https://github.com/jim-easterbrook/pyctools-pal.git
   cd pyctools-pal
-  python setup.py build
-  sudo python setup.py install
+  pip3 install --user .
 
 ::
 
   git clone https://github.com/jim-easterbrook/pyctools-jim.git
   cd pyctools-jim
-  python setup.py build
-  sudo python setup.py install
+  pip3 install --user .
