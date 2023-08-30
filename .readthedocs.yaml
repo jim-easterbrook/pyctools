@@ -33,3 +33,4 @@ python:
   install:
     - method: pip
       path: .
+    - requirements: src/doc/requirements.txt
