@@ -289,10 +289,7 @@ else:
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 if on_rtd:
-    html_css_files = [
-        'https://media.readthedocs.org/css/sphinx_rtd_theme.css',
-        'https://media.readthedocs.org/css/readthedocs-doc-embed.css',
-        'theme_overrides.css']
+    pass
 else:
     html_css_files = ['theme_overrides.css']
 
