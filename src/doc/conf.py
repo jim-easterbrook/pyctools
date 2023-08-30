@@ -285,10 +285,7 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-if on_rtd:
-    pass
-else:
-    html_css_files = ['theme_overrides.css']
+html_css_files = ['theme_overrides.css']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
