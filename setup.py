@@ -21,6 +21,7 @@ from distutils.command.upload import upload
 import numpy
 import os
 from setuptools import setup
+from setuptools import __version__ as setuptools_version
 import sys
 
 # import Cython after distutils/setuptools
@@ -99,39 +100,38 @@ else:
             return upload.run(self)
     cmdclass['upload'] = upload_and_tag
 
-with open('README.rst') as f:
-    long_description = f.read()
-url = 'https://github.com/jim-easterbrook/pyctools'
 
-setup(name = 'pyctools.core',
-      version = version,
-      author = 'Jim Easterbrook',
-      author_email = 'jim@jim-easterbrook.me.uk',
-      url = url,
-      description = 'Picture processing algorithm development kit',
-      long_description = long_description,
-      classifiers = [
-          'Development Status :: 3 - Alpha',
-          'Intended Audience :: Developers',
-          'Intended Audience :: Science/Research',
-          'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
-          'Operating System :: OS Independent',
-          'Programming Language :: Python :: 3',
-          'Topic :: Multimedia :: Graphics',
-          'Topic :: Multimedia :: Video',
-          'Topic :: Scientific/Engineering :: Image Recognition',
-          'Topic :: Scientific/Engineering :: Visualization',
-          ],
-      license = 'GNU GPL',
-      platforms = ['POSIX', 'MacOS'],
-      packages = packages,
-      ext_modules = ext_modules,
-      package_dir = {'' : 'src'},
-      entry_points = {
-          'console_scripts' : console_scripts,
-          },
-      install_requires = ['cython', 'exiv2>=0.11.0', 'numpy', 'setuptools'],
-      cmdclass = cmdclass,
-      command_options = command_options,
-      zip_safe = False,
-      )
+setup_kwds = {
+    'ext_modules': ext_modules,
+    'packages': packages,
+    'package_dir': {'' : 'src'},
+    'entry_points': {
+        'console_scripts' : console_scripts,
+        },
+    'cmdclass': cmdclass,
+    'command_options': command_options,
+    }
+
+if tuple(map(int, setuptools_version.split('.'))) < (61, 0):
+    # get metadata from pyproject.toml
+    import toml
+    metadata = toml.load('pyproject.toml')
+
+    with open(metadata['project']['readme']) as ldf:
+        long_description = ldf.read()
+
+    setup_kwds.update(
+        name = metadata['project']['name'],
+        version = metadata['project']['version'],
+        description = metadata['project']['description'],
+        long_description = long_description,
+        author = metadata['project']['authors'][0]['name'],
+        author_email = metadata['project']['authors'][0]['email'],
+        url = metadata['project']['urls']['homepage'],
+        classifiers = metadata['project']['classifiers'],
+        platforms = metadata['tool']['setuptools']['platforms'],
+        license = metadata['project']['license']['text'],
+        zip_safe = metadata['tool']['setuptools']['zip-safe'],
+        )
+
+setup(**setup_kwds)
