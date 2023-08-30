@@ -1,24 +1,21 @@
-# -*- coding: utf-8 -*-
-#
 # Pyctools - a picture processing algorithm development kit.
 # http://github.com/jim-easterbrook/pyctools
-# Copyright (C) 2014-20  Pyctools contributors
+# Copyright (C) 2014-23  Pyctools contributors
 #
-# This program is free software: you can redistribute it and/or
+# This file is part of Pyctools.
+#
+# Pyctools is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation, either version 3 of the
 # License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
+# Pyctools is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see
-# <http://www.gnu.org/licenses/>.
-
-from __future__ import print_function
+# along with Pyctools.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import defaultdict
 import os
@@ -26,6 +23,7 @@ import pkgutil
 import site
 import sys
 import types
+from unittest.mock import Mock
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -36,14 +34,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 # cludge to allow documentation to be compiled without installing some
 # dependencies
-
-if sys.version_info >= (3, 3):
-    from unittest.mock import Mock
-else:
-    from mock import Mock
-
-for mod_name in ('pgi', 'gi', 'gi.repository', 'OpenGL',
-                 'matplotlib', 'matplotlib.pyplot',
+for mod_name in ('OpenGL', 'matplotlib', 'matplotlib.pyplot',
                  'scipy', 'scipy.optimize', 'scipy.signal', 'scipy.special',
                  'sip'):
     sys.modules[mod_name] = Mock()
@@ -267,6 +258,7 @@ if on_rtd:
     html_theme = 'default'
 else:
     html_theme = 'sphinx_rtd_theme'
+    extensions.append('sphinx_rtd_theme')
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -296,21 +288,9 @@ else:
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-
-if on_rtd:
-    html_context = {
-        'css_files': [
-            'https://media.readthedocs.org/css/sphinx_rtd_theme.css',
-            'https://media.readthedocs.org/css/readthedocs-doc-embed.css',
-            '_static/theme_overrides.css',  # override wide tables in RTD theme
-            ],
-         }
-else:
-    html_context = {
-        'css_files': [
-            '_static/theme_overrides.css',  # override wide tables in RTD theme
-            ],
-         }
+html_css_files = [
+  'theme_overrides.css'
+]
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.

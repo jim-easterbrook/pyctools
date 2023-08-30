@@ -1,21 +1,21 @@
-#!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-22  Pyctools contributors
+#  Copyright (C) 2014-23  Pyctools contributors
 #
-#  This program is free software: you can redistribute it and/or
+#  This file is part of Pyctools.
+#
+#  Pyctools is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
 #  published by the Free Software Foundation, either version 3 of the
 #  License, or (at your option) any later version.
 #
-#  This program is distributed in the hope that it will be useful,
+#  Pyctools is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 #  General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see
-#  <http://www.gnu.org/licenses/>.
+#  along with Pyctools.  If not, see <http://www.gnu.org/licenses/>.
 
 from distutils.command.upload import upload
 import numpy
@@ -53,26 +53,6 @@ ext_modules = cythonize(find_ext_modules(), compiler_directives={
 
 # Add / modify setuptools commands
 cmdclass = {}
-command_options = {}
-
-# if sphinx is installed, add command to build documentation
-try:
-    from sphinx.setup_command import BuildDoc
-except ImportError:
-    pass
-else:
-    cmdclass['build_sphinx'] = BuildDoc
-    command_options['build_sphinx'] = {
-        'all_files'  : ('setup.py', '1'),
-        'source_dir' : ('setup.py', 'src/doc'),
-        'build_dir'  : ('setup.py', 'doc'),
-        'builder'    : ('setup.py', 'html'),
-        }
-
-# set options for uploading documentation to PyPI
-command_options['upload_docs'] = {
-    'upload_dir' : ('setup.py', 'doc/html'),
-    }
 
 # modify upload command to add appropriate tag
 # requires GitPython - 'sudo pip install gitpython'
@@ -109,7 +89,6 @@ setup_kwds = {
         'console_scripts' : console_scripts,
         },
     'cmdclass': cmdclass,
-    'command_options': command_options,
     }
 
 if tuple(map(int, setuptools_version.split('.'))) < (61, 0):

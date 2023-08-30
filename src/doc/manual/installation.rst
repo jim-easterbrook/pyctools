@@ -1,20 +1,21 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-22  Pyctools contributors
+   Copyright (C) 2014-23  Pyctools contributors
 
-   This program is free software: you can redistribute it and/or
+   This file is part of Pyctools.
+
+   Pyctools is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
    published by the Free Software Foundation, either version 3 of the
    License, or (at your option) any later version.
 
-   This program is distributed in the hope that it will be useful,
+   Pyctools is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see
-   <http://www.gnu.org/licenses/>.
+   along with Pyctools.  If not, see <http://www.gnu.org/licenses/>.
 
 Installation
 ============
@@ -152,15 +153,14 @@ Documentation
 
 Pyctools documentation is available `online <http://pyctools.readthedocs.io/>`_ but it's sometimes useful to have a local copy.
 A local copy may be more up to date and should include documentation of all your installed components, not just the core Pyctools ones.
-The documentation is built using a package called `Sphinx <http://sphinx-doc.org/>`_, available from PyPI.
-You will also need the `mock <https://github.com/testing-cabal/mock>`_ package::
+The documentation is built using a package called `Sphinx <http://sphinx-doc.org/>`_, available from PyPI::
 
-  pip3 install --user Sphinx mock
+  pip3 install --user Sphinx
 
-Having installed Sphinx you can use ``setup.py`` to build the documentation::
+Having installed Sphinx you can use ``utils/build_docs.py`` to build the documentation::
 
   cd pyctools
-  python3 setup.py build_sphinx
+  python3 utils/build_docs.py
 
 The documentation can be read with any web browser.
 The start page is ``doc/html/index.html``.
