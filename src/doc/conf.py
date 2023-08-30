@@ -34,7 +34,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 # cludge to allow documentation to be compiled without installing some
 # dependencies
-for mod_name in ('OpenGL', 'matplotlib', 'matplotlib.pyplot',
+for mod_name in ('cv2', 'OpenGL', 'matplotlib', 'matplotlib.pyplot',
                  'scipy', 'scipy.optimize', 'scipy.signal', 'scipy.special',
                  'sip'):
     sys.modules[mod_name] = Mock()
