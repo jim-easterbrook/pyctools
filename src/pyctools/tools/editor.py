@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-20  Pyctools contributors
+#  Copyright (C) 2014-23  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -52,10 +52,9 @@ import inspect
 import logging
 import os
 import pprint
-import re
-import six
-from six.moves import cPickle
+import pickle
 import pkgutil
+import re
 import sys
 import types
 import warnings
@@ -514,7 +513,7 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
         start_pos = event.buttonDownScenePos(QtCore.Qt.LeftButton)
         drag = QtGui.QDrag(event.widget())
         mimeData = QtCore.QMimeData()
-        mimeData.setData(self.mime_type, cPickle.dumps(start_pos))
+        mimeData.setData(self.mime_type, pickle.dumps(start_pos))
         drag.setMimeData(mimeData)
         dropAction = drag.exec_(QtCore.Qt.LinkAction)
 
@@ -526,7 +525,7 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
     def dropEvent(self, event):
         if not event.mimeData().hasFormat(self.link_mime_type):
             return super(IOIcon, self).dropEvent(event)
-        start_pos = cPickle.loads(
+        start_pos = pickle.loads(
             event.mimeData().data(self.link_mime_type).data())
         link_from = self.scene().itemAt(start_pos, self.transform())
         while link_from and not isinstance(link_from, IOIcon):
@@ -955,7 +954,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
             return super(NetworkArea, self).dropEvent(event)
         data = event.mimeData().data(_COMP_MIMETYPE).data()
-        klass = cPickle.loads(data)
+        klass = pickle.loads(data)
         self.add_component(klass, event.scenePos())
 
     def keyPressEvent(self, event):
@@ -1099,7 +1098,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                     expanded[name] = details['expanded']
             links = []
             for source, dests in Network.linkages.items():
-                if isinstance(dests[0], six.string_types):
+                if isinstance(dests[0], str):
                     # not a list of pairs, so make it into one
                     dests = list(zip(dests[0::2], dests[1::2]))
                 for dest in dests:
@@ -1241,7 +1240,7 @@ class ComponentItemModel(QtGui.QStandardItemModel):
             return None
         result = QtCore.QMimeData()
         result.setData(_COMP_MIMETYPE,
-                       cPickle.dumps(data, cPickle.HIGHEST_PROTOCOL))
+                       pickle.dumps(data, pickle.HIGHEST_PROTOCOL))
         return result
 
 

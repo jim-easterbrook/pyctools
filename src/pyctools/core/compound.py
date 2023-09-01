@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-20  Pyctools contributors
+#  Copyright (C) 2014-23  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -20,7 +20,6 @@ __all__ = ['Compound', 'RunnableNetwork']
 __docformat__ = 'restructuredtext en'
 
 import logging
-import six
 
 from .config import ConfigParent
 
@@ -54,7 +53,7 @@ class RunnableNetwork(object):
         self._compound_outputs = {}
         self.links = []
         for source, targets in linkages.items():
-            if isinstance(targets[0], six.string_types):
+            if isinstance(targets[0], str):
                 # not a list of pairs, so make it into one
                 targets = list(zip(targets[0::2], targets[1::2]))
             src, outbox = source

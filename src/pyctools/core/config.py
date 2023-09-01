@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-20  Pyctools contributors
+#  Copyright (C) 2014-23  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -80,7 +80,6 @@ __docformat__ = 'restructuredtext en'
 import collections
 import logging
 import os.path
-import six
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +212,7 @@ class ConfigFloat(ConfigLeafNode, float):
         return {'type' : float, 'metavar' : 'x'}
 
 
-class ConfigStr(ConfigLeafNode, six.text_type):
+class ConfigStr(ConfigLeafNode, str):
     """String configuration node.
 
     :keyword str value: Initial value of the node.

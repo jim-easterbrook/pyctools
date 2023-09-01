@@ -49,7 +49,6 @@ dependencies = [
     "exiv2 >= 0.11",
     "numpy",
     "pillow",
-    "six",
 ]
 
 [project.urls]

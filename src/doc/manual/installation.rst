@@ -28,7 +28,7 @@ However, many of these are likely to be already installed if you have a reasonab
 
 Unless otherwise noted you should probably install the dependencies with your Linux distribution's package manager application.
 
-Some packages are also available from the `Python Package Index (PyPI) <https://pypi.python.org/>`_.
+Some packages are also available from the `Python Package Index (PyPI)`_.
 These will often be newer versions.
 The ``pip`` command should be used to install packages from PyPI.
 
@@ -36,7 +36,7 @@ The ``pip`` command should be used to install packages from PyPI.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can test which version of Python is installed on your system with ``python3 --version``.
-Any version from 3.5 onwards is suitable.
+Any version from 3.6 onwards is suitable.
 
 `NumPy <http://www.numpy.org/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,7 +138,7 @@ The easiest way to install pillow is with ``pip``::
 Pyctools core
 -------------
 
-Although ``pip`` can be used to install Pyctools, it is better to clone the GitHub repos.
+Although an olde version of Pyctools can be installed from PyPI_, it is better to clone the GitHub repos.
 The project is still quite young and a lot of changes are being made.
 Cloning the repos makes it easy to keep up to date with a ``git pull`` command.
 
@@ -151,9 +151,9 @@ Clone the repos and install Pyctools as follows::
 Documentation
 ^^^^^^^^^^^^^
 
-Pyctools documentation is available `online <http://pyctools.readthedocs.io/>`_ but it's sometimes useful to have a local copy.
+Pyctools documentation is available `online <https://pyctools.readthedocs.io/>`_ but it's sometimes useful to have a local copy.
 A local copy may be more up to date and should include documentation of all your installed components, not just the core Pyctools ones.
-The documentation is built using a package called `Sphinx <http://sphinx-doc.org/>`_, available from PyPI::
+The documentation is built using a package called `Sphinx <https://sphinx-doc.org/>`_, available from PyPI::
 
   pip3 install --user Sphinx
 
@@ -182,3 +182,7 @@ They are installed in the usual way::
   git clone https://github.com/jim-easterbrook/pyctools-jim.git
   cd pyctools-jim
   pip3 install --user .
+
+
+.. _PyPI: https://pypi.org/
+.. _Python Package Index (PyPI): https://pypi.org/

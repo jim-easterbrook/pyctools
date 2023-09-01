@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-18  Pyctools contributors
+   Copyright (C) 2014-23  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -65,7 +65,7 @@ This often proved useful when seeking to find out what a particular file was sup
 
 Pyctools uses XMP "sidecar" files to store metadata like this.
 Using sidecar files means we won't need to restrict the video or still image file formats to those that support metadata.
-`PyGObject <https://wiki.gnome.org/Projects/PyGObject>`_ (or `pgi <https://github.com/pygobject/pgi>`_) and `gexiv2 <https://wiki.gnome.org/Projects/gexiv2>`_ are used to read and write these metadata files.
+`python-exiv2 <https://github.com/jim-easterbrook/python-exiv2>`_ is used to read and write these metadata files.
 
 Extensibility
 ^^^^^^^^^^^^^
