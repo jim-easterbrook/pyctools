@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-24  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -51,20 +51,24 @@ def find_packages():
     return packages
 
 def write_init_files(packages):
-    """Make sure package hierarchy is a "pkgutil-style namespace
-    package". For more detail see
+    """Make sure package hierarchy is a "native namespace package". For
+    more detail see
     https://packaging.python.org/guides/packaging-namespace-packages/
     
     """
-    init_text = """__path__ = __import__('pkgutil').extend_path(__path__, __name__)
-
-try:
+    init_text = """try:
     from .__doc__ import __doc__
 except ImportError:
     pass
 """
     for package in packages:
         path = os.path.join('src', package.replace('.', os.sep), '__init__.py')
+        if package == 'pyctools':
+            # delete any existing __init__.py
+            if os.path.exists(path):
+                os.unlink(path)
+            continue
+        # update __init__.py if needed
         if os.path.exists(path):
             with open(path) as f:
                 old_text = f.read()
