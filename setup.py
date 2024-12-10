@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-23  Pyctools contributors
+#  Copyright (C) 2014-24  Pyctools contributors
 #
 #  This file is part of Pyctools.
 #
@@ -17,7 +17,6 @@
 #  You should have received a copy of the GNU General Public License
 #  along with Pyctools.  If not, see <http://www.gnu.org/licenses/>.
 
-from distutils.command.upload import upload
 import numpy
 import os
 from setuptools import setup
@@ -51,36 +50,6 @@ for name in os.listdir(os.path.join('src', 'pyctools', 'tools')):
 ext_modules = cythonize(find_ext_modules(), compiler_directives={
     'language_level' : sys.version_info[0]})
 
-# Add / modify setuptools commands
-cmdclass = {}
-
-# modify upload command to add appropriate tag
-# requires GitPython - 'sudo pip install gitpython'
-try:
-    import git
-except ImportError:
-    pass
-else:
-    class upload_and_tag(upload):
-        def run(self):
-            tag_path = 'v%s' % version
-            message = '%s\n\n' % tag_path
-            with open('CHANGELOG.txt') as f:
-                while not f.readline().startswith('Changes'):
-                    pass
-                while True:
-                    line = f.readline().strip()
-                    if not line:
-                        break
-                    message += line + '\n'
-            repo = git.Repo()
-            tag = repo.create_tag(tag_path, message=message)
-            remote = repo.remotes.origin
-            remote.push(tags=True)
-            return upload.run(self)
-    cmdclass['upload'] = upload_and_tag
-
-
 setup_kwds = {
     'ext_modules': ext_modules,
     'packages': packages,
@@ -88,7 +57,6 @@ setup_kwds = {
     'entry_points': {
         'console_scripts' : console_scripts,
         },
-    'cmdclass': cmdclass,
     }
 
 if tuple(map(int, setuptools_version.split('.'))) < (61, 0):
