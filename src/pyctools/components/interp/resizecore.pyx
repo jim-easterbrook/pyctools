@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-20  Pyctools contributors
+#  Copyright (C) 2014-24  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,8 +16,6 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-from __future__ import absolute_import
-
 from cython.parallel import prange
 import numpy as np
 
@@ -31,7 +29,7 @@ ctypedef numpy.float32_t DTYPE_t
 cdef void resize_line(DTYPE_t[:, :] out_line,
                       DTYPE_t[:, :] in_line,
                       DTYPE_t[:, :] norm_filter,
-                      int x_up, int x_down) nogil:
+                      int x_up, int x_down) noexcept nogil:
     cdef:
         unsigned int xlen_in, xlen_out, xlen_fil, x_in, x_out, x_fil
         unsigned int comps, filters, c, c_fil
@@ -63,7 +61,7 @@ cdef void resize_line(DTYPE_t[:, :] out_line,
 cdef void filter_line(DTYPE_t[:, :] out_line,
                       DTYPE_t[:, :] in_line,
                       DTYPE_t[:, :] norm_filter,
-                      int x_up, int x_down) nogil:
+                      int x_up, int x_down) noexcept nogil:
     cdef:
         unsigned int xlen_in, xlen_out, xlen_fil, x_in, x_out, x_fil
         unsigned int comps, filters, c, c_fil
@@ -95,7 +93,7 @@ cdef void filter_line(DTYPE_t[:, :] out_line,
 cdef void scale_line(DTYPE_t[:, :] out_line,
                      DTYPE_t[:, :] in_line,
                      DTYPE_t[:, :] norm_filter,
-                     int x_up, int x_down) nogil:
+                     int x_up, int x_down) noexcept nogil:
     cdef:
         unsigned int xlen, x
         unsigned int comps, filters, c
@@ -122,7 +120,7 @@ cdef void resize_frame_core(DTYPE_t[:, :, :] out_frame,
         int y_out
         int y_fil
         void (*interp)(DTYPE_t[:, :], DTYPE_t[:, :], DTYPE_t[:, :],
-                       int, int) nogil
+                       int, int) noexcept nogil
     with nogil:
         ylen_in = in_frame.shape[0]
         ylen_out = out_frame.shape[0]
