@@ -1,20 +1,21 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-18  Pyctools contributors
+   Copyright (C) 2014-24  Pyctools contributors
 
-   This program is free software: you can redistribute it and/or
+   This file is part of Pyctools.
+
+   Pyctools is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
    published by the Free Software Foundation, either version 3 of the
    License, or (at your option) any later version.
 
-   This program is distributed in the hope that it will be useful,
+   Pyctools is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see
-   <http://www.gnu.org/licenses/>.
+   along with Pyctools.  If not, see <http://www.gnu.org/licenses/>.
 
 Writing components
 ==================
@@ -38,32 +39,8 @@ The Pyctools source files include example files to help with this.
 Namespaces
 ^^^^^^^^^^
 
-Python namespace packages allow the Python ``import`` statement to import modules in the same namespace hierarchy from different locations.
-For example, if you have installed both `pyctools <https://github.com/jim-easterbrook/pyctools>`_ and `pyctools-pal <https://github.com/jim-easterbrook/pyctools-pal>`_ on your computer then you should have Pyctools components in two different directories::
-
-   jim@Brains:~$ ls -l /usr/lib64/python2.7/site-packages/pyctools.core-0.1.2-py2.7-linux-x86_64.egg/pyctools/components/
-   total 44
-   -rw-r--r-- 1 root root 2098 Nov 18 08:58 arithmetic.py
-   -rw-r--r-- 1 root root 2121 Nov 18 08:58 arithmetic.pyc
-   drwxr-xr-x 2 root root 4096 Nov 18 08:58 colourspace
-   -rw-r--r-- 1 root root  902 Nov 18 08:58 __init__.py
-   -rw-r--r-- 1 root root  283 Nov 18 08:58 __init__.pyc
-   drwxr-xr-x 2 root root 4096 Nov 18 08:58 interp
-   drwxr-xr-x 2 root root 4096 Nov 18 08:58 io
-   drwxr-xr-x 2 root root 4096 Nov 18 08:58 modulate
-   drwxr-xr-x 2 root root 4096 Nov 18 08:58 plumbing
-   drwxr-xr-x 2 root root 4096 Nov 18 08:58 qt
-   drwxr-xr-x 2 root root 4096 Nov 18 08:58 zone
-   jim@Brains:~$ ls -l /usr/lib/python2.7/site-packages/pyctools.pal-0.1.0-py2.7.egg/pyctools/components/
-   total 12
-   -rw-r--r-- 1 root root  902 Nov 12 14:48 __init__.py
-   -rw-r--r-- 1 root root  267 Nov 12 14:48 __init__.pyc
-   drwxr-xr-x 2 root root 4096 Nov 12 14:48 pal
-   jim@Brains:~$ 
-
-When a Python program imports from ``pyctools.components`` both these directories are searched for modules or subpackages.
-The command ``import pyctools.components.io.videofilereader`` will use ``site-packages/pyctools.core`` whilst ``import pyctools.components.pal.decoder`` will use ``site-packages/pyctools.pal``.
-The program user needn't know that the two ``import`` statements are using files from different installation packages.
+Python `namespace packages`_ allow multiple distribution packages to share a package hierarchy.
+For example, the `pyctools.core`_ and `pyctools.pal`_ distribution packages both install Pyctools components in the ``pyctools.components`` package.
 
 When you write your components you should follow a similar naming structure and make them part of the ``pyctools.components`` hierarchy.
 This will ensure that they are included in the component list shown in the :py:mod:`pyctools-editor <pyctools.tools.editor>` visual editor.
@@ -87,9 +64,9 @@ Consider ``pyctools.components.bigcorp.io.videofilereader`` or ``pyctools.compon
 Build environment
 ^^^^^^^^^^^^^^^^^
 
-The easiest way to get started is to copy the ``src/examples/simple`` directory, edit the ``setup.py`` file and try building and installing.
+The easiest way to get started is to copy the ``examples/simple`` directory, edit the ``pyproject.toml`` file and try building and installing.
 If this works you should have a new ``Flip`` component available in the :py:mod:`pyctools-editor <pyctools.tools.editor>` program.
-The ``src/examples/simple/test_flip.py`` script demonstrates the effect of the ``Flip`` component.
+The ``examples/simple/test_flip.py`` script demonstrates the effect of the ``Flip`` component.
 
 Having successfully set up your build environment you are ready to start writing your new component.
 
@@ -103,7 +80,7 @@ Pyctools provides a :py:class:`~pyctools.core.base.Transformer` base class to ma
 Consider the ``Flip`` example component.
 This listing shows all the active Python code:
 
-.. literalinclude:: ../../examples/simple/src/pyctools/components/example/flip.py
+.. literalinclude:: ../../../examples/simple/src/pyctools/components/example/flip.py
    :language: python
    :linenos:
    :lines: 24, 26-
@@ -147,3 +124,17 @@ Components such as file readers have an output but no inputs.
 They use the :py:class:`~pyctools.core.base.Component` base class directly.
 In most cases they use an output frame pool and generate a new frame each time a frame object is available from the pool.
 See the :py:mod:`ZonePlateGenerator <pyctools.components.zone.zoneplategenerator>` source code for an example.
+
+Namespace packages and ``__init__.py`` files
+--------------------------------------------
+
+There is some confusing advice about including ``__init__.py`` files in namespace packages.
+In general, don't do this.
+If two "distribution packages" both have ``__init__.py`` in the same sub-package (e.g. ``pyctools.components.io``) then uninstalling either package will remove ``__init__.py``.
+If you add a unique sub-package (e.g. ``pyctools.components.bigcorp``) then you can include a ``__init__.py`` file.
+It should probably do nothing more than provide a docstring for the sub-package.
+
+
+.. _namespace packages: https://packaging.python.org/en/latest/guides/packaging-namespace-packages/
+.. _pyctools.core: https://github.com/jim-easterbrook/pyctools
+.. _pyctools.pal: https://github.com/jim-easterbrook/pyctools-pal
