@@ -18,12 +18,15 @@
 #  along with Pyctools.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
 
 import numpy
 from setuptools import Extension
 from setuptools import __version__ as setuptools_version
 import toml
 
+# import Cython after setuptools
+from Cython.Build import cythonize
 
 # get metadata from pyproject.toml
 metadata = toml.load('pyproject.toml')
@@ -60,8 +63,11 @@ def find_ext_modules():
                 extra_compile_args = [
                     '-fopenmp', '-Wno-maybe-uninitialized', '-Wno-unused-function'],
                 extra_link_args = ['-fopenmp'],
+                define_macros=[
+                    ('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')],
                 ))
-    return ext_modules
+    return cythonize(ext_modules, compiler_directives={
+        'language_level' : sys.version_info[0]})
 
 def get_setup_parameters():
     setup_kwds = {
