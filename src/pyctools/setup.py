@@ -2,28 +2,51 @@
 #  http://github.com/jim-easterbrook/pyctools
 #  Copyright (C) 2014-24  Pyctools contributors
 #
-#  This program is free software: you can redistribute it and/or
+#  This file is part of Pyctools.
+#
+#  Pyctools is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
 #  published by the Free Software Foundation, either version 3 of the
 #  License, or (at your option) any later version.
 #
-#  This program is distributed in the hope that it will be useful,
+#  Pyctools is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 #  General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see
-#  <http://www.gnu.org/licenses/>.
+#  along with Pyctools.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 
 import numpy
 from setuptools import Extension
+from setuptools import __version__ as setuptools_version
+import toml
+
+
+# get metadata from pyproject.toml
+metadata = toml.load('pyproject.toml')
+find_kwds = metadata['tool']['setuptools']['packages']['find']
+find_kwds['where'] = find_kwds['where'][0]
+
+
+def find_console_scripts():
+    console_scripts = []
+    for name in os.listdir(os.path.join(
+            find_kwds['where'], 'pyctools', 'tools')):
+        base, ext = os.path.splitext(name)
+        if name.startswith('_') or ext != '.py':
+            continue
+        console_scripts.append(
+            'pyctools-{name} = pyctools.tools.{name}:main'.format(name=base))
+    return console_scripts
+
 
 def find_ext_modules():
     ext_modules = []
-    for root, dirs, files in os.walk(os.path.join('src', 'pyctools')):
+    for root, dirs, files in os.walk(os.path.join(
+            find_kwds['where'], 'pyctools')):
         for name in files:
             base, ext = os.path.splitext(name)
             if ext != '.pyx':
@@ -38,42 +61,31 @@ def find_ext_modules():
                 ))
     return ext_modules
 
-def find_packages():
-    """Walk source directory tree and convert each sub directory to a
-    package name.
-
-    """
-    packages = ['pyctools']
-    for root, dirs, files in os.walk(os.path.join('src', 'pyctools')):
-        package = '.'.join(root.split(os.sep)[1:])
-        for name in dirs:
-            packages.append(package + '.' + name)
-    return packages
-
-def write_init_files(packages):
-    """Make sure package hierarchy is a "native namespace package". For
-    more detail see
-    https://packaging.python.org/guides/packaging-namespace-packages/
-    
-    """
-    init_text = """try:
-    from .__doc__ import __doc__
-except ImportError:
-    pass
-"""
-    for package in packages:
-        path = os.path.join('src', package.replace('.', os.sep), '__init__.py')
-        if package == 'pyctools':
-            # delete any existing __init__.py
-            if os.path.exists(path):
-                os.unlink(path)
-            continue
-        # update __init__.py if needed
-        if os.path.exists(path):
-            with open(path) as f:
-                old_text = f.read()
-        else:
-            old_text = ''
-        if old_text != init_text:
-            with open(path, 'w') as f:
-                f.write(init_text)
+def get_setup_parameters():
+    setup_kwds = {
+        'ext_modules': find_ext_modules(),
+        'entry_points': {
+            'console_scripts' : find_console_scripts(),
+            },
+        }
+    if tuple(map(int, setuptools_version.split('.'))) < (61, 0):
+        # use setuptools' find_namespace_packages directly
+        from setuptools import find_namespace_packages
+        setup_kwds['packages'] = find_namespace_packages(**find_kwds)
+        setup_kwds['package_dir'] = {'': find_kwds['where']}
+        # copy metadata from pyproject.toml
+        with open(metadata['project']['readme']) as ldf:
+            setup_kwds['long_description'] = ldf.read()
+        setup_kwds.update(
+            name = metadata['project']['name'],
+            version = metadata['project']['version'],
+            description = metadata['project']['description'],
+            author = metadata['project']['authors'][0]['name'],
+            author_email = metadata['project']['authors'][0]['email'],
+            url = metadata['project']['urls']['homepage'],
+            classifiers = metadata['project']['classifiers'],
+            platforms = metadata['tool']['setuptools']['platforms'],
+            license = metadata['project']['license']['text'],
+            zip_safe = metadata['tool']['setuptools']['zip-safe'],
+            )
+    return setup_kwds

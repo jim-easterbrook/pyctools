@@ -61,5 +61,4 @@ target/
 /doc/
 
 # Misc
-__init__.py
 doctrees/
