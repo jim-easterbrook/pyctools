@@ -32,9 +32,11 @@ find_kwds['where'] = find_kwds['where'][0]
 
 
 def find_console_scripts():
+    path = os.path.join(find_kwds['where'], 'pyctools', 'tools')
+    if not os.path.exists(path):
+        return []
     console_scripts = []
-    for name in os.listdir(os.path.join(
-            find_kwds['where'], 'pyctools', 'tools')):
+    for name in os.listdir(path):
         base, ext = os.path.splitext(name)
         if name.startswith('_') or ext != '.py':
             continue
@@ -74,8 +76,9 @@ def get_setup_parameters():
         setup_kwds['packages'] = find_namespace_packages(**find_kwds)
         setup_kwds['package_dir'] = {'': find_kwds['where']}
         # copy metadata from pyproject.toml
-        with open(metadata['project']['readme']) as ldf:
-            setup_kwds['long_description'] = ldf.read()
+        if os.path.exists(metadata['project']['readme']):
+            with open(metadata['project']['readme']) as ldf:
+                setup_kwds['long_description'] = ldf.read()
         setup_kwds.update(
             name = metadata['project']['name'],
             version = metadata['project']['version'],

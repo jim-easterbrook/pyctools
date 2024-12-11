@@ -1,0 +1,67 @@
+## Replace the following with your project details and licence.
+#  Pyctools - a picture processing algorithm development kit.
+#  http://github.com/jim-easterbrook/pyctools
+#  Copyright (C) 2024  Pyctools contributors
+#
+#  This file is part of Pyctools.
+#
+#  Pyctools is free software: you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License as
+#  published by the Free Software Foundation, either version 3 of the
+#  License, or (at your option) any later version.
+#
+#  Pyctools is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#  General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with Pyctools.  If not, see <http://www.gnu.org/licenses/>.
+
+[build-system]
+requires = ["setuptools >= 59.6", "toml", "numpy", "cython", "pyctools.core"]
+build-backend = "setuptools.build_meta"
+
+## Edit 'name', 'description', 'authors', and 'description'. You
+## may want to add change the 'classifiers' later
+
+[project]
+name = "pyctools.example"
+version = "0.0.0"
+description = "Example Pyctools component"
+readme = "README.rst"
+license = {text = "GNU GPL"}
+authors = [{name = "Jim Easterbrook", email = "jim@jim-easterbrook.me.uk"}]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: MacOS",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX",
+    "Operating System :: POSIX :: BSD :: FreeBSD",
+    "Operating System :: POSIX :: BSD :: NetBSD",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = [
+    "pyctools.core",
+]
+
+## Edit as required
+
+[project.urls]
+homepage = "https://github.com/jim-easterbrook/pyctools/examples"
+
+[tool.setuptools]
+platforms = ["POSIX", "MacOS"]
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["pyctools*"]
