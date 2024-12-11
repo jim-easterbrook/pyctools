@@ -23,16 +23,15 @@ import sys
 
 # requires GitPython - 'pip install --user gitpython'
 import git
+import toml
 
 
 def main(argv=None):
     # get root dir
     root = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
     # get pyctools version
-    with open(os.path.join(root, 'setup.py')) as setup:
-        for line in setup.readlines():
-            if line.startswith('version = '):
-                version = ast.literal_eval(line.split(' = ')[1])
+    metadata = toml.load('pyproject.toml')
+    version = metadata['project']['version']
     message = 'v' + version + '\n\n'
     with open(os.path.join(root, 'CHANGELOG.txt')) as cl:
         while not cl.readline().startswith('Changes'):
