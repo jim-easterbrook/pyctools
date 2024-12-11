@@ -1,6 +1,6 @@
 # Pyctools - a picture processing algorithm development kit.
 # http://github.com/jim-easterbrook/pyctools
-# Copyright (C) 2014-23  Pyctools contributors
+# Copyright (C) 2014-24  Pyctools contributors
 #
 # This file is part of Pyctools.
 #
@@ -112,11 +112,8 @@ copyright = u'2014-20, Pyctools contributors'
 #version = 
 # The full version, including alpha/beta/rc tags.
 #release =
-with open('../../setup.py') as f:
-    for line in f.readlines():
-        if line.startswith('version'):
-            exec(line)
-            break
+import toml
+version = toml.load('../../pyproject.toml')['project']['version']
 release = version
 version = '.'.join(version.split('.')[0:2])
 
@@ -127,16 +124,36 @@ except ImportError:
     print("Pyctools is not installed")
     sys.exit(1)
 modules = []
-for module_loader, mod_name, ispkg in pkgutil.walk_packages(
-        path=pyctools.__path__, prefix=pyctools.__name__ + '.'):
-    if mod_name.split('.')[-1].startswith('_'):
-        continue
-    modules.append({
-        'name'  : mod_name,
-        'ispkg' : ispkg,
-        'depth' : mod_name.count('.'),
-        'intoc' : False,
-        })
+# pkgutil.walk_packages doesn't work with namespace packages, so we do
+# a simple file search instead
+for path in pyctools.__path__:
+    depth = len(path.split('/')) - 1
+    for root, dirs, files in os.walk(path):
+        parts = root.split('/')
+        if parts[-1] == '__pycache__':
+            continue
+        parts = parts[depth:]
+        if len(parts) > 1:
+            module = {
+                'name'  : '.'.join(parts),
+                'ispkg' : True,
+                'depth' : len(parts),
+                'intoc' : False,
+                }
+            if module not in modules:
+                modules.append(module)
+        for name in files:
+            base, ext = os.path.splitext(name)
+            if base == '__init__' or ext != '.py':
+                continue
+            module = {
+                'name'  : '.'.join(parts + [base]),
+                'ispkg' : False,
+                'depth' : len(parts) + 1,
+                'intoc' : False,
+                }
+            if module not in modules:
+                modules.append(module)
 modules.sort(key=lambda x: x['name'])
 
 def update_file(path, new_contents):
@@ -165,8 +182,9 @@ for package in [x for x in modules if x['ispkg']]:
     idx_str += ('.. autosummary::\n' +
                 '   :nosignatures:\n\n')
     for module in submodules(package):
+        name = module['name'].replace(package['name'] + '.', '')
         if module['ispkg']:
-            idx_str += '   ' + module['name'] + '\n'
+            idx_str += '   ' + name + '\n'
             module['intoc'] = True
             continue
         # import module
@@ -176,11 +194,11 @@ for package in [x for x in modules if x['ispkg']]:
             continue
         module['mod'] = mod
         if getattr(mod, '__doc__'):
-            idx_str += '   ' + module['name'] + '\n'
+            idx_str += '   ' + name + '\n'
             module['intoc'] = True
         for member in [x for x in getattr(mod, '__all__', [])
                        if getattr(getattr(mod, x), '__doc__')]:
-            idx_str += '   ' + module['name'] + '.' + member + '\n'
+            idx_str += '   ' + name + '.' + member + '\n'
             module['intoc'] = True
     idx_str += '\n'
     # toctree entries, child packages and modules only
