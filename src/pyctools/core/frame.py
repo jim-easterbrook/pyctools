@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-22  Pyctools contributors
+#  Copyright (C) 2014-24  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -32,7 +32,7 @@ from pyctools.core.types import pt_float
 
 
 # initialise exiv2
-exiv2.LogMsg.setLevel(exiv2.LogMsg.info)
+exiv2.LogMsg.setLevel(exiv2.LogMsg.Level.info)
 exiv2.XmpParser.initialize()
 # register our XMP namespace from main thread
 exiv2.XmpProperties.registerNs(
@@ -435,14 +435,14 @@ class Metadata(object):
                           ('Exif.Image.ImageWidth', self.exif_data),
                           ('Xmp.tiff.ImageWidth', self.xmp_data)):
             if tag in data:
-                xlen = data[tag].toLong()
+                xlen = int(data[tag])
                 break
         for tag, data in (('Xmp.pyctools.ylen', self.xmp_data),
                           ('Exif.Photo.PixelYDimension', self.exif_data),
                           ('Exif.Image.ImageLength', self.exif_data),
                           ('Xmp.tiff.ImageLength', self.xmp_data)):
             if tag in data:
-                ylen = data[tag].toLong()
+                ylen = int(data[tag])
                 break
         if xlen and ylen:
             return xlen, ylen
