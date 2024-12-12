@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-23  Pyctools contributors
+#  Copyright (C) 2014-24  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,7 +16,7 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-__all__ = ['Compound', 'RunnableNetwork']
+__all__ = ['ComponentRunner', 'Compound', 'RunnableNetwork']
 __docformat__ = 'restructuredtext en'
 
 import logging
@@ -248,3 +248,42 @@ class Compound(RunnableNetwork):
         self.config.update(config)
         for name, child in self.children.items():
             child.set_config(self.config[name])
+
+
+class ComponentRunner(object):
+    """Run a compound component as a script.
+
+    A :py:class:`Compound` component passed to :py:meth:`run_network`
+    has its configuration turned into command line arguments. After
+    parsing the command line the component is run until its pipeline end
+    components have terminated.
+
+    This is primarily used in scripts created by the
+    :py:mod:`pyctools-editor <pyctools.tools.editor>` tool.
+
+    """
+
+    def run_network(self, comp):
+        import argparse
+        comp.set_config(comp.user_config)
+        cnf = comp.get_config()
+        parser = argparse.ArgumentParser(
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        cnf.parser_add(parser)
+        parser.add_argument('-v', '--verbose', action='count', default=0,
+                            help='increase verbosity of log messages')
+        args = parser.parse_args()
+        logging.basicConfig(level=logging.ERROR - (args.verbose * 10))
+        del args.verbose
+        cnf.parser_set(args)
+        comp.set_config(cnf)
+        comp.start()
+        self.do_loop(comp)
+        comp.stop()
+        comp.join()
+
+    def do_loop(self, comp):
+        try:
+            comp.join(end_comps=True)
+        except KeyboardInterrupt:
+            pass

@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015-19  Pyctools contributors
+#  Copyright (C) 2015-24  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,15 +16,18 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-__all__ = ['QtEventLoop', 'QtThreadEventLoop']
+__all__ = ['ComponentRunner', 'QtEventLoop', 'QtThreadEventLoop']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque, namedtuple
 from functools import wraps
 import logging
+import sys
 import time
 
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
+
+from pyctools.core.compound import ComponentRunner as ComponentRunnerBase
 
 logger = logging.getLogger(__name__)
 
@@ -199,3 +202,16 @@ class QtThreadEventLoop(QtEventLoop):
 
         """
         self.thread.wait(int(timeout * 1000))
+
+
+class ComponentRunner(ComponentRunnerBase):
+    """Qt version of the
+    :py:class:`pyctools.core.compound.ComponentRunner` component."""
+
+    def __init__(self):
+        QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
+        self.app = QtWidgets.QApplication(sys.argv)
+        super(ComponentRunner, self).__init__()
+
+    def do_loop(self, comp):
+        self.app.exec_()

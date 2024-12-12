@@ -1161,13 +1161,12 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             of.write("""#!/usr/bin/env python
 # File written by pyctools-editor. Do not edit.
 
-import argparse
-import logging
+from pyctools.core.compound import Compound
 """)
             if with_qt:
-                of.write('import sys\n\n'
-                         'from PyQt5 import QtCore, QtWidgets\n')
-            of.write('\nfrom pyctools.core.compound import Compound\n')
+                of.write('from pyctools.core.qt import ComponentRunner\n')
+            else:
+                of.write('from pyctools.core.compound import ComponentRunner\n')
             for module in modules:
                 of.write('import %s\n' % module)
             of.write("""
@@ -1187,40 +1186,10 @@ class ComponentNetwork(Compound):
             )
 
 if __name__ == '__main__':
+    runner = ComponentRunner()
+    runner.run_network(ComponentNetwork())
 """
                      .format(linkages=linkages))
-            if with_qt:
-                of.write('    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)\n'
-                         '    app = QtWidgets.QApplication(sys.argv)\n')
-            of.write("""
-    comp = ComponentNetwork()
-    comp.set_config(comp.user_config)
-    cnf = comp.get_config()
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    cnf.parser_add(parser)
-    parser.add_argument('-v', '--verbose', action='count', default=0,
-                        help='increase verbosity of log messages')
-    args = parser.parse_args()
-    logging.basicConfig(level=logging.ERROR - (args.verbose * 10))
-    del args.verbose
-    cnf.parser_set(args)
-    comp.set_config(cnf)
-    comp.start()
-""")
-            if with_qt:
-                of.write('    app.exec_()\n')
-            else:
-                of.write("""
-    try:
-        comp.join(end_comps=True)
-    except KeyboardInterrupt:
-        pass
-""")
-            of.write("""
-    comp.stop()
-    comp.join()
-""")
 
 
 class ComponentItemModel(QtGui.QStandardItemModel):
