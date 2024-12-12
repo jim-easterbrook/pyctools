@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-23  Pyctools contributors
+#  Copyright (C) 2014-24  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -1253,44 +1253,54 @@ class ComponentList(QtWidgets.QTreeView):
         # get list of available components (and import them!)
         components = {}
         self.needs_qt = {}
-        for module_loader, name, ispkg in pkgutil.walk_packages(
-                path=pyctools.components.__path__,
-                prefix='pyctools.components.'):
-            # import module
-            try:
-                mod = __import__(name, globals(), locals(), ['*'])
-            except ImportError:
-                continue
-            if not hasattr(mod, '__all__') or not mod.__all__:
-                continue
-            # convert 'pyctools.components.a.b.c' to components['a']['b']['c']
-            parts = name.split('.')[2:]
-            if len(mod.__all__) == 1:
-                # single component in module
-                parts = parts[:-1]
-            # descend hierarchy to this module
-            parent = components
-            for part in parts:
-                if part not in parent:
-                    parent[part] = {}
-                parent = parent[part]
-            # add this module's components to hierarchy
-            for comp in mod.__all__:
-                parent[comp] = getattr(mod, comp)
-            # try to find out if module needs Qt
-            self.needs_qt[name] = False
-            for item in dir(mod):
-                if item in ('QtEventLoop', 'QtThreadEventLoop'):
-                    self.needs_qt[name] = True
-                    break
-                if not 'Qt' in item:
+        # pkgutil.walk_packages doesn't work with namespace packages, so
+        # we do a simple file search instead
+        for path in pyctools.components.__path__:
+            depth = len(path.split('/')) - 2
+            for root, dirs, files in os.walk(path):
+                pkg_parts = root.split('/')[depth:]
+                if pkg_parts[-1] == '__pycache__':
                     continue
-                item = getattr(mod, item)
-                if not isinstance(item, types.ModuleType):
-                    continue
-                if item.__name__.startswith('PyQt'):
-                    self.needs_qt[name] = True
-                    break
+                for file_name in files:
+                    base, ext = os.path.splitext(file_name)
+                    if base == '__init__' or ext != '.py':
+                        continue
+                    # import module
+                    comp_parts = pkg_parts + [base]
+                    comp_name = '.'.join(comp_parts)
+                    try:
+                        mod = __import__(comp_name, globals(), locals(), ['*'])
+                    except ImportError as ex:
+                        continue
+                    if not hasattr(mod, '__all__') or not mod.__all__:
+                        continue
+                    comp_parts = comp_parts[2:]
+                    if len(mod.__all__) == 1:
+                        # single component in module
+                        comp_parts = comp_parts[:-1]
+                    # descend hierarchy to this module
+                    parent = components
+                    for part in comp_parts:
+                        if part not in parent:
+                            parent[part] = {}
+                        parent = parent[part]
+                    # add this module's components to hierarchy
+                    for comp in mod.__all__:
+                        parent[comp] = getattr(mod, comp)
+                    # try to find out if module needs Qt
+                    self.needs_qt[comp_name] = False
+                    for item in dir(mod):
+                        if item in ('QtEventLoop', 'QtThreadEventLoop'):
+                            self.needs_qt[comp_name] = True
+                            break
+                        if not 'Qt' in item:
+                            continue
+                        item = getattr(mod, item)
+                        if not isinstance(item, types.ModuleType):
+                            continue
+                        if item.__name__.startswith('PyQt'):
+                            self.needs_qt[comp_name] = True
+                            break
         # build tree from list
         root_node = self.model().invisibleRootItem()
         self.add_nodes(root_node, components)
