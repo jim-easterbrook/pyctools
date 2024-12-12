@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-18  Pyctools contributors
+#  Copyright (C) 2014-24  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -26,12 +26,16 @@ import time
 
 import numpy
 from OpenGL import GL
-from PyQt5 import QtCore, QtGui, QtOpenGL, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 
 from pyctools.core.config import ConfigBool, ConfigInt, ConfigStr
 from pyctools.core.base import Transformer
 from pyctools.core.qt import qt_version_info, QtEventLoop
+
+if qt_version_info < (5, 4):
+    raise ImportError('Qt version 5.4 or higher required')
+
 
 # single context lock to serialise OpenGL operations across multiple
 # windows
@@ -81,15 +85,16 @@ class RenderingThread(QtCore.QObject):
             self.widget.makeCurrent()
             self.widget.glInit()
             self.clock = time.time()
-        super(GLDisplayOld, self.widget).resizeEvent(event)
+        self.widget.resizeEvent(event)
         if not self.running:
             self.running = True
             self.next_frame()
 
 
-class GLDisplayCommon(object):
-    def __init__(self, *arg, **kwds):
-        super(GLDisplayCommon, self).__init__(*arg, **kwds)
+class GLDisplay(QtWidgets.QOpenGLWidget):
+    def __init__(self, logger, *arg, **kwds):
+        super(GLDisplay, self).__init__(*arg, **kwds)
+        self.logger = logger
         self.in_queue = deque()
         self.black_image = numpy.zeros((1, 1, 1), dtype=numpy.uint8)
         self.show_black = True
@@ -98,6 +103,7 @@ class GLDisplayCommon(object):
         self._frame_count = -10
         self.frame_period = 1.0 / 25.0
         self._clock_history = deque(maxlen=100)
+        self.frameSwapped.connect(self.frame_swapped)
 
     @QtCore.pyqtSlot(float)
     def done_swap(self, now):
@@ -223,47 +229,6 @@ class GLDisplayCommon(object):
             GL.glEnd()
             GL.glDisable(GL.GL_TEXTURE_2D)
 
-
-class GLDisplayOld(GLDisplayCommon, QtOpenGL.QGLWidget):
-    resize_event = QtCore.pyqtSignal(object)
-
-    def __init__(self, logger, fmt, **kwds):
-        super(GLDisplayOld, self).__init__(fmt, **kwds)
-        self.logger = logger
-        self.setAutoBufferSwap(False)
-        # create separate rendering thread
-        self.render_thread = QtCore.QThread()
-        self.render = RenderingThread(self)
-        self.render.moveToThread(self.render_thread)
-        self.resize_event.connect(self.render.resize)
-
-    def startup(self):
-        self.doneCurrent()
-        if qt_version_info >= (5,):
-            self.context().moveToThread(self.render_thread)
-        self.render_thread.start()
-
-    def shutdown(self):
-        self.render_thread.quit()
-        self.render_thread.wait()
-
-    def resizeEvent(self, event):
-        if self.render_thread.isRunning():
-            self.resize_event.emit(event)
-        else:
-            super(GLDisplayOld, self).resizeEvent(event)
-
-    def paintEvent(self, event):
-        # ignore paint events as widget is redrawn every frame period anyway
-        return
-
-
-class GLDisplayNew(GLDisplayCommon, QtWidgets.QOpenGLWidget):
-    def __init__(self, logger, **kwds):
-        super(GLDisplayNew, self).__init__(**kwds)
-        self.logger = logger
-        self.frameSwapped.connect(self.frame_swapped)
-
     def startup(self):
         pass
 
@@ -313,19 +278,12 @@ class QtDisplay(Transformer, QtWidgets.QWidget):
         super(QtDisplay, self).__init__(**config)
         self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
         self.setLayout(QtWidgets.QGridLayout())
-        if qt_version_info >= (5, 4):
-            fmt = QtGui.QSurfaceFormat()
-            fmt.setProfile(QtGui.QSurfaceFormat.CompatibilityProfile)
-            fmt.setSwapBehavior(QtGui.QSurfaceFormat.DoubleBuffer)
-            fmt.setSwapInterval(1)
-            self.display = GLDisplayNew(self.logger)
-            self.display.setFormat(fmt)
-        else:
-            fmt = QtOpenGL.QGLFormat()
-            fmt.setProfile(QtOpenGL.QGLFormat.CompatibilityProfile)
-            fmt.setDoubleBuffer(True)
-            fmt.setSwapInterval(1)
-            self.display = GLDisplayOld(self.logger, fmt)
+        fmt = QtGui.QSurfaceFormat()
+        fmt.setProfile(QtGui.QSurfaceFormat.CompatibilityProfile)
+        fmt.setSwapBehavior(QtGui.QSurfaceFormat.DoubleBuffer)
+        fmt.setSwapInterval(1)
+        self.display = GLDisplay(self.logger)
+        self.display.setFormat(fmt)
         self.layout().addWidget(self.display, 0, 0, 1, 4)
         # control buttons
         self.pause_button = QtWidgets.QPushButton('pause')
