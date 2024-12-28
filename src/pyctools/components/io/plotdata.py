@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016-19  Pyctools contributors
+#  Copyright (C) 2016-24  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -19,19 +19,18 @@
 __all__ = ['PlotData']
 __docformat__ = 'restructuredtext en'
 
-# matplotlib and pyctools.core.frame both import GObject, but pyctools
-# will load pgi if available. pgi has to be set up before importing
-# GObject, so import pyctools.core.frame before matplotlib
+from pyctools.core.base import Component
 import pyctools.core.frame
+from pyctools.core.qt import qt_package, QtEventLoop
 
 # matplotlib sometimes chooses the wrong backend, so make it use Qt5
 # https://gist.github.com/CMCDragonkai/4e9464d9f32f5893d837f3de2c43daa4
 import matplotlib as mpl
-mpl.use('Qt5Agg')
+if qt_package in ('PyQt5', 'PySide2'):
+    mpl.use('Qt5Agg')
+else:
+    raise ImportError('No Qt6 backend for matplotlib')
 import matplotlib.pyplot as plt
-
-from pyctools.core.base import Component
-from pyctools.core.qt import QtEventLoop
 
 
 class PlotData(Component):

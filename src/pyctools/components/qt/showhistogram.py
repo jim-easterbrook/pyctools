@@ -22,11 +22,22 @@ __docformat__ = 'restructuredtext en'
 import math
 
 import numpy
-from PyQt5 import QtCore, QtGui, QtWidgets
 
 from pyctools.core.config import ConfigBool, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import QtEventLoop
+from pyctools.core.qt import qt_package, QtCore, QtEventLoop, QtWidgets
+
+if qt_package == 'PyQt5':
+    from PyQt5 import QtGui
+elif qt_package == 'PyQt6':
+    from PyQt6 import QtGui
+elif qt_package == 'PySide2':
+    from PySide2 import QtGui
+elif qt_package == 'PySide6':
+    from PySide6 import QtGui
+else:
+    raise ImportError(f'Unrecognised qt_package value "{qt_package}"')
+
 
 class ShowHistogram(Transformer, QtWidgets.QWidget):
     """Display image hostograms in a Qt window.
@@ -49,12 +60,13 @@ class ShowHistogram(Transformer, QtWidgets.QWidget):
 
     def __init__(self, **config):
         super(ShowHistogram, self).__init__(**config)
-        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(QtCore.Qt.WindowType.Window |
+                            QtCore.Qt.WindowType.WindowStaysOnTopHint)
         self.setLayout(QtWidgets.QFormLayout())
         # main histogram display
         self.display = QtWidgets.QLabel()
         self.display.setPixmap(QtGui.QPixmap(256, 100))
-        self.display.pixmap().fill(QtCore.Qt.white)
+        self.display.pixmap().fill(QtCore.Qt.GlobalColor.white)
         self.layout().addRow(self.display)
         # positive clip count
         self.pos_clips = QtWidgets.QLabel()
@@ -94,8 +106,8 @@ class ShowHistogram(Transformer, QtWidgets.QWidget):
                        0xffff00, 0x00ffff, 0xff00ff)
         else:
             colours = (0,)
-        q_image = QtGui.QImage(256, 100, QtGui.QImage.Format_RGB888)
-        q_image.fill(QtCore.Qt.white)
+        q_image = QtGui.QImage(256, 100, QtGui.QImage.Format.Format_RGB888)
+        q_image.fill(QtCore.Qt.GlobalColor.white)
         pos_clips = []
         neg_clips = []
         for comp in range(comps):

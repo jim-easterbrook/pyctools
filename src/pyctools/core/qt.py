@@ -22,18 +22,55 @@ __docformat__ = 'restructuredtext en'
 from collections import deque, namedtuple
 from functools import wraps
 import logging
+import os
 import sys
 import time
-
-from PyQt5 import QtCore, QtWidgets
 
 from pyctools.core.compound import ComponentRunner as ComponentRunnerBase
 
 logger = logging.getLogger(__name__)
 
-qt_version_info = namedtuple(
-    'qt_version_info', ('major', 'minor', 'micro'))._make(
-        map(int, QtCore.QT_VERSION_STR.split('.')))
+if 'PYCTOOLS_QT' in os.environ:
+    qt_package = os.environ['PYCTOOLS_QT']
+else:
+    qt_package = 'PyQt5'
+
+if qt_package == 'PyQt5':
+    from PyQt5 import QtCore, QtWidgets
+    from PyQt5.QtCore import pyqtSlot as QtSlot
+elif qt_package == 'PyQt6':
+    from PyQt6 import QtCore, QtWidgets
+    from PyQt6.QtCore import pyqtSlot as QtSlot
+elif qt_package == 'PySide2':
+    from PySide2 import QtCore, QtWidgets
+    from PySide2.QtCore import Slot as QtSlot
+elif qt_package == 'PySide6':
+    from PySide6 import QtCore, QtWidgets
+    from PySide6.QtCore import Slot as QtSlot
+else:
+    raise ImportError(f'Unrecognised qt_package value "{qt_package}"')
+
+
+if qt_package in ('PySide2', 'PySide6'):
+    qt_version_info = QtCore.__version_info__
+else:
+    qt_version_info = namedtuple(
+        'qt_version_info', ('major', 'minor', 'micro'))._make(
+            map(int, QtCore.QT_VERSION_STR.split('.')))
+
+
+if qt_package == 'PyQt6':
+    LowEventPriority = QtCore.Qt.EventPriority.LowEventPriority.value
+else:
+    LowEventPriority = int(QtCore.Qt.EventPriority.LowEventPriority)
+
+
+# exec gets renamed to exec_ in PySide2
+def execute(widget, *arg, **kwds):
+    if qt_package == 'PySide2':
+        return widget.exec_(*arg, **kwds)
+    return widget.exec(*arg, **kwds)
+
 
 # decorator for methods called by Qt that logs any exception raised
 def catch_all(func):
@@ -47,7 +84,7 @@ def catch_all(func):
 
 
 # create unique event type
-_queue_event = QtCore.QEvent.registerEventType()
+_queue_event = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
 
 class QtEventLoop(QtCore.QObject):
     """Event loop using the Qt "main thread" (or "GUI thread").
@@ -103,7 +140,7 @@ class QtEventLoop(QtCore.QObject):
         if self._running:
             # send event to process queue
             QtCore.QCoreApplication.postEvent(
-                self, QtCore.QEvent(_queue_event), QtCore.Qt.LowEventPriority)
+                self, QtCore.QEvent(_queue_event), LowEventPriority)
 
     def _quit(self):
         pass
@@ -126,7 +163,7 @@ class QtEventLoop(QtCore.QObject):
         self._running = True
         # start_event is already in queue, send signal to process it
         QtCore.QCoreApplication.postEvent(
-            self, QtCore.QEvent(_queue_event), QtCore.Qt.LowEventPriority)
+            self, QtCore.QEvent(_queue_event), LowEventPriority)
 
     def join(self, timeout=3600):
         """Wait until the event loop terminates or ``timeout`` is
@@ -189,7 +226,7 @@ class QtThreadEventLoop(QtEventLoop):
         self.moveToThread(self.thread)
         self.thread.started.connect(self._on_start)
 
-    @QtCore.pyqtSlot()
+    @QtSlot()
     @catch_all
     def _on_start(self):
         super(QtThreadEventLoop, self).start()
@@ -209,9 +246,10 @@ class ComponentRunner(ComponentRunnerBase):
     :py:class:`pyctools.core.compound.ComponentRunner` component."""
 
     def __init__(self):
-        QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
+        if qt_version_info < (6, 0):
+            QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
         self.app = QtWidgets.QApplication(sys.argv)
         super(ComponentRunner, self).__init__()
 
     def do_loop(self, comp):
-        self.app.exec_()
+        execute(self.app)

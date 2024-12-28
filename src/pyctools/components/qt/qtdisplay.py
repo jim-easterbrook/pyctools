@@ -26,12 +26,27 @@ import time
 
 import numpy
 from OpenGL import GL
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
 
 from pyctools.core.config import ConfigBool, ConfigInt, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import qt_version_info, QtEventLoop
+from pyctools.core.qt import (
+    LowEventPriority,
+    qt_version_info, qt_package, QtCore, QtEventLoop, QtSlot, QtWidgets)
+
+if qt_package == 'PyQt5':
+    from PyQt5 import QtGui
+    from PyQt5.QtWidgets import QOpenGLWidget
+elif qt_package == 'PyQt6':
+    from PyQt6 import QtGui
+    from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+elif qt_package == 'PySide2':
+    from PySide2 import QtGui
+    from PySide2.QtWidgets import QOpenGLWidget
+elif qt_package == 'PySide6':
+    from PySide6 import QtGui
+    from PySide6.QtOpenGLWidgets import QOpenGLWidget
+else:
+    raise ImportError(f'Unrecognised qt_package value "{qt_package}"')
 
 if qt_version_info < (5, 4):
     raise ImportError('Qt version 5.4 or higher required')
@@ -69,7 +84,7 @@ class RenderingThread(QtCore.QObject):
         self.widget.done_swap(now)
         # schedule next frame, after processing other events
         QtCore.QCoreApplication.postEvent(
-            self, QtCore.QEvent(self.next_frame_event), Qt.LowEventPriority)
+            self, QtCore.QEvent(self.next_frame_event), LowEventPriority)
 
     def event(self, event):
         if event.type() == self.next_frame_event:
@@ -78,7 +93,7 @@ class RenderingThread(QtCore.QObject):
             return True
         return super(RenderingThread, self).event(event)
 
-    @QtCore.pyqtSlot(object)
+    @QtSlot(object)
     def resize(self, event):
         # resize event is always sent when window first becomes visible
         if not self.running:
@@ -91,7 +106,7 @@ class RenderingThread(QtCore.QObject):
             self.next_frame()
 
 
-class GLDisplay(QtWidgets.QOpenGLWidget):
+class GLDisplay(QOpenGLWidget):
     def __init__(self, logger, *arg, **kwds):
         super(GLDisplay, self).__init__(*arg, **kwds)
         self.logger = logger
@@ -105,7 +120,7 @@ class GLDisplay(QtWidgets.QOpenGLWidget):
         self._clock_history = deque(maxlen=100)
         self.frameSwapped.connect(self.frame_swapped)
 
-    @QtCore.pyqtSlot(float)
+    @QtSlot(float)
     def done_swap(self, now):
         # called by rendering thread after each buffer swap
         if self._frame_count < 0:
@@ -235,7 +250,7 @@ class GLDisplay(QtWidgets.QOpenGLWidget):
     def shutdown(self):
         pass
 
-    @QtCore.pyqtSlot()
+    @QtSlot()
     def frame_swapped(self):
         now = time.time()
         self.done_swap(now)
@@ -276,22 +291,26 @@ class QtDisplay(Transformer, QtWidgets.QWidget):
 
     def __init__(self, **config):
         super(QtDisplay, self).__init__(**config)
-        self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(QtCore.Qt.WindowType.Window |
+                            QtCore.Qt.WindowType.WindowStaysOnTopHint)
         self.setLayout(QtWidgets.QGridLayout())
         fmt = QtGui.QSurfaceFormat()
-        fmt.setProfile(QtGui.QSurfaceFormat.CompatibilityProfile)
-        fmt.setSwapBehavior(QtGui.QSurfaceFormat.DoubleBuffer)
+        fmt.setProfile(
+            QtGui.QSurfaceFormat.OpenGLContextProfile.CompatibilityProfile)
+        fmt.setSwapBehavior(QtGui.QSurfaceFormat.SwapBehavior.DoubleBuffer)
         fmt.setSwapInterval(1)
         self.display = GLDisplay(self.logger)
         self.display.setFormat(fmt)
         self.layout().addWidget(self.display, 0, 0, 1, 4)
         # control buttons
         self.pause_button = QtWidgets.QPushButton('pause')
-        self.pause_button.setShortcut(Qt.Key_Space)
+        self.pause_button.setShortcut(
+            QtGui.QKeySequence(QtCore.Qt.Key.Key_Space))
         self.pause_button.clicked.connect(self.pause)
         self.layout().addWidget(self.pause_button, 1, 0)
         self.step_button = QtWidgets.QPushButton('step')
-        self.step_button.setShortcut(QtGui.QKeySequence.MoveToNextChar)
+        self.step_button.setShortcut(
+            QtGui.QKeySequence.StandardKey.MoveToNextChar)
         self.step_button.clicked.connect(self.step)
         self.layout().addWidget(self.step_button, 1, 1)
         self.display_size = None

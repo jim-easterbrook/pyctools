@@ -60,12 +60,27 @@ import types
 import warnings
 
 import docutils.core
-from PyQt5 import QtCore, QtGui, QtWidgets
 
 import pyctools.components
 from pyctools.core.compound import Compound, RunnableNetwork
 from pyctools.core.config import *
-from pyctools.core.qt import catch_all
+from pyctools.core.qt import (
+    catch_all, execute, qt_package, qt_version_info, QtCore, QtSlot, QtWidgets)
+
+if qt_package == 'PyQt5':
+    from PyQt5 import QtGui
+    from PyQt5.QtWidgets import QAction, QActionGroup
+elif qt_package == 'PyQt6':
+    from PyQt6 import QtGui
+    from PyQt6.QtGui import QAction, QActionGroup
+elif qt_package == 'PySide2':
+    from PySide2 import QtGui
+    from PySide2.QtWidgets import QAction, QActionGroup
+elif qt_package == 'PySide6':
+    from PySide6 import QtGui
+    from PySide6.QtGui import QAction, QActionGroup
+else:
+    raise ImportError(f'Unrecognised qt_package value "{qt_package}"')
 
 
 logger = logging.getLogger('pyctools-editor')
@@ -82,7 +97,7 @@ class ConfigPathWidget(QtWidgets.QPushButton):
         self.show_value(self.config)
         self.clicked.connect(self.set_value)
 
-    @QtCore.pyqtSlot()
+    @QtSlot()
     @catch_all
     def set_value(self):
         directory = self.config
@@ -186,7 +201,7 @@ class ConfigEnumWidget(QtWidgets.QComboBox):
         self.setCurrentIndex(self.findText(config))
         self.currentIndexChanged.connect(self.new_value)
 
-    @QtCore.pyqtSlot(int)
+    @QtSlot(int)
     @catch_all
     def new_value(self, idx):
         value = str(self.itemText(idx))
@@ -269,8 +284,9 @@ config_widget = {
 
 class ConfigDialog(QtWidgets.QDialog):
     def __init__(self, config, notify, **kwds):
-        super(ConfigDialog, self).__init__(
-            flags=QtCore.Qt.WindowStaysOnTopHint, **kwds)
+        super(ConfigDialog, self).__init__(**kwds)
+        self.setWindowFlags(self.windowFlags() |
+                            QtCore.Qt.WindowType.WindowStaysOnTopHint)
         self.notify = notify
         self.setLayout(QtWidgets.QVBoxLayout())
         # central area
@@ -279,15 +295,15 @@ class ConfigDialog(QtWidgets.QDialog):
         # buttons
         buttons = QtWidgets.QDialogButtonBox()
         self.close_button = buttons.addButton(
-            'Close', QtWidgets.QDialogButtonBox.AcceptRole)
+            'Close', buttons.ButtonRole.AcceptRole)
         self.apply_button = buttons.addButton(
-            'Apply', QtWidgets.QDialogButtonBox.ApplyRole)
+            'Apply', buttons.ButtonRole.ApplyRole)
         self.cancel_button = buttons.addButton(
-            'Cancel', QtWidgets.QDialogButtonBox.RejectRole)
+            'Cancel', buttons.ButtonRole.RejectRole)
         buttons.clicked.connect(self.button_clicked)
         self.layout().addWidget(buttons)
 
-    @QtCore.pyqtSlot(QtWidgets.QAbstractButton)
+    @QtSlot(QtWidgets.QAbstractButton)
     @catch_all
     def button_clicked(self, button):
         if button in (self.apply_button, self.close_button):
@@ -299,7 +315,7 @@ class ConfigDialog(QtWidgets.QDialog):
 class ComponentLink(QtWidgets.QGraphicsPathItem):
     def __init__(self, source, outbox, dest, inbox, **kwds):
         super(ComponentLink, self).__init__(**kwds)
-        self.setFlags(QtWidgets.QGraphicsItem.ItemIsSelectable)
+        self.setFlags(self.GraphicsItemFlag.ItemIsSelectable)
         self.setZValue(-10.0)
         self.source = source
         self.outbox = outbox
@@ -308,17 +324,15 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
 
     @catch_all
     def itemChange(self, change, value):
-        if change == QtWidgets.QGraphicsItem.ItemSceneHasChanged:
+        if change == self.GraphicsItemChange.ItemSceneHasChanged:
             if self.scene():
                 self.redraw()
-        if change == QtWidgets.QGraphicsItem.ItemSelectedHasChanged:
-            if isinstance(value, QtCore.QVariant):
-                value = value.toBool()
+        if change == self.GraphicsItemChange.ItemSelectedHasChanged:
             pen = self.pen()
             if value:
-                pen.setStyle(QtCore.Qt.DashLine)
+                pen.setStyle(QtCore.Qt.PenStyle.DashLine)
             else:
-                pen.setStyle(QtCore.Qt.SolidLine)
+                pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
             self.setPen(pen)
         return super(ComponentLink, self).itemChange(change, value)
 
@@ -328,7 +342,7 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
         collisions = line.collidingItems()
         line.setParentItem(None)
         for item in collisions:
-            if item == self or item.parentItem() != self.parentItem():
+            if item == self:
                 continue
             if isinstance(item, ComponentOutline):
                 return item.mapRectToParent(item.boundingRect())
@@ -476,7 +490,11 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
         path = QtGui.QPainterPath(QtCore.QPointF(*points[0]))
         for point in points[1:]:
             path.lineTo(*point)
+        self.prepareGeometryChange()
         self.setPath(path)
+        # in PySide the link vanishes unless we get a reference to the
+        # scene here
+        scene = self.scene()
 
 
 class IOIcon(QtWidgets.QGraphicsRectItem):
@@ -486,7 +504,7 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
         self.setAcceptDrops(True)
         # draw an invisible rectangle to define drag-and-drop area
         pen = self.pen()
-        pen.setStyle(QtCore.Qt.NoPen)
+        pen.setStyle(QtCore.Qt.PenStyle.NoPen)
         self.setPen(pen)
         self.setRect(-3, -8, 13, 17)
         # draw a smaller visible triangle
@@ -506,16 +524,17 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
 
     @catch_all
     def mouseMoveEvent(self, event):
-        start_pos = event.buttonDownScreenPos(QtCore.Qt.LeftButton)
-        if (QtCore.QLineF(event.screenPos(), start_pos).length() <
+        start_pos = event.buttonDownScreenPos(QtCore.Qt.MouseButton.LeftButton)
+        if (QtCore.QLineF(QtCore.QPointF(event.screenPos()),
+                          QtCore.QPointF(start_pos)).length() <
                                     QtWidgets.QApplication.startDragDistance()):
             return
-        start_pos = event.buttonDownScenePos(QtCore.Qt.LeftButton)
+        start_pos = event.buttonDownScenePos(QtCore.Qt.MouseButton.LeftButton)
         drag = QtGui.QDrag(event.widget())
         mimeData = QtCore.QMimeData()
         mimeData.setData(self.mime_type, pickle.dumps(start_pos))
         drag.setMimeData(mimeData)
-        dropAction = drag.exec_(QtCore.Qt.LinkAction)
+        execute(drag, QtCore.Qt.DropAction.LinkAction)
 
     @catch_all
     def dragEnterEvent(self, event):
@@ -527,7 +546,8 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
             return super(IOIcon, self).dropEvent(event)
         start_pos = pickle.loads(
             event.mimeData().data(self.link_mime_type).data())
-        link_from = self.scene().itemAt(start_pos, self.transform())
+        link_from = self.scene().itemAt(
+            QtCore.QPointF(start_pos), self.transform())
         while link_from and not isinstance(link_from, IOIcon):
             link_from = link_from.parentItem()
         if isinstance(link_from, OutputIcon):
@@ -596,7 +616,7 @@ class ComponentOutline(QtWidgets.QGraphicsRectItem):
             self.surround = QtWidgets.QGraphicsRectItem(
                 -3, -3, self.width + 6, self.height + 6, self)
             pen = self.surround.pen()
-            pen.setStyle(QtCore.Qt.DashDotLine)
+            pen.setStyle(QtCore.Qt.PenStyle.DashDotLine)
             self.surround.setPen(pen)
         # name label
         self.name_label = QtWidgets.QGraphicsSimpleTextItem(name, parent=self)
@@ -628,7 +648,7 @@ class ComponentOutline(QtWidgets.QGraphicsRectItem):
             # expanded compound component, put on same line as label
             max_width -= self.name_label.boundingRect().width() + 5
         class_label.setText(QtGui.QFontMetrics(font).elidedText(
-            text, QtCore.Qt.ElideRight, max_width))
+            text, QtCore.Qt.TextElideMode.ElideRight, max_width))
         text_width = class_label.boundingRect().width()
         if self.width > 120:
             class_label.setPos((self.width - 5) - text_width, 9)
@@ -637,16 +657,14 @@ class ComponentOutline(QtWidgets.QGraphicsRectItem):
 
     @catch_all
     def itemChange(self, change, value):
-        if change == QtWidgets.QGraphicsItem.ItemPositionChange:
-            if isinstance(value, QtCore.QVariant):
-                value = value.toPointF()
+        if change == self.GraphicsItemChange.ItemPositionChange:
             value.setX(value.x() + 5 - ((value.x() + 5) % 10))
             value.setY(value.y() + 5 - ((value.y() + 5) % 10))
             return value
         if self.scene():
-            if change == QtWidgets.QGraphicsItem.ItemSceneHasChanged:
+            if change == self.GraphicsItemChange.ItemSceneHasChanged:
                 self.redraw()
-            if change == QtWidgets.QGraphicsItem.ItemPositionHasChanged:
+            if change == self.GraphicsItemChange.ItemPositionHasChanged:
                 # redraw all links in case component is now on top of one
                 for link in self.scene().matching_items(ComponentLink):
                     link.redraw()
@@ -662,9 +680,9 @@ class ComponentOutline(QtWidgets.QGraphicsRectItem):
 class ComponentIcon(ComponentOutline):
     def __init__(self, name, obj, **kwds):
         super(ComponentIcon, self).__init__(name, obj, **kwds)
-        self.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable |
-                      QtWidgets.QGraphicsItem.ItemIsSelectable |
-                      QtWidgets.QGraphicsItem.ItemSendsGeometryChanges)
+        self.setFlags(self.GraphicsItemFlag.ItemIsMovable |
+                      self.GraphicsItemFlag.ItemIsSelectable |
+                      self.GraphicsItemFlag.ItemSendsGeometryChanges)
         self.obj = obj
         self.config_dialog = None
         # context menu actions
@@ -728,7 +746,7 @@ class ComponentIcon(ComponentOutline):
         actions = {}
         for label, method in self.context_menu_actions:
             actions[menu.addAction(label)] = method
-        action = menu.exec_(event.screenPos())
+        action = execute(menu, event.screenPos())
         if action:
             actions[action]()
         self.ungrabMouse()
@@ -958,7 +976,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         self.add_component(klass, event.scenePos())
 
     def keyPressEvent(self, event):
-        if not event.matches(QtGui.QKeySequence.Delete):
+        if not event.matches(QtGui.QKeySequence.StandardKey.Delete):
             event.ignore()
             return
         event.accept()
@@ -1032,7 +1050,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             linkages[source].append(dest)
         return linkages
 
-    @QtCore.pyqtSlot()
+    @QtSlot()
     @catch_all
     def run_graph(self):
         self.stop_graph()
@@ -1045,7 +1063,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             linkages=self.get_linkages(), **components)
         self.runnable.start()
 
-    @QtCore.pyqtSlot()
+    @QtSlot()
     @catch_all
     def stop_graph(self):
         if self.runnable:
@@ -1202,9 +1220,7 @@ class ComponentItemModel(QtGui.QStandardItemModel):
         idx = index_list[0]
         if not idx.isValid():
             return None
-        data = idx.data(QtCore.Qt.UserRole+1)
-        if isinstance(data, QtCore.QVariant):
-            data = data.toPyObject()
+        data = idx.data(QtCore.Qt.ItemDataRole.UserRole+1)
         if not data:
             return None
         result = QtCore.QMimeData()
@@ -1299,7 +1315,7 @@ class MainWindow(QtWidgets.QMainWindow):
         file_menu.addAction('Load script', self.load_script, 'Ctrl+O')
         file_menu.addAction('Save script', self.save_script, 'Ctrl+S')
         file_menu.addSeparator()
-        quit_action = QtWidgets.QAction('Quit', self)
+        quit_action = QAction('Quit', self)
         quit_action.setShortcuts(['Ctrl+Q', 'Ctrl+W'])
         quit_action.triggered.connect(
             QtWidgets.QApplication.instance().closeAllWindows)
@@ -1309,9 +1325,9 @@ class MainWindow(QtWidgets.QMainWindow):
         zoom_menu.addAction('Zoom in', self.zoom_in, 'Ctrl++')
         zoom_menu.addAction('Zoom out', self.zoom_out, 'Ctrl+-')
         zoom_menu.addSeparator()
-        self.zoom_group = QtWidgets.QActionGroup(self)
+        self.zoom_group = QActionGroup(self)
         for zoom in (25, 35, 50, 70, 100, 141, 200):
-            action = QtWidgets.QAction('%d%%' % zoom, self)
+            action = QAction('%d%%' % zoom, self)
             action.setCheckable(True)
             if zoom == 100:
                 action.setChecked(True)
@@ -1332,9 +1348,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.network_area = NetworkArea(parent=self)
         self.view = QtWidgets.QGraphicsView(self.network_area)
         self.view.setAcceptDrops(True)
-        self.view.setDragMode(QtWidgets.QGraphicsView.RubberBandDrag)
-        self.view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-        self.view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.view.setDragMode(self.view.DragMode.RubberBandDrag)
+        self.view.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.view.setVerticalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         splitter.addWidget(self.view)
         splitter.setStretchFactor(1, 1)
         grid.addWidget(splitter, 0, 0, 1, 5)
@@ -1354,7 +1372,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.set_window_title(script)
             self.network_area.load_script(script)
 
-    @QtCore.pyqtSlot()
+    @QtSlot()
     @catch_all
     def load_script(self):
         file_name = QtWidgets.QFileDialog.getOpenFileName(
@@ -1364,7 +1382,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.set_window_title(file_name)
             self.network_area.load_script(file_name)
 
-    @QtCore.pyqtSlot()
+    @QtSlot()
     @catch_all
     def save_script(self):
         file_name = QtWidgets.QFileDialog.getSaveFileName(
@@ -1380,12 +1398,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(
             "Pyctools graph editor - %s" % os.path.basename(file_name))
 
-    @QtCore.pyqtSlot()
+    @QtSlot()
     @catch_all
     def zoom_in(self):
         self.inc_zoom(1)
 
-    @QtCore.pyqtSlot()
+    @QtSlot()
     @catch_all
     def zoom_out(self):
         self.inc_zoom(-1)
@@ -1401,7 +1419,7 @@ class MainWindow(QtWidgets.QMainWindow):
         action_list[idx].setChecked(True)
         self.set_zoom()
 
-    @QtCore.pyqtSlot()
+    @QtSlot()
     @catch_all
     def set_zoom(self):
         current_action = self.zoom_group.checkedAction()
@@ -1413,7 +1431,8 @@ class MainWindow(QtWidgets.QMainWindow):
 def main():
     # let PyQt handle its options (need at least one argument after options)
     sys.argv.append('xxx')
-    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
+    if qt_version_info < (6, 0):
+        QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
     app = QtWidgets.QApplication(sys.argv)
     del sys.argv[-1]
     # get command args
@@ -1431,7 +1450,7 @@ def main():
     # create GUI and run application event loop
     main = MainWindow(script=args.script)
     main.show()
-    return app.exec_()
+    return execute(app)
 
 
 if __name__ == '__main__':
