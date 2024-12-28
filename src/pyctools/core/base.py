@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-20  Pyctools contributors
+#  Copyright (C) 2014-24  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -295,7 +295,7 @@ class Component(ConfigMixin):
         for input_method in self._component_connections[output_name]:
             input_method(frame)
 
-    def connect(self, output_name, input_method):
+    def connect_to(self, output_name, input_method):
         """Connect an output to any callable object.
 
         :py:meth:`on_connect` is called after the connection is made to
@@ -308,20 +308,20 @@ class Component(ConfigMixin):
             when :py:meth:`send` is called.
 
         """
-        self.logger.debug('connect "%s"', output_name)
+        self.logger.debug('connect_to "%s"', output_name)
         if self.running():
             raise RuntimeError('Cannot connect running component')
         self._component_connections[output_name].append(input_method)
         self.on_connect(output_name)
 
     def bind(self, source, dest, destmeth):
-        """Guild compatible version of :py:meth:`connect`.
+        """Guild compatible version of :py:meth:`connect_to`.
 
         This allows Pyctools components to be used in `Guild
         <https://github.com/sparkslabs/guild>`_ pipelines.
 
         """
-        self.connect(source, getattr(dest, destmeth))
+        self.connect_to(source, getattr(dest, destmeth))
 
     def start_event(self):
         """Called by the event loop when it is started.

@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-20  Pyctools contributors
+#  Copyright (C) 2014-24  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -43,7 +43,7 @@ class GaussianFilter(Component):
 
         filgen = GaussianFilter(xsigma=1.5)
         resize = Resize()
-        filgen.connect('output', resize.filter)
+        filgen.connect_to('output', resize.filter)
         ...
         start(..., filgen, resize, ...)
         ...

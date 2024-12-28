@@ -69,7 +69,7 @@ class RunnableNetwork(object):
                     self._compound_outputs[inbox] = (src, outbox)
                     self.outputs.append(inbox)
                 else:
-                    self.children[src].connect(
+                    self.children[src].connect_to(
                         outbox, getattr(self.children[dest], inbox))
                 self.links.append(((src, outbox), (dest, inbox)))
 
@@ -217,7 +217,7 @@ class Compound(RunnableNetwork):
             self.config[name] = child.get_config()
         self.config.set_default(config=config)
 
-    def connect(self, output_name, input_method):
+    def connect_to(self, output_name, input_method):
         """Connect an output to any callable object.
 
         :param str output_name: the output to connect. Must be one of
@@ -228,16 +228,16 @@ class Compound(RunnableNetwork):
 
         """
         src, outbox = self._compound_outputs[output_name]
-        self.children[src].connect(outbox, input_method)
+        self.children[src].connect_to(outbox, input_method)
 
     def bind(self, source, dest, destmeth):
-        """Guild compatible version of :py:meth:`connect`.
+        """Guild compatible version of :py:meth:`connect_to`.
 
         This allows Pyctools compound components to be used in `Guild
         <https://github.com/sparkslabs/guild>`_ pipelines.
 
         """
-        self.connect(source, getattr(dest, destmeth))
+        self.connect_to(source, getattr(dest, destmeth))
 
     def get_config(self):
         """See :py:meth:`pyctools.core.config.ConfigMixin.get_config`."""
