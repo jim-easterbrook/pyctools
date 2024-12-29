@@ -48,6 +48,7 @@ __docformat__ = 'restructuredtext en'
 
 import argparse
 from collections import defaultdict
+import importlib
 import inspect
 import logging
 import os
@@ -1067,21 +1068,22 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             self.runnable = None
 
     def load_script(self, file_name):
-        global ComponentNetwork, Network
-
-        with open(file_name) as f:
-            code = f.read()
-        if 'Network' not in code:
+        script_dir, script_name = os.path.split(file_name)
+        script_name = os.path.splitext(script_name)[0]
+        path = sys.path
+        sys.path.insert(0, script_dir)
+        module = importlib.import_module(script_name)
+        sys.path = path
+        ComponentNetwork = None
+        Network = None
+        if hasattr(module, 'ComponentNetwork'):
+            ComponentNetwork = module.ComponentNetwork
+        elif hasattr(module, 'Network'):
+            Network = module.Network
+        else:
             # not a recognised script
             logger.error('Script not recognised')
             return
-        code = compile(code, file_name, 'exec')
-        ComponentNetwork = None
-        Network = None
-        try:
-            exec(code, globals())
-        except ImportError as ex:
-            logger.error(str(ex))
         for child in self.items():
             self.removeItem(child)
         if ComponentNetwork:
@@ -1117,10 +1119,6 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                     dests = list(zip(dests[0::2], dests[1::2]))
                 for dest in dests:
                     links.append((source, dest))
-        else:
-            # not a recognised script
-            logger.error('Script not recognised')
-            return
         comps = {}
         # add component icons
         for name, comp in components.items():

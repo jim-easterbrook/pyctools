@@ -182,8 +182,8 @@ class QtEventLoop(QtCore.QObject):
             maxtime = timeout + start - now
             if maxtime <= 0:
                 return
-            QCoreApplication.processEvents(
-                QEventLoop.AllEvents, int(maxtime * 1000))
+            QtCore.QCoreApplication.processEvents(
+                QtCore.QEventLoop.AllEvents, int(maxtime * 1000))
 
     def running(self):
         """Is the event loop running.
