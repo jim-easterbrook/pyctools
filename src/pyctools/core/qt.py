@@ -36,16 +36,16 @@ else:
     qt_package = 'PyQt5'
 
 if qt_package == 'PyQt5':
-    from PyQt5 import QtCore, QtWidgets
+    from PyQt5 import QtCore, QtGui, QtWidgets
     from PyQt5.QtCore import pyqtSlot as QtSlot
 elif qt_package == 'PyQt6':
-    from PyQt6 import QtCore, QtWidgets
+    from PyQt6 import QtCore, QtGui, QtWidgets
     from PyQt6.QtCore import pyqtSlot as QtSlot
 elif qt_package == 'PySide2':
-    from PySide2 import QtCore, QtWidgets
+    from PySide2 import QtCore, QtGui, QtWidgets
     from PySide2.QtCore import Slot as QtSlot
 elif qt_package == 'PySide6':
-    from PySide6 import QtCore, QtWidgets
+    from PySide6 import QtCore, QtGui, QtWidgets
     from PySide6.QtCore import Slot as QtSlot
 else:
     raise ImportError(f'Unrecognised qt_package value "{qt_package}"')

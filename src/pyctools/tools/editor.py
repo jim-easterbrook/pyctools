@@ -64,20 +64,16 @@ import docutils.core
 import pyctools.components
 from pyctools.core.compound import Compound, RunnableNetwork
 from pyctools.core.config import *
-from pyctools.core.qt import (
-    catch_all, execute, qt_package, qt_version_info, QtCore, QtSlot, QtWidgets)
+from pyctools.core.qt import (catch_all, execute, qt_package, qt_version_info,
+                              QtCore, QtGui, QtSlot, QtWidgets)
 
 if qt_package == 'PyQt5':
-    from PyQt5 import QtGui
     from PyQt5.QtWidgets import QAction, QActionGroup
 elif qt_package == 'PyQt6':
-    from PyQt6 import QtGui
     from PyQt6.QtGui import QAction, QActionGroup
 elif qt_package == 'PySide2':
-    from PySide2 import QtGui
     from PySide2.QtWidgets import QAction, QActionGroup
 elif qt_package == 'PySide6':
-    from PySide6 import QtGui
     from PySide6.QtGui import QAction, QActionGroup
 else:
     raise ImportError(f'Unrecognised qt_package value "{qt_package}"')

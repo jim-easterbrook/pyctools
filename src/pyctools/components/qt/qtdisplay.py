@@ -29,21 +29,16 @@ from OpenGL import GL
 
 from pyctools.core.config import ConfigBool, ConfigInt, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import (
-    LowEventPriority,
-    qt_version_info, qt_package, QtCore, QtEventLoop, QtSlot, QtWidgets)
+from pyctools.core.qt import (LowEventPriority, qt_version_info, qt_package,
+                              QtCore, QtEventLoop, QtGui, QtSlot, QtWidgets)
 
 if qt_package == 'PyQt5':
-    from PyQt5 import QtGui
     from PyQt5.QtWidgets import QOpenGLWidget
 elif qt_package == 'PyQt6':
-    from PyQt6 import QtGui
     from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 elif qt_package == 'PySide2':
-    from PySide2 import QtGui
     from PySide2.QtWidgets import QOpenGLWidget
 elif qt_package == 'PySide6':
-    from PySide6 import QtGui
     from PySide6.QtOpenGLWidgets import QOpenGLWidget
 else:
     raise ImportError(f'Unrecognised qt_package value "{qt_package}"')

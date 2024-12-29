@@ -25,18 +25,7 @@ import numpy
 
 from pyctools.core.config import ConfigBool, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import qt_package, QtCore, QtEventLoop, QtWidgets
-
-if qt_package == 'PyQt5':
-    from PyQt5 import QtGui
-elif qt_package == 'PyQt6':
-    from PyQt6 import QtGui
-elif qt_package == 'PySide2':
-    from PySide2 import QtGui
-elif qt_package == 'PySide6':
-    from PySide6 import QtGui
-else:
-    raise ImportError(f'Unrecognised qt_package value "{qt_package}"')
+from pyctools.core.qt import QtCore, QtEventLoop, QtGui, QtWidgets
 
 
 class ShowHistogram(Transformer, QtWidgets.QWidget):
