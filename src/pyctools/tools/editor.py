@@ -511,10 +511,16 @@ class IOIcon(QtWidgets.QGraphicsRectItem):
                              QtCore.QPointF(0, 5),
                              QtCore.QPointF(0, -5)]), self)
         # create label
-        self.label = QtWidgets.QGraphicsSimpleTextItem(name, parent=self)
-        font = self.label.font()
+        label = QtWidgets.QGraphicsSimpleTextItem(name, parent=self)
+        font = label.font()
         font.setPointSizeF(font.pointSize() * 0.75)
-        self.label.setFont(font)
+        label.setFont(font)
+        # set label position
+        br = label.boundingRect()
+        if self.mime_type == _INPUT_MIMETYPE:
+            label.setPos(4, -br.height())
+        else:
+            label.setPos(-(2 + br.width()), -br.height())
 
     def mousePressEvent(self, event):
         pass
@@ -571,22 +577,10 @@ class InputIcon(IOIcon):
     mime_type = _INPUT_MIMETYPE
     link_mime_type = _OUTPUT_MIMETYPE
 
-    def __init__(self, *args, **kwds):
-        super(InputIcon, self).__init__(*args, **kwds)
-        # set label position
-        br = self.label.boundingRect()
-        self.label.setPos(4, -br.height())
-
 
 class OutputIcon(IOIcon):
     mime_type = _OUTPUT_MIMETYPE
     link_mime_type = _INPUT_MIMETYPE
-
-    def __init__(self, *args, **kwds):
-        super(OutputIcon, self).__init__(*args, **kwds)
-        # set label position
-        br = self.label.boundingRect()
-        self.label.setPos(-(2 + br.width()), -br.height())
 
 
 py_class = re.compile(':py:class:`(~[\w\.]*\.)?(.*?)`')
