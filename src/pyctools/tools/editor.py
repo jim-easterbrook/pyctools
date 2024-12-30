@@ -339,12 +339,15 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
         collisions = line.collidingItems()
         line.setParentItem(None)
         for item in collisions:
-            if item == self:
+            if not isinstance(item, (ComponentOutline, ComponentLink)):
+                continue
+            if self.parentItem() and item.parentItem() != self.parentItem():
+                # we are in a compound component and the item isn't
                 continue
             if isinstance(item, ComponentOutline):
                 return item.mapRectToParent(item.boundingRect())
-            if not isinstance(item, ComponentLink):
-                continue
+            # test each element of path as collidingItems uses the
+            # bounding rect
             path = item.path()
             for n in range(1, path.elementCount()):
                 p0 = path.elementAt(n - 1)
@@ -476,6 +479,8 @@ class ComponentLink(QtWidgets.QGraphicsPathItem):
         return result
 
     def redraw(self):
+        self.prepareGeometryChange()
+        self.setPath(QtGui.QPainterPath())
         source_pos = self.source.outputs[self.outbox].scenePos()
         dest_pos = self.dest.inputs[self.inbox].scenePos()
         if self.parentItem():
@@ -677,11 +682,11 @@ class ComponentIcon(ComponentOutline):
         self.obj = obj
         self.config_dialog = None
         # context menu actions
-        self.context_menu_actions = [
-            ('Rename',    self.rename),
-            ('Delete',    self.delete),
-            ('Configure', self.do_config),
-            ]
+        self.context_menu_actions = {
+            'Rename': self.rename,
+            'Delete': self.delete,
+            'Configure': self.do_config,
+            }
         # set icon's tooltip
         help_text = inspect.getdoc(self.obj)
         if help_text:
@@ -735,7 +740,7 @@ class ComponentIcon(ComponentOutline):
         event.accept()
         menu = QtWidgets.QMenu()
         actions = {}
-        for label, method in self.context_menu_actions:
+        for label, method in self.context_menu_actions.items():
             actions[menu.addAction(label)] = method
         action = execute(menu, event.screenPos())
         if action:
@@ -755,8 +760,7 @@ class CompoundIcon(ComponentIcon):
     def __init__(self, name, obj, expanded=False, **kwds):
         self.expanded = expanded
         super(CompoundIcon, self).__init__(name, obj, **kwds)
-        self.context_menu_actions.append(
-            ('Expand/contract', self.expand_contract))
+        self.context_menu_actions['Expand/contract'] = self.expand_contract
         # repurpose existing inputs and outputs
         self.mock_IO = MockIO()
         self.mock_IO.inputs = {}
