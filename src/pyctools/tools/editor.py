@@ -1070,10 +1070,12 @@ class NetworkArea(QtWidgets.QGraphicsScene):
     def load_script(self, file_name):
         script_dir, script_name = os.path.split(file_name)
         script_name = os.path.splitext(script_name)[0]
-        path = sys.path
         sys.path.insert(0, script_dir)
-        module = importlib.import_module(script_name)
-        sys.path = path
+        if script_name in sys.modules:
+            module = importlib.reload(sys.modules[script_name])
+        else:
+            module = importlib.import_module(script_name)
+        del sys.path[0]
         ComponentNetwork = None
         Network = None
         if hasattr(module, 'ComponentNetwork'):
