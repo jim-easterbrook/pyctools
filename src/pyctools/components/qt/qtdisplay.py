@@ -20,8 +20,6 @@ __all__ = ['QtDisplay']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque
-from contextlib import contextmanager
-import threading
 import time
 
 import numpy
@@ -32,73 +30,15 @@ from pyctools.core.base import Transformer
 from pyctools.core.qt import (LowEventPriority, qt_version_info, qt_package,
                               QtCore, QtEventLoop, QtGui, QtSlot, QtWidgets)
 
-if qt_package == 'PyQt5':
-    from PyQt5.QtWidgets import QOpenGLWidget
-elif qt_package == 'PyQt6':
+if qt_package == 'PyQt6':
     from PyQt6.QtOpenGLWidgets import QOpenGLWidget
-elif qt_package == 'PySide2':
-    from PySide2.QtWidgets import QOpenGLWidget
 elif qt_package == 'PySide6':
     from PySide6.QtOpenGLWidgets import QOpenGLWidget
 else:
-    raise ImportError(f'Unrecognised qt_package value "{qt_package}"')
+    QOpenGLWidget = QtWidgets.QOpenGLWidget
 
 if qt_version_info < (5, 4):
     raise ImportError('Qt version 5.4 or higher required')
-
-
-# single context lock to serialise OpenGL operations across multiple
-# windows
-ctx_lock = threading.RLock()
-
-@contextmanager
-def context():
-    ctx_lock.acquire()
-    yield
-    ctx_lock.release()
-
-class RenderingThread(QtCore.QObject):
-    next_frame_event = QtCore.QEvent.registerEventType()
-
-    def __init__(self, widget, **kwds):
-        super(RenderingThread, self).__init__(**kwds)
-        self.widget = widget
-        self.running = False
-
-    def next_frame(self):
-        self.widget.makeCurrent()
-        self.widget.paintGL()
-        # swapBuffers should block until frame interval, depending on hardware
-        self.widget.swapBuffers()
-        now = time.time()
-        self.clock += 1.0 / 75.0
-        while now < self.clock:
-            # swapBuffers didn't block, so do our own free running at 75Hz
-            time.sleep(self.clock - now)
-            now = time.time()
-        self.widget.done_swap(now)
-        # schedule next frame, after processing other events
-        QtCore.QCoreApplication.postEvent(
-            self, QtCore.QEvent(self.next_frame_event), LowEventPriority)
-
-    def event(self, event):
-        if event.type() == self.next_frame_event:
-            event.accept()
-            self.next_frame()
-            return True
-        return super(RenderingThread, self).event(event)
-
-    @QtSlot(object)
-    def resize(self, event):
-        # resize event is always sent when window first becomes visible
-        if not self.running:
-            self.widget.makeCurrent()
-            self.widget.glInit()
-            self.clock = time.time()
-        self.widget.resizeEvent(event)
-        if not self.running:
-            self.running = True
-            self.next_frame()
 
 
 class GLDisplay(QOpenGLWidget):
@@ -187,23 +127,21 @@ class GLDisplay(QOpenGLWidget):
             self.show_black = False
 
     def initializeGL(self):
-        with context():
-            GL.glClear(GL.GL_COLOR_BUFFER_BIT)
-            GL.glDisable(GL.GL_DEPTH_TEST)
-            GL.glEnable(GL.GL_TEXTURE_2D)
-            texture = GL.glGenTextures(1)
-            GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
-            GL.glBindTexture(GL.GL_TEXTURE_2D, texture)
-            GL.glDisable(GL.GL_TEXTURE_2D)
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+        GL.glDisable(GL.GL_DEPTH_TEST)
+        GL.glEnable(GL.GL_TEXTURE_2D)
+        texture = GL.glGenTextures(1)
+        GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, texture)
+        GL.glDisable(GL.GL_TEXTURE_2D)
 
     def resizeGL(self, w, h):
-        with context():
-            GL.glViewport(0, 0, w, h)
-            GL.glMatrixMode(GL.GL_PROJECTION)
-            GL.glLoadIdentity()
-            GL.glOrtho(0, 1, 0, 1, -1, 1)
-            GL.glMatrixMode(GL.GL_MODELVIEW)
-            GL.glLoadIdentity()
+        GL.glViewport(0, 0, w, h)
+        GL.glMatrixMode(GL.GL_PROJECTION)
+        GL.glLoadIdentity()
+        GL.glOrtho(0, 1, 0, 1, -1, 1)
+        GL.glMatrixMode(GL.GL_MODELVIEW)
+        GL.glLoadIdentity()
 
     def paintGL(self):
         if self.show_black:
@@ -211,33 +149,32 @@ class GLDisplay(QOpenGLWidget):
         else:
             image = self.numpy_image
         ylen, xlen, bpc = image.shape
-        with context():
-            GL.glEnable(GL.GL_TEXTURE_2D)
-            GL.glClear(GL.GL_COLOR_BUFFER_BIT)
-            GL.glDisable(GL.GL_DEPTH_TEST)
-            GL.glTexParameterf(
-                GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
-            GL.glTexParameterf(
-                GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
-            if bpc == 3:
-                GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
-                                0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, image)
-            elif bpc == 1:
-                GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
-                                0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, image)
-            else:
-                return
-            GL.glBegin(GL.GL_QUADS)
-            GL.glTexCoord2i(0, 0)
-            GL.glVertex2i(0, 1)
-            GL.glTexCoord2i(0, 1)
-            GL.glVertex2i(0, 0)
-            GL.glTexCoord2i(1, 1)
-            GL.glVertex2i(1, 0)
-            GL.glTexCoord2i(1, 0)
-            GL.glVertex2i(1, 1)
-            GL.glEnd()
-            GL.glDisable(GL.GL_TEXTURE_2D)
+        GL.glEnable(GL.GL_TEXTURE_2D)
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+        GL.glDisable(GL.GL_DEPTH_TEST)
+        GL.glTexParameterf(
+            GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
+        GL.glTexParameterf(
+            GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
+        if bpc == 3:
+            GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
+                            0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, image)
+        elif bpc == 1:
+            GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
+                            0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, image)
+        else:
+            return
+        GL.glBegin(GL.GL_QUADS)
+        GL.glTexCoord2i(0, 0)
+        GL.glVertex2i(0, 1)
+        GL.glTexCoord2i(0, 1)
+        GL.glVertex2i(0, 0)
+        GL.glTexCoord2i(1, 1)
+        GL.glVertex2i(1, 0)
+        GL.glTexCoord2i(1, 0)
+        GL.glVertex2i(1, 1)
+        GL.glEnd()
+        GL.glDisable(GL.GL_TEXTURE_2D)
 
     def startup(self):
         pass
