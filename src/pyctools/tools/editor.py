@@ -791,6 +791,9 @@ class CompoundIcon(ComponentIcon):
                 move[1] = delta_y
             if move != [0, 0]:
                 child.moveBy(*move)
+        # redraw all links
+        for link in self.scene().matching_items(ComponentLink):
+            link.redraw()
         self.scene().update_scene_rect(no_shrink=True)
 
     def build_left(self, dest, pos, x, y, dx, dy):
