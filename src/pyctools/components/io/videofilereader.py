@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-20  Pyctools contributors
+#  Copyright (C) 2014-24  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -15,8 +15,6 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
-
-from __future__ import print_function
 
 __all__ = ['VideoFileReader']
 __docformat__ = 'restructuredtext en'
@@ -177,10 +175,10 @@ class VideoFileReader(Component):
                         zlen = z - 1
                         break
                     if bit16:
-                        image = numpy.fromstring(raw_data, dtype=numpy.uint16)
+                        image = numpy.frombuffer(raw_data, dtype=numpy.uint16)
                         image = image.astype(pt_float) / pt_float(256.0)
                     else:
-                        image = numpy.fromstring(raw_data, dtype=numpy.uint8)
+                        image = numpy.frombuffer(raw_data, dtype=numpy.uint8)
                     frame = self.outframe_pool['output'].get()
                     frame.data = image.reshape((ylen, xlen, bps))
                     frame.metadata.copy(metadata)
