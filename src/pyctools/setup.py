@@ -95,6 +95,8 @@ def get_setup_parameters():
             classifiers = metadata['project']['classifiers'],
             platforms = metadata['tool']['setuptools']['platforms'],
             license = metadata['project']['license']['text'],
+            install_requires = metadata['project']['dependencies'],
+            extras_require = metadata['project']['optional-dependencies'],
             zip_safe = metadata['tool']['setuptools']['zip-safe'],
             )
     return setup_kwds
