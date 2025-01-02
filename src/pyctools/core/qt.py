@@ -241,14 +241,30 @@ class QtThreadEventLoop(QtEventLoop):
         self.thread.wait(int(timeout * 1000))
 
 
+def get_app():
+    if 'QT_SCREEN_SCALE_FACTORS' in os.environ:
+        del os.environ['QT_SCREEN_SCALE_FACTORS']
+    if qt_version_info >= (5, 14):
+        QtWidgets.QApplication.setHighDpiScaleFactorRoundingPolicy(
+            QtCore.Qt.HighDpiScaleFactorRoundingPolicy.Floor)
+    if qt_version_info < (6, 0):
+        QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
+        if qt_version_info >= (5, 6):
+            QtWidgets.QApplication.setAttribute(
+                QtCore.Qt.AA_DisableHighDpiScaling)
+    # let Qt handle its options (need at least one argument after options)
+    sys.argv.append('xxx')
+    app = QtWidgets.QApplication(sys.argv)
+    del sys.argv[-1]
+    return app
+
+
 class ComponentRunner(ComponentRunnerBase):
     """Qt version of the
     :py:class:`pyctools.core.compound.ComponentRunner` component."""
 
     def __init__(self):
-        if qt_version_info < (6, 0):
-            QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
-        self.app = QtWidgets.QApplication(sys.argv)
+        self.app = get_app()
         super(ComponentRunner, self).__init__()
 
     def do_loop(self, comp):

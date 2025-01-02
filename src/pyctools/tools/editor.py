@@ -65,7 +65,7 @@ import docutils.core
 import pyctools.components
 from pyctools.core.compound import Compound, RunnableNetwork
 from pyctools.core.config import *
-from pyctools.core.qt import (catch_all, execute, qt_package, qt_version_info,
+from pyctools.core.qt import (catch_all, execute, get_app, qt_package,
                               QtCore, QtGui, QtSlot, QtWidgets)
 
 if qt_package == 'PyQt5':
@@ -1456,12 +1456,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 def main():
-    # let PyQt handle its options (need at least one argument after options)
-    sys.argv.append('xxx')
-    if qt_version_info < (6, 0):
-        QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
-    app = QtWidgets.QApplication(sys.argv)
-    del sys.argv[-1]
+    app = get_app()
     # get command args
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('-s', '--script', metavar='file_name',
