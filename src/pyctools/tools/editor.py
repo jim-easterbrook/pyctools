@@ -1136,7 +1136,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             self.addItem(link)
         self.views()[0].centerOn(self.itemsBoundingRect().center())
 
-    def save_script(self, file_name, needs_qt):
+    def save_script(self, file_name, component_list):
         components = {}
         modules = []
         user_config = {}
@@ -1154,7 +1154,8 @@ class NetworkArea(QtWidgets.QGraphicsScene):
                 expanded[name] = child.expanded
             if mod not in modules:
                 modules.append(mod)
-                with_qt = with_qt or needs_qt[mod]
+                with_qt = (with_qt or
+                           component_list[components[name]]['needs_qt'])
         user_config_str = '{'
         for name, value in user_config.items():
             if not value:
@@ -1225,81 +1226,50 @@ class ComponentItemModel(QtGui.QStandardItemModel):
                        pickle.dumps(data, pickle.HIGHEST_PROTOCOL))
         return result
 
-
-class ComponentList(QtWidgets.QTreeView):
-    def __init__(self, **kwds):
-        super(ComponentList, self).__init__(**kwds)
-        self.setModel(ComponentItemModel(self))
-        self.setDragEnabled(True)
-        self.setHeaderHidden(True)
-        # get list of available components (and import them!)
-        components = {}
-        self.needs_qt = {}
-        # pkgutil.walk_packages doesn't work with namespace packages, so
-        # we do a simple file search instead
-        for path in pyctools.components.__path__:
-            depth = len(path.split('/')) - 2
-            for root, dirs, files in os.walk(path):
-                pkg_parts = root.split('/')[depth:]
-                if pkg_parts[-1] == '__pycache__':
-                    continue
-                for file_name in files:
-                    base, ext = os.path.splitext(file_name)
-                    if base == '__init__' or ext != '.py':
-                        continue
-                    # import module
-                    comp_parts = pkg_parts + [base]
-                    comp_name = '.'.join(comp_parts)
-                    try:
-                        mod = __import__(comp_name, globals(), locals(), ['*'])
-                    except ImportError as ex:
-                        continue
-                    if not hasattr(mod, '__all__') or not mod.__all__:
-                        continue
-                    comp_parts = comp_parts[2:]
-                    if len(mod.__all__) == 1:
-                        # single component in module
-                        comp_parts = comp_parts[:-1]
-                    # descend hierarchy to this module
-                    parent = components
-                    for part in comp_parts:
-                        if part not in parent:
-                            parent[part] = {}
-                        parent = parent[part]
-                    # add this module's components to hierarchy
-                    for comp in mod.__all__:
-                        parent[comp] = getattr(mod, comp)
-                    # try to find out if module needs Qt
-                    self.needs_qt[comp_name] = False
-                    for item in dir(mod):
-                        if item in ('QtEventLoop', 'QtThreadEventLoop'):
-                            self.needs_qt[comp_name] = True
-                            break
-                        if not 'Qt' in item:
-                            continue
-                        item = getattr(mod, item)
-                        if not isinstance(item, types.ModuleType):
-                            continue
-                        if item.__name__.startswith('PyQt'):
-                            self.needs_qt[comp_name] = True
-                            break
-        # build tree from list
-        root_node = self.model().invisibleRootItem()
-        self.add_nodes(root_node, components)
-        root_node.sortChildren(0)
-        self.resizeColumnToContents(0)
-        self.updateGeometries()
-
-    def add_nodes(self, root_node, components):
+    def add_components(self, components):
+        # build tree from component list
+        root_node = self.invisibleRootItem()
         for name, item in components.items():
-            if item:
-                node = QtGui.QStandardItem(name)
-                node.setEditable(False)
-                root_node.appendRow(node)
-                if isinstance(item, dict):
-                    self.add_nodes(node, item)
-                else:
-                    node.setData(item)
+            # find or create node, ignoring 'pyctools.components' prefix
+            parts = name.split('.')[2:]
+            node = self.get_node(root_node, parts)
+            # set node
+            if item['class']:
+                node.setData(item['class'])
+            else:
+                node.setToolTip(item['tooltip'])
+                node.setDragEnabled(False)
+                font = node.font()
+                font.setItalic(True)
+                node.setFont(font)
+        # collapse nodes with single children
+        self.remove_singletons(root_node)
+        root_node.sortChildren(0)
+
+    def get_node(self, parent, parts):
+        for row in range(parent.rowCount()):
+            child = parent.child(row)
+            if child.text() == parts[0]:
+                break
+        else:
+            child = QtGui.QStandardItem(parts[0])
+            child.setEditable(False)
+            parent.appendRow(child)
+        if len(parts) > 1:
+            return self.get_node(child, parts[1:])
+        return child
+
+    def remove_singletons(self, parent):
+        for row in range(parent.rowCount()):
+            self.remove_singletons(parent.child(row))
+        if parent.rowCount() != 1:
+            return
+        child = parent.child(0)
+        if child.rowCount():
+            return
+        child = parent.takeRow(0)[0]
+        parent.setData(child.data())
+        parent.setText(child.text())
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -1307,6 +1277,8 @@ class MainWindow(QtWidgets.QMainWindow):
         super(MainWindow, self).__init__(**kwds)
         self.setWindowTitle("Pyctools graph editor")
         self.script_file = os.getcwd()
+        # get component list
+        self.get_components()
         ## file menu
         file_menu = self.menuBar().addMenu('File')
         file_menu.addAction('Load script', self.load_script, 'Ctrl+O')
@@ -1340,7 +1312,14 @@ class MainWindow(QtWidgets.QMainWindow):
         # component list and network drawing area
         splitter = QtWidgets.QSplitter(self)
         splitter.setChildrenCollapsible(False)
-        self.component_list = ComponentList(parent=self)
+        self.component_list = QtWidgets.QTreeView(parent=self)
+        self.component_list.setDragEnabled(True)
+        self.component_list.setHeaderHidden(True)
+        self.component_list.setUniformRowHeights(True)
+        self.component_list.setModel(ComponentItemModel())
+        self.component_list.model().add_components(self.components)
+        self.component_list.resizeColumnToContents(0)
+        self.component_list.updateGeometries()
         splitter.addWidget(self.component_list)
         self.network_area = NetworkArea(parent=self)
         self.view = QtWidgets.QGraphicsView(self.network_area)
@@ -1369,6 +1348,58 @@ class MainWindow(QtWidgets.QMainWindow):
             self.set_window_title(script)
             self.network_area.load_script(script)
 
+    def get_components(self):
+        # get list of available components (and import them!)
+        self.components = {}
+        # pkgutil.walk_packages doesn't work with namespace packages, so
+        # we do a simple file search instead
+        for path in pyctools.components.__path__:
+            depth = len(path.split('/')) - 2
+            for root, dirs, files in os.walk(path):
+                pkg_parts = root.split('/')[depth:]
+                if pkg_parts[-1] == '__pycache__':
+                    continue
+                for file_name in files:
+                    base, ext = os.path.splitext(file_name)
+                    if base == '__init__' or ext != '.py':
+                        continue
+                    # import module
+                    mod_name = '.'.join(pkg_parts + [base])
+                    try:
+                        mod = __import__(mod_name, globals(), locals(), ['*'])
+                    except ImportError as ex:
+                        self.components[mod_name] = {
+                            'class': None,
+                            'module': mod_name,
+                            'tooltip': str(ex),
+                            }
+                        continue
+                    if not hasattr(mod, '__all__') or not mod.__all__:
+                        continue
+                    # try to find out if module needs Qt
+                    needs_qt = False
+                    for item in dir(mod):
+                        if item in ('QtEventLoop', 'QtThreadEventLoop'):
+                            needs_qt = True
+                            break
+                        if not 'Qt' in item:
+                            continue
+                        item = getattr(mod, item)
+                        if not isinstance(item, types.ModuleType):
+                            continue
+                        if item.__name__.startswith('PyQt'):
+                            needs_qt = True
+                            break
+                    # add module's components to list
+                    for name in mod.__all__:
+                        full_name = '.'.join((mod_name, name))
+                        self.components[full_name] = {
+                            'class': getattr(mod, name),
+                            'module': mod_name,
+                            'name': name,
+                            'needs_qt': needs_qt,
+                            }
+
     @QtSlot()
     @catch_all
     def load_script(self):
@@ -1387,8 +1418,7 @@ class MainWindow(QtWidgets.QMainWindow):
         file_name = file_name[0]
         if file_name:
             self.set_window_title(file_name)
-            self.network_area.save_script(
-                file_name, self.component_list.needs_qt)
+            self.network_area.save_script(file_name, self.components)
 
     def set_window_title(self, file_name):
         self.script_file = file_name
