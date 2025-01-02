@@ -947,8 +947,9 @@ class CompoundIcon(ComponentIcon):
 class NetworkArea(QtWidgets.QGraphicsScene):
     min_size = QtCore.QRectF(0, 0, 800, 600)
 
-    def __init__(self, **kwds):
+    def __init__(self, components, **kwds):
         super(NetworkArea, self).__init__(**kwds)
+        self.components = components
         self.setSceneRect(self.min_size)
         self.runnable = None
 
@@ -969,9 +970,8 @@ class NetworkArea(QtWidgets.QGraphicsScene):
     def dropEvent(self, event):
         if not event.mimeData().hasFormat(_COMP_MIMETYPE):
             return super(NetworkArea, self).dropEvent(event)
-        data = event.mimeData().data(_COMP_MIMETYPE).data()
-        klass = pickle.loads(data)
-        self.add_component(klass, event.scenePos())
+        name = event.mimeData().text()
+        self.add_component(self.components[name]['class'], event.scenePos())
 
     def keyPressEvent(self, event):
         if not event.matches(QtGui.QKeySequence.StandardKey.Delete):
@@ -1136,7 +1136,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             self.addItem(link)
         self.views()[0].centerOn(self.itemsBoundingRect().center())
 
-    def save_script(self, file_name, component_list):
+    def save_script(self, file_name):
         components = {}
         modules = []
         user_config = {}
@@ -1155,7 +1155,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             if mod not in modules:
                 modules.append(mod)
                 with_qt = (with_qt or
-                           component_list[components[name]]['needs_qt'])
+                           self.components[components[name]]['needs_qt'])
         user_config_str = '{'
         for name, value in user_config.items():
             if not value:
@@ -1222,8 +1222,8 @@ class ComponentItemModel(QtGui.QStandardItemModel):
         if not data:
             return None
         result = QtCore.QMimeData()
-        result.setData(_COMP_MIMETYPE,
-                       pickle.dumps(data, pickle.HIGHEST_PROTOCOL))
+        result.setData(_COMP_MIMETYPE, b'')
+        result.setText(data)
         return result
 
     def add_components(self, components):
@@ -1235,7 +1235,7 @@ class ComponentItemModel(QtGui.QStandardItemModel):
             node = self.get_node(root_node, parts)
             # set node
             if item['class']:
-                node.setData(item['class'])
+                node.setData(name)
             else:
                 node.setToolTip(item['tooltip'])
                 node.setDragEnabled(False)
@@ -1321,7 +1321,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.component_list.resizeColumnToContents(0)
         self.component_list.updateGeometries()
         splitter.addWidget(self.component_list)
-        self.network_area = NetworkArea(parent=self)
+        self.network_area = NetworkArea(self.components, parent=self)
         self.view = QtWidgets.QGraphicsView(self.network_area)
         self.view.setAcceptDrops(True)
         self.view.setDragMode(self.view.DragMode.RubberBandDrag)
@@ -1418,7 +1418,7 @@ class MainWindow(QtWidgets.QMainWindow):
         file_name = file_name[0]
         if file_name:
             self.set_window_title(file_name)
-            self.network_area.save_script(file_name, self.components)
+            self.network_area.save_script(file_name)
 
     def set_window_title(self, file_name):
         self.script_file = file_name
