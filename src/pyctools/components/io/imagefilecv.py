@@ -118,7 +118,7 @@ class ImageFileWriterCV(Transformer):
           - Write a 16-bit depth file, if the format supports it.{}
 
     .. _OpenCV documentation:
-       http://docs.opencv.org/2.4.11/modules/highgui/doc/reading_and_writing_images_and_video.html#imwrite
+        https://docs.opencv.org/modules/highgui/doc/reading_and_writing_images_and_video.html#imwrite
 
     """
 
