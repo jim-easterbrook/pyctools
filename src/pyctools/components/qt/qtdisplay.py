@@ -225,6 +225,9 @@ class QtDisplay(Transformer, QtWidgets.QWidget):
         super(QtDisplay, self).__init__(**config)
         self.setWindowFlags(QtCore.Qt.WindowType.Window |
                             QtCore.Qt.WindowType.WindowStaysOnTopHint)
+        dpr = self.window().devicePixelRatio()
+        if int(dpr) != dpr:
+            self.logger.warning('Non-integer screen pixel ratio %g', dpr)
         self.setLayout(QtWidgets.QGridLayout())
         fmt = QtGui.QSurfaceFormat()
         fmt.setProfile(
