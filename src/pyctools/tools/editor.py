@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-24  Pyctools contributors
+#  Copyright (C) 2014-25  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -695,9 +695,8 @@ class ComponentIcon(ComponentOutline):
                 help_text, writer_name='html')['html_body']
         else:
             help_text = '<p>Undocumented</p>'
-        help_text = '<h4>{}()</h4>\n{}\n<p>File: {}</p>'.format(
-            self.obj.__class__.__name__, help_text,
-            inspect.getfile(self.obj.__class__))
+        help_text = '<h4>{}()</h4>\n{}\n<p>Module: {}</p>'.format(
+            self.obj.__class__.__name__, help_text, self.obj.__module__)
         self.setToolTip(help_text)
 
     def rename(self):
