@@ -1266,17 +1266,16 @@ class ComponentItemModel(QtGui.QStandardItemModel):
         return child
 
     def remove_singletons(self, parent):
+        if parent.rowCount() == 1:
+            child = parent.child(0)
+            if not child.rowCount():
+                child = parent.takeRow(0)[0]
+                parent.setData(child.data())
+                parent.setText(child.text())
+                parent.setToolTip(child.toolTip())
+                return
         for row in range(parent.rowCount()):
             self.remove_singletons(parent.child(row))
-        if parent.rowCount() != 1:
-            return
-        child = parent.child(0)
-        if child.rowCount():
-            return
-        child = parent.takeRow(0)[0]
-        parent.setData(child.data())
-        parent.setText(child.text())
-        parent.setToolTip(child.toolTip())
 
 
 class MainWindow(QtWidgets.QMainWindow):
