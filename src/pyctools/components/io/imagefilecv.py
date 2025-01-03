@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016-24  Pyctools contributors
+#  Copyright (C) 2016-25  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -108,14 +108,19 @@ class ImageFileWriterCV(Transformer):
     :py:class:`~pyctools.components.io.imagefilepil.ImageFileWriterPIL`
     component instead.
 
-    .. list-table::
+    ==================  ====  ====
+    Config
+    ==================  ====  ====
+    ``path``            str   Path name of file to be read.
+    ``16bit``           bool  Write a 16-bit depth file, if the format supports it.
+    ``{a}``{sa}    int
+    ...
+    ``{b}``{sb}    int
+    ==================  ====  ====
 
-        * - ``path``
-          - str
-          - Path name of file to be written.
-        * - ``16bit``
-          - bool
-          - Write a 16-bit depth file, if the format supports it.{}
+    The config items from ``{a}`` to ``{b}`` are format-specific
+    parameters to the :py:func:`cv2.imwrite` function with the
+    ``CV_IMWRITE_`` prefix removed.
 
     .. _OpenCV documentation:
         https://docs.opencv.org/modules/highgui/doc/reading_and_writing_images_and_video.html#imwrite
@@ -125,12 +130,9 @@ class ImageFileWriterCV(Transformer):
     cv2_params = [x[8:] for x in cv2.__dict__ if x.startswith('IMWRITE_')]
     cv2_params.sort()
 
-    __doc__ = __doc__.format(
-        ''.join(['''
-        * - ``{x}``
-          - int
-          - OpenCV CV_IMWRITE_{x} parameter.'''.format(
-              x=x) for x in cv2_params]))
+    __doc__ = __doc__.format(a=cv2_params[0], b=cv2_params[-1],
+                             sa=' '*(12-len(cv2_params[0])),
+                             sb=' '*(12-len(cv2_params[-1])))
 
     def initialise(self):
         self.done = False
