@@ -1235,6 +1235,13 @@ class ComponentItemModel(QtGui.QStandardItemModel):
             # set node
             if item['class']:
                 node.setData(name)
+                help_text = inspect.getdoc(item['class'])
+                if help_text:
+                    help_text = help_text.splitlines()[0]
+                    help_text = strip_sphinx_domains(help_text)
+                    help_text = docutils.core.publish_parts(
+                        help_text, writer_name='html')['html_body']
+                    node.setToolTip(help_text)
             else:
                 node.setToolTip(item['tooltip'])
                 node.setDragEnabled(False)
@@ -1269,6 +1276,7 @@ class ComponentItemModel(QtGui.QStandardItemModel):
         child = parent.takeRow(0)[0]
         parent.setData(child.data())
         parent.setText(child.text())
+        parent.setToolTip(child.toolTip())
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -1370,7 +1378,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.components[mod_name] = {
                             'class': None,
                             'module': mod_name,
-                            'tooltip': str(ex),
+                            'tooltip': '<p>{}</p>'.format(str(ex)),
                             }
                         continue
                     if not hasattr(mod, '__all__') or not mod.__all__:
