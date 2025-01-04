@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-24  Pyctools contributors
+#  Copyright (C) 2014-25  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -20,10 +20,14 @@ __all__ = ['QtDisplay']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque
+import sys
 import time
 
 import numpy
-from OpenGL import GL
+if 'sphinx' in sys.modules:
+    GL = None
+else:
+    from OpenGL import GL
 
 from pyctools.core.config import ConfigBool, ConfigInt, ConfigStr
 from pyctools.core.base import Transformer
