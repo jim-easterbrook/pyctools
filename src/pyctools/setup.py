@@ -51,11 +51,13 @@ def find_console_scripts():
 def find_ext_modules():
     extension_args = {
         'include_dirs': [numpy.get_include()],
-        'extra_compile_args': [
-            '-fopenmp', '-Wno-maybe-uninitialized', '-Wno-unused-function'],
+        'extra_compile_args': ['-fopenmp'],
         'extra_link_args': ['-fopenmp'],
         'define_macros': [('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')],
         }
+    if sys.platform == 'linux':
+        extension_args['extra_compile_args'] += [
+            '-Wno-maybe-uninitialized', '-Wno-unused-function']
     cython_args = {
         'compiler_directives': {'language_level' : sys.version_info[0]},
         }
