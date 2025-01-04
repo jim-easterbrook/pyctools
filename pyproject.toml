@@ -46,6 +46,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Visualization",
 ]
 requires-python = ">= 3.6"
+dynamic = ["scripts"]
 dependencies = [
     "docutils",
     "exiv2 >= 0.11",
