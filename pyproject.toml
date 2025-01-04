@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2023-24  Pyctools contributors
+#  Copyright (C) 2023-25  Pyctools contributors
 #
 #  This file is part of Pyctools.
 #
@@ -49,7 +49,7 @@ requires-python = ">= 3.6"
 dependencies = [
     "docutils",
     "exiv2 >= 0.11",
-    "numpy",
+    "numpy < 2",
     "pillow",
 ]
 
@@ -80,11 +80,13 @@ PyQt6-darwin = [
 PySide6-linux = ["PySide6 >= 6.2"]
 PySide6-darwin = ["PySide6 >= 6.2, != 6.6.1"]
 # other packages
+cv2 = ["pyctools-core[OpenCV]"]
 matplotlib = ["matplotlib"]
 OpenCV = [
   "opencv-python-headless;       python_version != '3.6.*'",
   "opencv-python-headless < 4.7; python_version == '3.6.*'",
 ]
+OpenGL = ["pyctools-core[PyOpenGL]"]
 PyOpenGL = ["PyOpenGL", "PyOpenGL-accelerate"]
 rawkit = ["rawkit"]
 rawpy = ["rawpy"]
