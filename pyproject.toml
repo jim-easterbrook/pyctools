@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2023-24  Pyctools contributors
+#  Copyright (C) 2023-25  Pyctools contributors
 #
 #  This file is part of Pyctools.
 #
@@ -45,12 +45,55 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Image Recognition",
     "Topic :: Scientific/Engineering :: Visualization",
 ]
+requires-python = ">= 3.6"
+dynamic = ["scripts"]
 dependencies = [
     "docutils",
     "exiv2 >= 0.11",
-    "numpy",
+    "numpy < 2",
     "pillow",
 ]
+
+[project.optional-dependencies]
+# Qt options - only one required
+PyQt5 = ["PyQt5 >= 5.9"]
+PyQt6 = [
+  "pyctools-core[PyQt6-linux];  platform_system == 'Linux'",
+  "pyctools-core[PyQt6-darwin]; platform_system == 'Darwin'",
+]
+PySide2 = [
+  "PySide2 >= 5.11.1; python_version < '3.8'",
+  "PySide2 >= 5.14;   python_version >= '3.8'",
+]
+PySide6 = [
+  "pyctools-core[PySide6-linux];  platform_system == 'Linux'",
+  "pyctools-core[PySide6-darwin]; platform_system == 'Darwin'",
+]
+PyQt6-linux = [
+  "PyQt6 >= 6.2;        python_version != '3.6.*'",
+  "PyQt6 >= 6.2, < 6.3; python_version == '3.6.*'",
+  "PyQt6-Qt6 < 6.3;     python_version == '3.6.*'",
+]
+PyQt6-darwin = [
+  "PyQt6 >= 6.2",
+  "PyQt6-Qt6 >= 6.2, != 6.6.1",
+]
+PySide6-linux = ["PySide6 >= 6.2"]
+PySide6-darwin = ["PySide6 >= 6.2, != 6.6.1"]
+# other packages
+cv2 = ["pyctools-core[OpenCV]"]
+matplotlib = ["matplotlib"]
+OpenCV = [
+  "opencv-python-headless;       python_version != '3.6.*'",
+  "opencv-python-headless < 4.7; python_version == '3.6.*'",
+]
+OpenGL = ["pyctools-core[PyOpenGL]"]
+PyOpenGL = ["PyOpenGL", "PyOpenGL-accelerate"]
+rawkit = ["rawkit"]
+rawpy = ["rawpy"]
+SciPy = ["scipy"]
+# install everything except a Qt package
+all = ["pyctools-core[matplotlib,OpenCV,PyOpenGL,rawkit,rawpy,SciPy]"]
 
 [project.urls]
 homepage = "https://github.com/jim-easterbrook/pyctools"

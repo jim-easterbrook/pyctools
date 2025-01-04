@@ -1,6 +1,6 @@
 Pyctools - a picture processing algorithm development kit.
-http://github.com/jim-easterbrook/pyctools
-Copyright (C) 2012-19  Jim Easterbrook  jim@jim-easterbrook.me.uk
+https://github.com/jim-easterbrook/pyctools
+Copyright (C) 2012-25  Pyctools contributors
 
 This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as
@@ -15,6 +15,12 @@ General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see
 <http://www.gnu.org/licenses/>.
+
+Changes in v0.7.0:
+  1/ Python 2 is no longer supported.
+  2/ Some components are deprecated in favour of better replacements.
+  3/ Documentation build is much improved.
+  4/ Many smaller changes.
 
 Changes in v0.5.0:
   1/ Rethought use of range, black level, and white level. Now almost every

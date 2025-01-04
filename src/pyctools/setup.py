@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-24  Pyctools contributors
+#  Copyright (C) 2014-25  Pyctools contributors
 #
 #  This file is part of Pyctools.
 #
@@ -49,25 +49,34 @@ def find_console_scripts():
 
 
 def find_ext_modules():
-    ext_modules = []
+    extension_args = {
+        'include_dirs': [numpy.get_include()],
+        'extra_compile_args': ['-fopenmp'],
+        'extra_link_args': ['-fopenmp'],
+        'define_macros': [('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')],
+        }
+    if sys.platform == 'linux':
+        extension_args['extra_compile_args'] += [
+            '-Wno-maybe-uninitialized', '-Wno-unused-function']
+    cython_args = {
+        'compiler_directives': {'language_level' : sys.version_info[0]},
+        }
+    ext_modules = {}
     for root, dirs, files in os.walk(os.path.join(
             find_kwds['where'], 'pyctools')):
-        for name in files:
-            base, ext = os.path.splitext(name)
-            if ext != '.pyx':
+        for file in files:
+            base, ext = os.path.splitext(file)
+            name = '.'.join(root.split(os.sep)[1:] + [base])
+            sources = [os.path.join(root, file)]
+            if ext == '.pyx':
+                extension = Extension(name, sources, **extension_args)
+                extension = cythonize(extension, **cython_args)[0]
+            elif ext == '.c' and name not in ext_modules:
+                extension = Extension(name, sources, **extension_args)
+            else:
                 continue
-            ext_modules.append(Extension(
-                '.'.join(root.split(os.sep)[1:] + [base]),
-                [os.path.join(root, name)],
-                include_dirs = [numpy.get_include()],
-                extra_compile_args = [
-                    '-fopenmp', '-Wno-maybe-uninitialized', '-Wno-unused-function'],
-                extra_link_args = ['-fopenmp'],
-                define_macros=[
-                    ('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')],
-                ))
-    return cythonize(ext_modules, compiler_directives={
-        'language_level' : sys.version_info[0]})
+            ext_modules[name] = extension
+    return list(ext_modules.values())
 
 def get_setup_parameters():
     setup_kwds = {
@@ -95,6 +104,8 @@ def get_setup_parameters():
             classifiers = metadata['project']['classifiers'],
             platforms = metadata['tool']['setuptools']['platforms'],
             license = metadata['project']['license']['text'],
+            install_requires = metadata['project']['dependencies'],
+            extras_require = metadata['project']['optional-dependencies'],
             zip_safe = metadata['tool']['setuptools']['zip-safe'],
             )
     return setup_kwds

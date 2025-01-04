@@ -1,6 +1,6 @@
 # Pyctools - a picture processing algorithm development kit.
 # http://github.com/jim-easterbrook/pyctools
-# Copyright (C) 2014-24  Pyctools contributors
+# Copyright (C) 2014-25  Pyctools contributors
 #
 # This file is part of Pyctools.
 #
@@ -17,47 +17,20 @@
 # You should have received a copy of the GNU General Public License
 # along with Pyctools.  If not, see <http://www.gnu.org/licenses/>.
 
-from collections import defaultdict
 import os
-import pkgutil
 import site
 import sys
-import types
-from unittest.mock import Mock
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 site.addsitedir(os.path.abspath('..'))
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-
-# cludge to allow documentation to be compiled without installing some
-# dependencies
-for mod_name in ('cv2', 'OpenGL', 'matplotlib', 'matplotlib.pyplot',
-                 'scipy', 'scipy.optimize', 'scipy.signal', 'scipy.special',
-                 'sip'):
-    sys.modules[mod_name] = Mock()
-
-# Qt stuff needs a bit more work as it's used as base classes
-class QtMock(Mock):
-    QT_VERSION_STR = '0.0.0'
-    QObject = object
-    QWidget = object
-    QGraphicsRectItem = object
-    QGraphicsPolygonItem = object
-    QGLWidget = object
-    QOpenGLWidget = object
-
-for mod_name in ('PyQt5', 'PyQt5.QtCore', 'PyQt5.QtGui',
-                 'PyQt5.QtOpenGL', 'PyQt5.QtWidgets'):
-    sys.modules[mod_name] = QtMock()
 
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #needs_sphinx = '1.0'
-needs_sphinx = '2.0'
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
@@ -75,9 +48,9 @@ autodoc_default_options = {
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
-    'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-    'PIL': ('http://pillow.readthedocs.io/en/latest/', None),
-    'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
+    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'PIL': ('https://pillow.readthedocs.io/en/latest/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
     }
 
 keep_warnings = True
@@ -102,7 +75,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Pyctools'
-copyright = u'2014-20, Pyctools contributors'
+copyright = u'2014-25, Pyctools contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -127,9 +100,9 @@ modules = []
 # pkgutil.walk_packages doesn't work with namespace packages, so we do
 # a simple file search instead
 for path in pyctools.__path__:
-    depth = len(path.split('/')) - 1
+    depth = len(path.split(os.path.sep)) - 1
     for root, dirs, files in os.walk(path):
-        parts = root.split('/')
+        parts = root.split(os.path.sep)
         if parts[-1] == '__pycache__':
             continue
         parts = parts[depth:]
@@ -190,7 +163,8 @@ for package in [x for x in modules if x['ispkg']]:
         # import module
         try:
             mod = __import__(module['name'], globals(), locals(), ['*'])
-        except ImportError:
+        except ImportError as ex:
+            print(str(ex))
             continue
         module['mod'] = mod
         if getattr(mod, '__doc__'):

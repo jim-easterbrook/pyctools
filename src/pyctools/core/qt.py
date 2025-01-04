@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2015-24  Pyctools contributors
+#  Copyright (C) 2015-25  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -20,7 +20,9 @@ __all__ = ['ComponentRunner', 'QtEventLoop', 'QtThreadEventLoop']
 __docformat__ = 'restructuredtext en'
 
 from collections import deque, namedtuple
+import enum
 from functools import wraps
+import importlib.util
 import logging
 import os
 import sys
@@ -33,7 +35,13 @@ logger = logging.getLogger(__name__)
 if 'PYCTOOLS_QT' in os.environ:
     qt_package = os.environ['PYCTOOLS_QT']
 else:
-    qt_package = 'PyQt5'
+    # choose first available package
+    for qt_package in ('PyQt5', 'PySide2', 'PyQt6', 'PySide6'):
+        if importlib.util.find_spec(qt_package):
+            break
+    else:
+        # choose PyQt5 and get import error
+        qt_package = 'PyQt5'
 
 if qt_package == 'PyQt5':
     from PyQt5 import QtCore, QtGui, QtWidgets
@@ -43,23 +51,28 @@ elif qt_package == 'PyQt6':
     from PyQt6.QtCore import pyqtSlot as QtSlot
 elif qt_package == 'PySide2':
     from PySide2 import QtCore, QtGui, QtWidgets
+    from PySide2 import __version__ as pkg_version
     from PySide2.QtCore import Slot as QtSlot
 elif qt_package == 'PySide6':
     from PySide6 import QtCore, QtGui, QtWidgets
+    from PySide6 import __version__ as pkg_version
     from PySide6.QtCore import Slot as QtSlot
 else:
     raise ImportError(f'Unrecognised qt_package value "{qt_package}"')
 
 
 if qt_package in ('PySide2', 'PySide6'):
+    qt_version = QtCore.__version__
     qt_version_info = QtCore.__version_info__
 else:
+    pkg_version = QtCore.PYQT_VERSION_STR
+    qt_version = QtCore.QT_VERSION_STR
     qt_version_info = namedtuple(
         'qt_version_info', ('major', 'minor', 'micro'))._make(
-            map(int, QtCore.QT_VERSION_STR.split('.')))
+            map(int, QtCore.QT_VERSION_STR.split('.')[:3]))
 
 
-if qt_package == 'PyQt6':
+if isinstance(QtCore.Qt.EventPriority.LowEventPriority, enum.Enum):
     LowEventPriority = QtCore.Qt.EventPriority.LowEventPriority.value
 else:
     LowEventPriority = int(QtCore.Qt.EventPriority.LowEventPriority)
@@ -241,15 +254,33 @@ class QtThreadEventLoop(QtEventLoop):
         self.thread.wait(int(timeout * 1000))
 
 
+def get_app():
+    if 'QT_SCREEN_SCALE_FACTORS' in os.environ:
+        del os.environ['QT_SCREEN_SCALE_FACTORS']
+    if qt_version_info >= (5, 14):
+        QtWidgets.QApplication.setHighDpiScaleFactorRoundingPolicy(
+            QtCore.Qt.HighDpiScaleFactorRoundingPolicy.Floor)
+    if qt_version_info < (6, 0):
+        QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
+        if qt_version_info >= (5, 6):
+            QtWidgets.QApplication.setAttribute(
+                QtCore.Qt.AA_DisableHighDpiScaling)
+    # let Qt handle its options (need at least one argument after options)
+    sys.argv.append('xxx')
+    app = QtWidgets.QApplication(sys.argv)
+    del sys.argv[-1]
+    return app
+
+
 class ComponentRunner(ComponentRunnerBase):
     """Qt version of the
     :py:class:`pyctools.core.compound.ComponentRunner` component."""
 
     def __init__(self):
-        if qt_version_info < (6, 0):
-            QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
-        self.app = QtWidgets.QApplication(sys.argv)
+        self.app = get_app()
         super(ComponentRunner, self).__init__()
 
     def do_loop(self, comp):
+        logger.info(
+            f'Using {qt_package} v{pkg_version}, Qt v{qt_version}')
         execute(self.app)
