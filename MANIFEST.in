@@ -1,3 +1,2 @@
 include *.txt
-recursive-include src/doc *
-prune src/doc/api
+recursive-exclude src/doc *
