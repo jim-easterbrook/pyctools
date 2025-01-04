@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-23  Pyctools contributors
+   Copyright (C) 2014-25  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -70,14 +70,14 @@ Using sidecar files means we won't need to restrict the video or still image fil
 Extensibility
 ^^^^^^^^^^^^^
 
-Python provides "namespace packages" that allow a package to be split across several files.
-This feature appears to be little known (and not very well documented) but the key point is that you can have two or more software packages (e.g. "pyctools.core" and "pyctools.pal") installed in different places (e.g. system-wide and local/personal "site-packages" directories) that both provide parts of a single package, "pyctools".
-For example, you can write code like this::
+Pyctools uses Python `namespace packages`_ to allow multiple "distribution packages" to install modules in the Pyctools package.
+For example, the ``pyctools-core`` package can be extended with the ``pyctools-pal`` package.
+Both provide pyctools components that your script loads without knowing (or caring) which package provided them::
 
   from pyctools.components.io.videofilereader import VideoFileReader
   from pyctools.components.pal.common import To4Fsc
 
-and not be aware that those two components are imported from totally separate sources.
-
 This makes it easy to mix Pyctools core components with locally written ones specific to your own application.
 Companies can develop their own proprietary Pyctools for internal use or can publish them for wider use without having to make them part of a larger open source project.
+
+.. _namespace packages: https://peps.python.org/pep-0420/

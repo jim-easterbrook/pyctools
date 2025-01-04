@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-23  Pyctools contributors
+   Copyright (C) 2014-25  Pyctools contributors
 
    This file is part of Pyctools.
 
@@ -26,11 +26,13 @@ Dependencies
 At first sight there are rather a lot of dependencies to be installed before using Pyctools.
 However, many of these are likely to be already installed if you have a reasonably current Linux distribution installed on your computer.
 
-Unless otherwise noted you should probably install the dependencies with your Linux distribution's package manager application.
-
+Most of the dependencies can probably be installed with your Linux distribution's package manager application.
 Some packages are also available from the `Python Package Index (PyPI)`_.
 These will often be newer versions.
 The ``pip`` command should be used to install packages from PyPI.
+Do not run ``pip`` as root (e.g. with ``sudo``) as this may corrupt your operating system.
+Use ``pip install --user`` to install in your local user directory, or better still use a virtual environment to isolate your Pyctools installation from other Python projects.
+Using the ``--system-site-packages`` option when you create a virtual environment allows it to use the system installed packages.
 
 `Python <https://www.python.org/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -107,15 +109,13 @@ If you need to process raw images you can install ``rawpy`` using ``pip``::
 
   pip3 install --user rawpy
 
-`PyQt5 <https://riverbankcomputing.com/software/pyqt/intro>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PyQt_ or PySide_
+^^^^^^^^^^^^^^^^
 
-PyQt5 is an optional dependency.
-If it is not installed then the :py:mod:`Pyctools visual editor <pyctools.tools.editor>` will not be usable.
+The :py:mod:`Pyctools visual editor <pyctools.tools.editor>` uses the Qt graphics system via a Python package.
+Pyctools can use any one of ``PyQt5``, ``PyQt6``, ``PySide2``, or ``PySide6``.
 
-If PyQt5 is already installed the ``python3 -c 'import PyQt5'`` command will run without error.
-
-PyQt5 should be installable with your system's package manager.
+At least one of these should be installable with your system's package manager.
 
 `PyOpenGL <http://pyopengl.sourceforge.net/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,15 +138,17 @@ The easiest way to install pillow is with ``pip``::
 Pyctools core
 -------------
 
-Although an olde version of Pyctools can be installed from PyPI_, it is better to clone the GitHub repos.
+Although an old version of Pyctools can be installed from PyPI_, it is better to clone the GitHub repo.
 The project is still quite young and a lot of changes are being made.
-Cloning the repos makes it easy to keep up to date with a ``git pull`` command.
+Cloning the repo makes it easy to keep up to date with a ``git pull`` command.
 
-Clone the repos and install Pyctools as follows::
+Clone the repo and install Pyctools as follows::
 
   git clone https://github.com/jim-easterbrook/pyctools.git
   cd pyctools
   pip3 install --user .
+
+You can easily install most of the dependencies at the same time with ``pip3 install --user .[all]``.
 
 Documentation
 ^^^^^^^^^^^^^
@@ -185,4 +187,6 @@ They are installed in the usual way::
 
 
 .. _PyPI: https://pypi.org/
+.. _PyQt: https://riverbankcomputing.com/software/pyqt/intro
+.. _PySide: https://wiki.qt.io/Qt_for_Python
 .. _Python Package Index (PyPI): https://pypi.org/
