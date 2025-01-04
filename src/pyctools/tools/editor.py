@@ -115,16 +115,16 @@ class ConfigPathWidget(QtWidgets.QPushButton):
             return
         max_len = 40
         if len(value) > max_len:
-            parts = value.split('/')
+            parts = value.split(os.path.sep)
             if len(parts) > 3:
                 parts[2] = '...'
-            value = '/'.join(parts)
+            value = os.path.sep.join(parts)
         while len(value) > max_len and len(parts) > 4:
             del parts[3]
-            value = '/'.join(parts)
+            value = os.path.sep.join(parts)
         while len(value) > max_len and len(parts[-1]) > 4:
             parts[-1] = '...' + parts[-1][4:]
-            value = '/'.join(parts)
+            value = os.path.sep.join(parts)
         self.setText(value)
 
     def get_value(self):
@@ -1360,9 +1360,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # pkgutil.walk_packages doesn't work with namespace packages, so
         # we do a simple file search instead
         for path in pyctools.components.__path__:
-            depth = len(path.split('/')) - 2
+            depth = len(path.split(os.path.sep)) - 2
             for root, dirs, files in os.walk(path):
-                pkg_parts = root.split('/')[depth:]
+                pkg_parts = root.split(os.path.sep)[depth:]
                 if pkg_parts[-1] == '__pycache__':
                     continue
                 for file_name in files:

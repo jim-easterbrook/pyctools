@@ -100,9 +100,9 @@ modules = []
 # pkgutil.walk_packages doesn't work with namespace packages, so we do
 # a simple file search instead
 for path in pyctools.__path__:
-    depth = len(path.split('/')) - 1
+    depth = len(path.split(os.path.sep)) - 1
     for root, dirs, files in os.walk(path):
-        parts = root.split('/')
+        parts = root.split(os.path.sep)
         if parts[-1] == '__pycache__':
             continue
         parts = parts[depth:]
