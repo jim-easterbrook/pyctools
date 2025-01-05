@@ -25,6 +25,7 @@ from functools import wraps
 import importlib.util
 import logging
 import os
+import signal
 import sys
 import time
 
@@ -269,6 +270,7 @@ def get_app():
     sys.argv.append('xxx')
     app = QtWidgets.QApplication(sys.argv)
     del sys.argv[-1]
+    app.lastWindowClosed.connect(app.quit)
     return app
 
 
@@ -283,4 +285,8 @@ class ComponentRunner(ComponentRunnerBase):
     def do_loop(self, comp):
         logger.info(
             f'Using {qt_package} v{pkg_version}, Qt v{qt_version}')
+        signal.signal(signal.SIGINT, self.sigint_handler)
         execute(self.app)
+
+    def sigint_handler(self, *args):
+        self.app.quit()
