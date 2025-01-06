@@ -31,8 +31,9 @@ else:
 
 from pyctools.core.config import ConfigBool, ConfigInt, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import (LowEventPriority, qt_version_info, qt_package,
-                              QtCore, QtEventLoop, QtGui, QtSlot, QtWidgets)
+from pyctools.core.qt import (
+    catch_all, LowEventPriority, qt_version_info, qt_package, QtCore,
+    QtEventLoop, QtGui, QtSlot, QtWidgets)
 
 if qt_package == 'PyQt6':
     from PyQt6.QtOpenGLWidgets import QOpenGLWidget
@@ -252,6 +253,11 @@ class QtDisplay(Transformer, QtWidgets.QWidget):
             QtGui.QKeySequence.StandardKey.MoveToNextChar)
         self.step_button.clicked.connect(self.step)
         self.layout().addWidget(self.step_button, 1, 1)
+        close_button = QtWidgets.QPushButton('close')
+        close_button.setShortcut(QtGui.QKeySequence.StandardKey.Close)
+        close_button.clicked.connect(self.on_stop)
+        self.layout().addWidget(close_button, 1, 3)
+        self.layout().setColumnStretch(2, 1)
         self.display_size = None
         self.last_frame_type = None
 
@@ -285,6 +291,8 @@ class QtDisplay(Transformer, QtWidgets.QWidget):
         self.on_set_config()
         self.display.startup()
 
+    @QtSlot()
+    @catch_all
     def on_stop(self):
         self.display.shutdown()
         self.close()
