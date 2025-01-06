@@ -36,7 +36,7 @@ site.addsitedir(os.path.abspath('..'))
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary',
               'sphinx.ext.viewcode', 'sphinx.ext.intersphinx',
-              'sphinx_rtd_theme']
+              'sphinx_tabs.tabs', 'sphinx_rtd_theme']
 
 autoclass_content = 'class'
 autodoc_member_order = 'bysource'
