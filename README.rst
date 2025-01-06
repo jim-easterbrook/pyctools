@@ -34,7 +34,7 @@ Optional
 * OpenCV_ python bindings for advanced image processing.
 * FFmpeg_ to read and write video files.
 * rawkit_ and/or rawpy_ to read raw image files.
-* PyQt5_ and PyOpenGL_ graphic toolkit used by the Pyctools visual editor and the Qt display components.
+* PyQt_ (or PySide_) and PyOpenGL_ graphic toolkit used by the Pyctools visual editor and the Qt display components.
 * Sphinx_ to build local documentation.
 
 Installation
@@ -47,7 +47,7 @@ Licence
 
 | Pyctools - a picture processing algorithm development kit.
 | https://github.com/jim-easterbrook/pyctools
-| Copyright (C) 2014-23  Pyctools contributors
+| Copyright (C) 2014-25  Pyctools contributors
 
 Pyctools is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as
@@ -71,7 +71,8 @@ along with Pyctools.  If not, see https://www.gnu.org/licenses/.
 .. _pyctools-demo: https://github.com/jim-easterbrook/pyctools-demo
 .. _pyctools-pal: https://github.com/jim-easterbrook/pyctools-pal
 .. _PyOpenGL: https://pyopengl.sourceforge.net/
-.. _PyQt5: https://riverbankcomputing.com/software/pyqt/intro
+.. _PyQt: https://riverbankcomputing.com/software/pyqt/intro
+.. _PySide: https://wiki.qt.io/Qt_for_Python
 .. _Python: https://www.python.org/
 .. _python-exiv2: https://pypi.org/project/exiv2/
 .. _Python Imaging Library:
