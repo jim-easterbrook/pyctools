@@ -111,6 +111,11 @@ class QtEventLoop(QtCore.QObject):
     def __init__(self, owner, **kwds):
         super(QtEventLoop, self).__init__(**kwds)
         self._owner = owner
+        if isinstance(self._owner, QtCore.QObject):
+            self.setParent(self._owner)
+        else:
+            logger.warning('QtEventLoop used with non-Qt component %s',
+                           self._owner.__class__.__name__)
         self._running = False
         # use Qt intra-thread signal-slot
         self._incoming.connect(
