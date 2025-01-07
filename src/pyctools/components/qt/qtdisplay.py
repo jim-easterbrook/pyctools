@@ -31,9 +31,8 @@ else:
 
 from pyctools.core.config import ConfigBool, ConfigInt, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import (
-    catch_all, LowEventPriority, qt_version_info, qt_package, QtCore,
-    QtEventLoop, QtGui, QtSlot, QtWidgets)
+from pyctools.core.qt import (catch_all, qt_version_info, qt_package, QtCore,
+                              QtEventLoop, QtGui, QtSlot, QtWidgets)
 
 if qt_package == 'PyQt6':
     from PyQt6.QtOpenGLWidgets import QOpenGLWidget
