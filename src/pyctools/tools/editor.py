@@ -48,6 +48,7 @@ __docformat__ = 'restructuredtext en'
 
 import argparse
 from collections import defaultdict
+import gc
 import importlib
 import inspect
 import logging
@@ -1056,6 +1057,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
         for child in self.matching_items(ComponentIcon):
             name, obj = child.regenerate()
             components[name] = obj
+        gc.collect()
         self.runnable = RunnableNetwork(
             linkages=self.get_linkages(), **components)
         self.runnable.start()
