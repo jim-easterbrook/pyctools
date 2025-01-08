@@ -19,12 +19,12 @@
 __all__ = ['ComponentRunner', 'QtEventLoop', 'QtThreadEventLoop']
 __docformat__ = 'restructuredtext en'
 
-from collections import deque, namedtuple
-import enum
+from collections import namedtuple
 from functools import wraps
 import importlib.util
 import logging
 import os
+import signal
 import sys
 import time
 
@@ -45,17 +45,21 @@ else:
 
 if qt_package == 'PyQt5':
     from PyQt5 import QtCore, QtGui, QtWidgets
+    from PyQt5.QtCore import pyqtSignal as QtSignal
     from PyQt5.QtCore import pyqtSlot as QtSlot
 elif qt_package == 'PyQt6':
     from PyQt6 import QtCore, QtGui, QtWidgets
+    from PyQt6.QtCore import pyqtSignal as QtSignal
     from PyQt6.QtCore import pyqtSlot as QtSlot
 elif qt_package == 'PySide2':
     from PySide2 import QtCore, QtGui, QtWidgets
     from PySide2 import __version__ as pkg_version
+    from PySide2.QtCore import Signal as QtSignal
     from PySide2.QtCore import Slot as QtSlot
 elif qt_package == 'PySide6':
     from PySide6 import QtCore, QtGui, QtWidgets
     from PySide6 import __version__ as pkg_version
+    from PySide6.QtCore import Signal as QtSignal
     from PySide6.QtCore import Slot as QtSlot
 else:
     raise ImportError(f'Unrecognised qt_package value "{qt_package}"')
@@ -70,12 +74,6 @@ else:
     qt_version_info = namedtuple(
         'qt_version_info', ('major', 'minor', 'micro'))._make(
             map(int, QtCore.QT_VERSION_STR.split('.')[:3]))
-
-
-if isinstance(QtCore.Qt.EventPriority.LowEventPriority, enum.Enum):
-    LowEventPriority = QtCore.Qt.EventPriority.LowEventPriority.value
-else:
-    LowEventPriority = int(QtCore.Qt.EventPriority.LowEventPriority)
 
 
 # exec gets renamed to exec_ in PySide2
@@ -96,9 +94,6 @@ def catch_all(func):
     return wrapper
 
 
-# create unique event type
-_queue_event = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
-
 class QtEventLoop(QtCore.QObject):
     """Event loop using the Qt "main thread" (or "GUI thread").
 
@@ -111,34 +106,35 @@ class QtEventLoop(QtCore.QObject):
     :py:class:`~.base.ThreadEventLoop` documentation.
 
     """
+    _incoming = QtSignal(object)
+
     def __init__(self, owner, **kwds):
         super(QtEventLoop, self).__init__(**kwds)
         self._owner = owner
+        if isinstance(self._owner, QtCore.QObject):
+            self.setParent(self._owner)
+        else:
+            logger.warning('QtEventLoop used with non-Qt component %s',
+                           self._owner.__class__.__name__)
         self._running = False
-        self._incoming = deque()
-        # put start_event command on queue for later
-        self._incoming.append(self._owner.start_event)
+        # use Qt intra-thread signal-slot
+        self._incoming.connect(
+            self._do_command, QtCore.Qt.ConnectionType.QueuedConnection)
 
-    def event(self, event):
-        if event.type() != _queue_event:
-            return super(QtEventLoop, self).event(event)
-        event.accept()
-        try:
-            while self._incoming:
-                command = self._incoming.popleft()
-                if command is None:
-                    raise StopIteration()
+    @QtSlot(object)
+    def _do_command(self, command):
+        if command is not None:
+            try:
                 command()
-            return True
-        except StopIteration:
-            pass
-        except Exception as ex:
-            logger.exception(ex)
+                return
+            except StopIteration:
+                pass
+            except Exception as ex:
+                logger.exception(ex)
         if self._running:
             self._owner.stop_event()
             self._running = False
             self._quit()
-        return True
 
     def queue_command(self, command):
         """Put a command on the queue to be called in the component's
@@ -149,11 +145,8 @@ class QtEventLoop(QtCore.QObject):
 
         """
         # put command on queue for later
-        self._incoming.append(command)
         if self._running:
-            # send event to process queue
-            QtCore.QCoreApplication.postEvent(
-                self, QtCore.QEvent(_queue_event), LowEventPriority)
+            self._incoming.emit(command)
 
     def _quit(self):
         pass
@@ -174,9 +167,7 @@ class QtEventLoop(QtCore.QObject):
             raise RuntimeError('Component {} is already running'.format(
                 self._owner.__class__.__name__))
         self._running = True
-        # start_event is already in queue, send signal to process it
-        QtCore.QCoreApplication.postEvent(
-            self, QtCore.QEvent(_queue_event), LowEventPriority)
+        self.queue_command(self._owner.start_event)
 
     def join(self, timeout=3600):
         """Wait until the event loop terminates or ``timeout`` is
@@ -189,14 +180,14 @@ class QtEventLoop(QtCore.QObject):
         :keyword float timeout: timeout in seconds.
 
         """
-        start = time.time()
+        stop = time.time() + timeout
         while self._running:
             now = time.time()
-            maxtime = timeout + start - now
-            if maxtime <= 0:
+            if now >= stop:
                 return
             QtCore.QCoreApplication.processEvents(
-                QtCore.QEventLoop.AllEvents, int(maxtime * 1000))
+                QtCore.QEventLoop.ProcessEventsFlag.AllEvents,
+                int((stop - now) * 1000))
 
     def running(self):
         """Is the event loop running.
@@ -269,6 +260,7 @@ def get_app():
     sys.argv.append('xxx')
     app = QtWidgets.QApplication(sys.argv)
     del sys.argv[-1]
+    app.lastWindowClosed.connect(app.quit)
     return app
 
 
@@ -283,4 +275,8 @@ class ComponentRunner(ComponentRunnerBase):
     def do_loop(self, comp):
         logger.info(
             f'Using {qt_package} v{pkg_version}, Qt v{qt_version}')
+        signal.signal(signal.SIGINT, self.sigint_handler)
         execute(self.app)
+
+    def sigint_handler(self, *args):
+        self.app.quit()

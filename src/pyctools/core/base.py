@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-24  Pyctools contributors
+#  Copyright (C) 2014-25  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -292,8 +292,12 @@ class Component(ConfigMixin):
         :param Frame frame: the frame to send.
 
         """
+        active = []
         for input_method in self._component_connections[output_name]:
-            input_method(frame)
+            if input_method():
+                input_method()(frame)
+                active.append(input_method)
+        self._component_connections[output_name] = active
 
     def connect_to(self, output_name, input_method):
         """Connect an output to any callable object.
@@ -311,7 +315,8 @@ class Component(ConfigMixin):
         self.logger.debug('connect_to "%s"', output_name)
         if self.running():
             raise RuntimeError('Cannot connect running component')
-        self._component_connections[output_name].append(input_method)
+        self._component_connections[output_name].append(
+            weakref.WeakMethod(input_method))
         self.on_connect(output_name)
 
     def bind(self, source, dest, destmeth):

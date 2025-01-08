@@ -31,8 +31,8 @@ else:
 
 from pyctools.core.config import ConfigBool, ConfigInt, ConfigStr
 from pyctools.core.base import Transformer
-from pyctools.core.qt import (LowEventPriority, qt_version_info, qt_package,
-                              QtCore, QtEventLoop, QtGui, QtSlot, QtWidgets)
+from pyctools.core.qt import (catch_all, qt_version_info, qt_package, QtCore,
+                              QtEventLoop, QtGui, QtSlot, QtWidgets)
 
 if qt_package == 'PyQt6':
     from PyQt6.QtOpenGLWidgets import QOpenGLWidget
@@ -167,6 +167,7 @@ class GLDisplay(QOpenGLWidget):
             GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, xlen, ylen,
                             0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, image)
         else:
+            GL.glDisable(GL.GL_TEXTURE_2D)
             return
         GL.glBegin(GL.GL_QUADS)
         GL.glTexCoord2i(0, 0)
@@ -179,12 +180,6 @@ class GLDisplay(QOpenGLWidget):
         GL.glVertex2i(1, 1)
         GL.glEnd()
         GL.glDisable(GL.GL_TEXTURE_2D)
-
-    def startup(self):
-        pass
-
-    def shutdown(self):
-        pass
 
     @QtSlot()
     def frame_swapped(self):
@@ -252,6 +247,11 @@ class QtDisplay(Transformer, QtWidgets.QWidget):
             QtGui.QKeySequence.StandardKey.MoveToNextChar)
         self.step_button.clicked.connect(self.step)
         self.layout().addWidget(self.step_button, 1, 1)
+        close_button = QtWidgets.QPushButton('close')
+        close_button.setShortcut(QtGui.QKeySequence.StandardKey.Close)
+        close_button.clicked.connect(self.close)
+        self.layout().addWidget(close_button, 1, 3)
+        self.layout().setColumnStretch(2, 1)
         self.display_size = None
         self.last_frame_type = None
 
@@ -278,15 +278,13 @@ class QtDisplay(Transformer, QtWidgets.QWidget):
         self.display.step()
 
     def closeEvent(self, event):
-        event.accept()
         self.stop()
+        return super(QtDisplay, self).closeEvent(event)
 
     def on_start(self):
         self.on_set_config()
-        self.display.startup()
 
     def on_stop(self):
-        self.display.shutdown()
         self.close()
 
     def on_set_config(self):

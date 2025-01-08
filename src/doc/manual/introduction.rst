@@ -1,6 +1,6 @@
 .. Pyctools - a picture processing algorithm development kit.
    http://github.com/jim-easterbrook/pyctools
-   Copyright (C) 2014-23  Pyctools contributors
+   Copyright (C) 2014-25  Pyctools contributors
 
    This program is free software: you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -31,7 +31,7 @@ A lot of my work at `BBC R&D <http://www.bbc.co.uk/rd>`_ involved experimenting 
 My colleagues and I developed a set of programs we called "pictools".
 These implemented simple primitives such as scaling an image, but could be connected together to do more complex tasks.
 They used shell pipelines to pass picture data between them, giving some of the benefits of parallel processing.
-Despite this they were still quite slow to run, with overnight or weekend processing still required to produce a useful amount of video from a complex system such as the `Transform PAL Decoder <http://www.jim-easterbrook.me.uk/pal/>`_.
+Despite this they were still quite slow to run (on 1990s computers), with overnight or weekend processing still required to produce a useful amount of video from a complex system such as the `Transform PAL Decoder <http://www.jim-easterbrook.me.uk/pal/>`_.
 
 In a more recent `project at BBC R&D <http://www.bbc.co.uk/rd/publications/whitepaper191>`_ I implemented some real-time video processing in a similarly flexible manner.
 This used `Kamaelia <http://www.kamaelia.org/>`_ to connect simple components together, with the advantage of dynamic connections, e.g. to monitor an existing recording process.
@@ -70,14 +70,14 @@ Using sidecar files means we won't need to restrict the video or still image fil
 Extensibility
 ^^^^^^^^^^^^^
 
-Python provides "namespace packages" that allow a package to be split across several files.
-This feature appears to be little known (and not very well documented) but the key point is that you can have two or more software packages (e.g. "pyctools.core" and "pyctools.pal") installed in different places (e.g. system-wide and local/personal "site-packages" directories) that both provide parts of a single package, "pyctools".
-For example, you can write code like this::
+Pyctools uses Python `namespace packages`_ to allow multiple "distribution packages" to install modules in the Pyctools package.
+For example, the ``pyctools-core`` package can be extended with the ``pyctools-pal`` package.
+Both provide pyctools components that a script can import without knowing (or caring) which package provided them::
 
   from pyctools.components.io.videofilereader import VideoFileReader
   from pyctools.components.pal.common import To4Fsc
 
-and not be aware that those two components are imported from totally separate sources.
-
 This makes it easy to mix Pyctools core components with locally written ones specific to your own application.
 Companies can develop their own proprietary Pyctools for internal use or can publish them for wider use without having to make them part of a larger open source project.
+
+.. _namespace packages: https://peps.python.org/pep-0420/
