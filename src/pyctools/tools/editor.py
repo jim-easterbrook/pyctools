@@ -987,7 +987,10 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             for link in self.matching_items(ComponentLink):
                 if link.source == child or link.dest == child:
                     self.removeItem(link)
-        self.removeItem(child)
+            child.obj = None
+        if child.scene():
+            self.removeItem(child)
+        gc.collect()
 
     def update_scene_rect(self, no_shrink=False):
         rect = self.itemsBoundingRect()
@@ -1089,7 +1092,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             logger.error('Script not recognised')
             return
         for child in self.items():
-            self.removeItem(child)
+            self.delete_child(child)
         if ComponentNetwork:
             logger.info('New style network')
             network = ComponentNetwork()
