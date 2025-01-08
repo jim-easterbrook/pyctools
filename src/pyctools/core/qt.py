@@ -180,14 +180,14 @@ class QtEventLoop(QtCore.QObject):
         :keyword float timeout: timeout in seconds.
 
         """
-        start = time.time()
+        stop = time.time() + timeout
         while self._running:
             now = time.time()
-            maxtime = timeout + start - now
-            if maxtime <= 0:
+            if now >= stop:
                 return
             QtCore.QCoreApplication.processEvents(
-                QtCore.QEventLoop.AllEvents, int(maxtime * 1000))
+                QtCore.QEventLoop.ProcessEventsFlag.AllEvents,
+                int((stop - now) * 1000))
 
     def running(self):
         """Is the event loop running.
