@@ -1151,7 +1151,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             name = child.name
             obj = child.obj
             mod = obj.__class__.__module__
-            user_config[name] = obj.get_config().to_dict(ignore_default=True)
+            user_config[name] = obj.get_config().to_dict()
             components[name] = '{}.{}'.format(mod, obj.__class__.__name__)
             positions[name] = (child.pos().x(), child.pos().y())
             if isinstance(child, CompoundIcon):

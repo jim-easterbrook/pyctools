@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-23  Pyctools contributors
+#  Copyright (C) 2014-25  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -379,19 +379,15 @@ class ConfigParent(object):
         for key in self:
             yield key
 
-    def to_dict(self, ignore_default=True):
+    def to_dict(self):
         result = {}
         for key, value in self._value.items():
             if isinstance(value, ConfigParent):
-                child_value = value.to_dict(ignore_default=ignore_default)
+                child_value = value.to_dict()
                 if child_value:
                     result[key] = child_value
-            elif key in self.default:
-                if value != self.default[key] or not ignore_default:
-                    result[key] = value
             else:
-                if value != value.default or not ignore_default:
-                    result[key] = value
+                result[key] = value
         return result
 
     def audit_string(self):
