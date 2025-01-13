@@ -23,7 +23,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyctools.core"
-version = "0.7.1"
+version = "0.8.0"
 description = "Picture processing algorithm development kit"
 readme = "README.rst"
 license = {text = "GNU GPL"}

@@ -395,7 +395,10 @@ class Component(ConfigMixin):
         values.
 
         """
-        self._event_loop.queue_command(self.new_config_event)
+        if self._event_loop.running():
+            self._event_loop.queue_command(self.new_config_event)
+        else:
+            self.new_config_event()
 
     def new_config_event(self):
         """Called by the event loop when new config is available.
