@@ -92,11 +92,9 @@ class ConfigLeafNode(object):
     type but has some extra attributes and methods.
 
     """
-    def __new__(cls, value=None, default=None, **kwds):
+    def __new__(cls, value=None, **kwds):
         self = super(ConfigLeafNode, cls).__new__(cls, value)
-        if default is None:
-            default = value
-        self.default = default
+        self.default = value
         for key, value in kwds.items():
             setattr(self, key, value)
         return self
@@ -124,9 +122,7 @@ class ConfigLeafNode(object):
 class ConfigInt(ConfigLeafNode, int):
     """Integer configuration node.
 
-    :keyword int value: Initial value of the node.
-
-    :keyword int default: Default value of the node.
+    :keyword int value: Initial (default) value of the node.
 
     :keyword int min_value: Minimum permissible value.
 
@@ -136,15 +132,15 @@ class ConfigInt(ConfigLeafNode, int):
         incremented beyond max_value or *vice versa*.
 
     """
-    def __new__(cls, value=0, default=None, min_value=None, max_value=None,
-                wrapping=False):
+    def __new__(cls, value=0, min_value=None, max_value=None,
+                wrapping=False, **kwds):
         if min_value is not None and value < min_value:
             value = min_value
         if max_value is not None and value > max_value:
             value = max_value
         return super(ConfigInt, cls).__new__(
-            cls, value, default, min_value=min_value, max_value=max_value,
-            wrapping=wrapping)
+            cls, value=value, min_value=min_value, max_value=max_value,
+            wrapping=wrapping, **kwds)
 
     @staticmethod
     def _parser_kw():
@@ -154,19 +150,17 @@ class ConfigInt(ConfigLeafNode, int):
 class ConfigBool(ConfigInt):
     """Boolean configuration node.
 
-    :keyword object value: Initial value of the node.
-
-    :keyword bool default: Default value of the node.
+    :keyword object value: Initial (default) value of the node.
 
     """
-    def __new__(cls, value=False, default=None, **kwds):
+    def __new__(cls, value=False, **kwds):
         if value == 'on':
             value = True
         elif value == 'off':
             value = False
         else:
             value = bool(value)
-        return super(ConfigBool, cls).__new__(cls, value, default)
+        return super(ConfigBool, cls).__new__(cls, value=value, **kwds)
 
     def __repr__(self):
         return str(bool(self))
@@ -182,9 +176,7 @@ class ConfigBool(ConfigInt):
 class ConfigFloat(ConfigLeafNode, float):
     """Float configuration node.
 
-    :keyword float value: Initial value of the node.
-
-    :keyword float default: Default value of the node.
+    :keyword float value: Initial (default) value of the node.
 
     :keyword float min_value: Minimum permissible value.
 
@@ -197,15 +189,15 @@ class ConfigFloat(ConfigLeafNode, float):
         incremented beyond max_value or *vice versa*.
 
     """
-    def __new__(cls, value=0.0, default=None, min_value=None, max_value=None,
-                decimals=8, wrapping=False):
+    def __new__(cls, value=0.0, min_value=None, max_value=None,
+                decimals=8, wrapping=False, **kwds):
         if min_value is not None and value < min_value:
             value = min_value
         if max_value is not None and value > max_value:
             value = max_value
         return super(ConfigFloat, cls).__new__(
-            cls, value, default, min_value=min_value, max_value=max_value,
-            decimals=decimals, wrapping=wrapping)
+            cls, value=value, min_value=min_value, max_value=max_value,
+            decimals=decimals, wrapping=wrapping, **kwds)
 
     @staticmethod
     def _parser_kw():
@@ -215,14 +207,12 @@ class ConfigFloat(ConfigLeafNode, float):
 class ConfigStr(ConfigLeafNode, str):
     """String configuration node.
 
-    :keyword str value: Initial value of the node.
-
-    :keyword str default: Default value of the node.
+    :keyword str value: Initial (default) value of the node.
 
     """
 
-    def __new__(cls, value='', default=None, **kwds):
-        return super(ConfigStr, cls).__new__(cls, value, default, **kwds)
+    def __new__(cls, value='', **kwds):
+        return super(ConfigStr, cls).__new__(cls, value=value, **kwds)
 
     @staticmethod
     def _parser_kw():
@@ -232,14 +222,12 @@ class ConfigStr(ConfigLeafNode, str):
 class ConfigPath(ConfigStr):
     """File pathname configuration node.
 
-    :keyword str value: Initial value of the node.
-
-    :keyword str default: Default value of the node.
+    :keyword str value: Initial (default) value of the node.
 
     :keyword bool exists: If ``True``, value must be an existing file.
 
     """
-    def __new__(cls, value='', default=None, exists=True):
+    def __new__(cls, value='', exists=True, **kwds):
         if value:
             value = os.path.abspath(value)
             if exists:
@@ -249,7 +237,8 @@ class ConfigPath(ConfigStr):
                 directory = os.path.dirname(value)
                 if not os.path.isdir(directory):
                     logger.warning('directory "%s" does not exist', directory)
-        return super(ConfigPath, cls).__new__(cls, value, default, exists=exists)
+        return super(ConfigPath, cls).__new__(
+            cls, value=value, exists=exists, **kwds)
 
     @staticmethod
     def _parser_kw():
@@ -261,9 +250,7 @@ class ConfigEnum(ConfigStr):
 
     The value can be one of a list of choices.
 
-    :keyword str value: Initial value of the node.
-
-    :keyword str default: Default value of the node.
+    :keyword str value: Initial (default) value of the node.
 
     :keyword list choices: a list of strings that are the possible
         values of the config item. If value is unset the first in the
@@ -273,7 +260,7 @@ class ConfigEnum(ConfigStr):
         setting new values.
 
     """
-    def __new__(cls, value=None, default=None, choices=[], extendable=False):
+    def __new__(cls, value=None, choices=[], extendable=False, **kwds):
         choices = list(choices)
         if choices and not value:
             value = choices[0]
@@ -283,7 +270,7 @@ class ConfigEnum(ConfigStr):
             else:
                 raise ValueError(str(value))
         return super(ConfigEnum, cls).__new__(
-            cls, value, default, choices=choices, extendable=extendable)
+            cls, value=value, choices=choices, extendable=extendable, **kwds)
 
     def _parser_kw(self):
         result = {'metavar' : 'str'}
@@ -450,16 +437,6 @@ class ConfigParent(object):
         """
         for key, value in vars(args).items():
             self[key] = value
-
-    def set_default(self, config={}, **kwds):
-        default = {}
-        default.update(config, **kwds)
-        self.update(default)
-        for key, value in self._value.items():
-            if isinstance(value, ConfigParent):
-                value.set_default()
-            else:
-                self.default[key] = value
 
     def update(self, value):
         for key, value in value.items():

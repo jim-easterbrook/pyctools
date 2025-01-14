@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-24  Pyctools contributors
+#  Copyright (C) 2014-25  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -215,7 +215,7 @@ class Compound(RunnableNetwork):
         self.config = ConfigParent(config_map=config_map)
         for name, child in self.children.items():
             self.config[name] = child.get_config()
-        self.config.set_default(config=config)
+        self.config.update(config)
 
     def connect_to(self, output_name, input_method):
         """Connect an output to any callable object.
