@@ -65,13 +65,14 @@ are applied together, some time after calling
 
    ConfigMixin
    ConfigParent
+   ConfigLeafNode
+   BoundedConfigLeafNode
    ConfigInt
    ConfigFloat
    ConfigBool
    ConfigStr
    ConfigPath
    ConfigEnum
-   ConfigLeafNode
 
 """
 
@@ -91,8 +92,14 @@ class ConfigLeafNode(object):
     or :py:class:`str` to define a class that stores data of the Python
     type but has some extra attributes and methods.
 
+    :param value: Initial (default) value of the node.
+
+    :param kwds: Any other node attributes.
+
     """
-    def __new__(cls, value=None, **kwds):
+    has_default = True  #: The node has a meaningful default value.
+
+    def __new__(cls, value, **kwds):
         self = super(ConfigLeafNode, cls).__new__(cls, value)
         self.default = value
         for key, value in kwds.items():
@@ -119,53 +126,70 @@ class ConfigLeafNode(object):
         return self.update(self)
 
 
-class ConfigInt(ConfigLeafNode, int):
-    """Integer configuration node.
+class BoundedConfigLeafNode(ConfigLeafNode):
+    """Numerical configuration node with min and/or max bounds.
 
-    :keyword int value: Initial (default) value of the node.
+    :param value: Initial (default) value of the node.
+    :type value: int or float
 
-    :keyword int min_value: Minimum permissible value.
+    :param min_value: Minimum permissible value.
+    :type min_value: int or float
 
-    :keyword int max_value: Maximum permissible value.
+    :param max_value: Maximum permissible value.
+    :type max_value: int or float
 
-    :keyword bool wrapping: Should the value change to min_value when
-        incremented beyond max_value or *vice versa*.
-
-    :param bool has_default: The node has a meaningful default value.
+    :param kwds: Any other node attributes. See base class for more
+        details.
 
     """
-    def __new__(cls, value=0, min_value=None, max_value=None,
-                wrapping=False, has_default=True, **kwds):
-        if min_value is not None and value < min_value:
-            value = min_value
-        if max_value is not None and value > max_value:
-            value = max_value
-        return super(ConfigInt, cls).__new__(
-            cls, value=value, min_value=min_value, max_value=max_value,
-            wrapping=wrapping, has_default=has_default, **kwds)
+    #: The value changes to min_value when incremented beyond max_value
+    # or *vice versa*.
+    wrapping = False
+
+    def __new__(cls, value, min_value=None, max_value=None, **kwds):
+        if min_value is not None:
+            value = max(value, min_value)
+        if max_value is not None:
+            value = min(value, max_value)
+        return super(BoundedConfigLeafNode, cls).__new__(
+            cls, value, min_value=min_value, max_value=max_value, **kwds)
+
+
+class ConfigInt(BoundedConfigLeafNode, int):
+    """Integer configuration node.
+
+    :param int value: Initial (default) value of the node.
+
+    :param kwds: Any other node attributes. See base class for more
+        details.
+
+    """
+    def __new__(cls, value=0, **kwds):
+        return super(ConfigInt, cls).__new__(cls, value, **kwds)
 
     @staticmethod
     def _parser_kw():
         return {'type' : int, 'metavar' : 'n'}
 
 
-class ConfigBool(ConfigInt):
+class ConfigBool(ConfigLeafNode, int):
     """Boolean configuration node.
 
-    :keyword object value: Initial (default) value of the node.
+    :param value: Initial (default) value of the node.
+    :type value: :py:obj:`object` or ``on`` or ``off``
 
-    :param bool has_default: The node has a meaningful default value.
+    :param kwds: Any other node attributes. See base class for more
+        details.
 
     """
-    def __new__(cls, value=False, has_default=True, **kwds):
+    def __new__(cls, value=False, **kwds):
         if value == 'on':
             value = True
         elif value == 'off':
             value = False
         else:
             value = bool(value)
-        return super(ConfigBool, cls).__new__(
-            cls, value=value, has_default=has_default, **kwds)
+        return super(ConfigBool, cls).__new__(cls, value, **kwds)
 
     def __repr__(self):
         return str(bool(self))
@@ -178,34 +202,20 @@ class ConfigBool(ConfigInt):
         return {'type' : bool, 'metavar' : 'b'}
 
 
-class ConfigFloat(ConfigLeafNode, float):
+class ConfigFloat(BoundedConfigLeafNode, float):
     """Float configuration node.
 
-    :keyword float value: Initial (default) value of the node.
+    :param float value: Initial (default) value of the node.
 
-    :keyword float min_value: Minimum permissible value.
-
-    :keyword float max_value: Maximum permissible value.
-
-    :keyword int decimals: How many decimal places to use when
-        displaying the value.
-
-    :keyword bool wrapping: Should the value change to min_value when
-        incremented beyond max_value or *vice versa*.
-
-    :param bool has_default: The node has a meaningful default value.
+    :param kwds: Any other node attributes. See base class for more
+        details.
 
     """
-    def __new__(cls, value=0.0, min_value=None, max_value=None,
-                decimals=8, wrapping=False, has_default=True, **kwds):
-        if min_value is not None and value < min_value:
-            value = min_value
-        if max_value is not None and value > max_value:
-            value = max_value
-        return super(ConfigFloat, cls).__new__(
-            cls, value=value, min_value=min_value, max_value=max_value,
-            decimals=decimals, wrapping=wrapping, has_default=has_default,
-            **kwds)
+    #: How many decimal places to use when displaying the value.
+    decimals = 8
+
+    def __new__(cls, value=0.0, **kwds):
+        return super(ConfigFloat, cls).__new__(cls, value, **kwds)
 
     @staticmethod
     def _parser_kw():
@@ -215,15 +225,15 @@ class ConfigFloat(ConfigLeafNode, float):
 class ConfigStr(ConfigLeafNode, str):
     """String configuration node.
 
-    :keyword str value: Initial (default) value of the node.
+    :param str value: Initial (default) value of the node.
 
-    :param bool has_default: The node has a meaningful default value.
+    :param kwds: Any other node attributes. See base class for more
+        details.
 
     """
 
-    def __new__(cls, value='', has_default=True, **kwds):
-        return super(ConfigStr, cls).__new__(
-            cls, value=value, has_default=has_default, **kwds)
+    def __new__(cls, value='', **kwds):
+        return super(ConfigStr, cls).__new__(cls, value, **kwds)
 
     @staticmethod
     def _parser_kw():
@@ -233,14 +243,15 @@ class ConfigStr(ConfigLeafNode, str):
 class ConfigPath(ConfigStr):
     """File pathname configuration node.
 
-    :keyword str value: Initial (default) value of the node.
+    :param str value: Initial (default) value of the node.
 
-    :keyword bool exists: If ``True``, value must be an existing file.
+    :param bool exists: If ``True``, value must be an existing file.
 
-    :param bool has_default: The node has a meaningful default value.
+    :param kwds: Any other node attributes. See base class for more
+        details.
 
     """
-    def __new__(cls, value='', exists=True, has_default=True, **kwds):
+    def __new__(cls, value='', exists=True, **kwds):
         if value:
             value = os.path.abspath(value)
             if exists:
@@ -250,8 +261,7 @@ class ConfigPath(ConfigStr):
                 directory = os.path.dirname(value)
                 if not os.path.isdir(directory):
                     logger.warning('directory "%s" does not exist', directory)
-        return super(ConfigPath, cls).__new__(
-            cls, value=value, exists=exists, has_default=has_default, **kwds)
+        return super(ConfigPath, cls).__new__(cls, value, exists=exists, **kwds)
 
     @staticmethod
     def _parser_kw():
@@ -263,31 +273,30 @@ class ConfigEnum(ConfigStr):
 
     The value can be one of a list of choices.
 
-    :keyword str value: Initial (default) value of the node.
+    :param str value: Initial (default) value of the node.
 
-    :keyword list choices: a list of strings that are the possible
+    :param list choices: a list of strings that are the possible
         values of the config item. If value is unset the first in the
         list is used.
 
-    :keyword bool extendable: can the choices list be extended by
-        setting new values.
-
-    :param bool has_default: The node has a meaningful default value.
+    :param kwds: Any other node attributes. See base class for more
+        details.
 
     """
-    def __new__(cls, value=None, choices=[], extendable=False,
-                has_default=True, **kwds):
+    #: The choices list be extended by setting new values.
+    extendable = False
+
+    def __new__(cls, value=None, choices=[], **kwds):
         choices = list(choices)
-        if choices and not value:
+        if choices and value is None:
             value = choices[0]
-        elif value and value not in choices:
+        elif value is not None and value not in choices:
             if extendable:
                 choices.append(value)
             else:
                 raise ValueError(str(value))
         return super(ConfigEnum, cls).__new__(
-            cls, value=value, choices=choices, extendable=extendable,
-            has_default=has_default, **kwds)
+            cls, value, choices=choices, **kwds)
 
     def _parser_kw(self):
         result = {'metavar' : 'str'}
