@@ -131,16 +131,18 @@ class ConfigInt(ConfigLeafNode, int):
     :keyword bool wrapping: Should the value change to min_value when
         incremented beyond max_value or *vice versa*.
 
+    :param bool has_default: The node has a meaningful default value.
+
     """
     def __new__(cls, value=0, min_value=None, max_value=None,
-                wrapping=False, **kwds):
+                wrapping=False, has_default=True, **kwds):
         if min_value is not None and value < min_value:
             value = min_value
         if max_value is not None and value > max_value:
             value = max_value
         return super(ConfigInt, cls).__new__(
             cls, value=value, min_value=min_value, max_value=max_value,
-            wrapping=wrapping, **kwds)
+            wrapping=wrapping, has_default=has_default, **kwds)
 
     @staticmethod
     def _parser_kw():
@@ -152,15 +154,18 @@ class ConfigBool(ConfigInt):
 
     :keyword object value: Initial (default) value of the node.
 
+    :param bool has_default: The node has a meaningful default value.
+
     """
-    def __new__(cls, value=False, **kwds):
+    def __new__(cls, value=False, has_default=True, **kwds):
         if value == 'on':
             value = True
         elif value == 'off':
             value = False
         else:
             value = bool(value)
-        return super(ConfigBool, cls).__new__(cls, value=value, **kwds)
+        return super(ConfigBool, cls).__new__(
+            cls, value=value, has_default=has_default, **kwds)
 
     def __repr__(self):
         return str(bool(self))
@@ -188,16 +193,19 @@ class ConfigFloat(ConfigLeafNode, float):
     :keyword bool wrapping: Should the value change to min_value when
         incremented beyond max_value or *vice versa*.
 
+    :param bool has_default: The node has a meaningful default value.
+
     """
     def __new__(cls, value=0.0, min_value=None, max_value=None,
-                decimals=8, wrapping=False, **kwds):
+                decimals=8, wrapping=False, has_default=True, **kwds):
         if min_value is not None and value < min_value:
             value = min_value
         if max_value is not None and value > max_value:
             value = max_value
         return super(ConfigFloat, cls).__new__(
             cls, value=value, min_value=min_value, max_value=max_value,
-            decimals=decimals, wrapping=wrapping, **kwds)
+            decimals=decimals, wrapping=wrapping, has_default=has_default,
+            **kwds)
 
     @staticmethod
     def _parser_kw():
@@ -209,10 +217,13 @@ class ConfigStr(ConfigLeafNode, str):
 
     :keyword str value: Initial (default) value of the node.
 
+    :param bool has_default: The node has a meaningful default value.
+
     """
 
-    def __new__(cls, value='', **kwds):
-        return super(ConfigStr, cls).__new__(cls, value=value, **kwds)
+    def __new__(cls, value='', has_default=True, **kwds):
+        return super(ConfigStr, cls).__new__(
+            cls, value=value, has_default=has_default, **kwds)
 
     @staticmethod
     def _parser_kw():
@@ -226,8 +237,10 @@ class ConfigPath(ConfigStr):
 
     :keyword bool exists: If ``True``, value must be an existing file.
 
+    :param bool has_default: The node has a meaningful default value.
+
     """
-    def __new__(cls, value='', exists=True, **kwds):
+    def __new__(cls, value='', exists=True, has_default=True, **kwds):
         if value:
             value = os.path.abspath(value)
             if exists:
@@ -238,7 +251,7 @@ class ConfigPath(ConfigStr):
                 if not os.path.isdir(directory):
                     logger.warning('directory "%s" does not exist', directory)
         return super(ConfigPath, cls).__new__(
-            cls, value=value, exists=exists, **kwds)
+            cls, value=value, exists=exists, has_default=has_default, **kwds)
 
     @staticmethod
     def _parser_kw():
@@ -259,8 +272,11 @@ class ConfigEnum(ConfigStr):
     :keyword bool extendable: can the choices list be extended by
         setting new values.
 
+    :param bool has_default: The node has a meaningful default value.
+
     """
-    def __new__(cls, value=None, choices=[], extendable=False, **kwds):
+    def __new__(cls, value=None, choices=[], extendable=False,
+                has_default=True, **kwds):
         choices = list(choices)
         if choices and not value:
             value = choices[0]
@@ -270,7 +286,8 @@ class ConfigEnum(ConfigStr):
             else:
                 raise ValueError(str(value))
         return super(ConfigEnum, cls).__new__(
-            cls, value=value, choices=choices, extendable=extendable, **kwds)
+            cls, value=value, choices=choices, extendable=extendable,
+            has_default=has_default, **kwds)
 
     def _parser_kw(self):
         result = {'metavar' : 'str'}
@@ -293,13 +310,14 @@ class ConfigParent(object):
     one config value.
 
     """
-    _attributes = ('_config_map', '_value', 'default')
+    _attributes = ('_config_map', '_value', 'default', 'has_default')
 
     def __init__(self, config_map={}):
         super(ConfigParent, self).__init__()
         self._config_map = config_map
         self._value = {}
         self.default = {}
+        self.has_default = True
 
     def __repr__(self):
         return repr(self._value)
@@ -390,7 +408,7 @@ class ConfigParent(object):
         result = ''
         details = []
         for key, value in self._value.items():
-            if value == value.default:
+            if value.has_default and value == value.default:
                 continue
             details.append('{}: {!r}'.format(key, value))
             line = ', '.join(details)
@@ -447,7 +465,6 @@ class ConfigParent(object):
         copy = self.__class__(config_map=self._config_map)
         for key, value in self._value.items():
             copy._value[key] = value.copy()
-        copy.default = self.default
         return copy
 
 
