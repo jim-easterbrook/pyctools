@@ -91,13 +91,12 @@ _OUTPUT_MIMETYPE = 'application/x-pyctools-component-output'
 class ConfigPathWidget(QtWidgets.QPushButton):
     def __init__(self, config, **kwds):
         super(ConfigPathWidget, self).__init__(**kwds)
-        self.config = config
-        self.show_value(self.config)
-        self.clicked.connect(self.set_value)
+        self.set_value(self.config)
+        self.clicked.connect(self.new_value)
 
     @QtSlot()
     @catch_all
-    def set_value(self):
+    def new_value(self):
         directory = self.config
         if self.config.exists:
             value = QtWidgets.QFileDialog.getOpenFileName(
@@ -131,15 +130,23 @@ class ConfigPathWidget(QtWidgets.QPushButton):
     def get_value(self):
         return self.value
 
+    def set_value(self, config):
+        self.config = config
+        self.show_value(config)
+        self.setEnabled(config.enabled)
+
 
 class ConfigBoolWidget(QtWidgets.QCheckBox):
     def __init__(self, config, **kwds):
         super(ConfigBoolWidget, self).__init__(**kwds)
-        self.config = config
-        self.setChecked(self.config)
+        self.set_value(config)
 
     def get_value(self):
         return self.isChecked()
+
+    def set_value(self, config):
+        self.setChecked(config)
+        self.setEnabled(config.enabled)
 
 
 class ConfigIntWidget(QtWidgets.QSpinBox):
@@ -155,10 +162,14 @@ class ConfigIntWidget(QtWidgets.QSpinBox):
         else:
             self.setMaximum(self.config.max_value)
         self.setWrapping(config.wrapping)
-        self.setValue(self.config)
+        self.set_value(config)
 
     def get_value(self):
         return self.value()
+
+    def set_value(self, config):
+        self.setValue(self.config)
+        self.setEnabled(self.config.enabled)
 
 
 class ConfigFloatWidget(QtWidgets.QDoubleSpinBox):
@@ -174,19 +185,27 @@ class ConfigFloatWidget(QtWidgets.QDoubleSpinBox):
         else:
             self.setMaximum(config.max_value)
         self.setWrapping(config.wrapping)
-        self.setValue(config)
+        self.set_value(config)
 
     def get_value(self):
         return self.value()
+
+    def set_value(self, config):
+        self.setValue(config)
+        self.setEnabled(config.enabled)
 
 
 class ConfigStrWidget(QtWidgets.QLineEdit):
     def __init__(self, config, **kwds):
         super(ConfigStrWidget, self).__init__(**kwds)
-        self.setText(config)
+        self.set_value(config)
 
     def get_value(self):
         return self.text()
+
+    def set_value(self, config):
+        self.setText(config)
+        self.setEnabled(config.enabled)
 
 
 class ConfigEnumWidget(QtWidgets.QComboBox):
@@ -196,7 +215,7 @@ class ConfigEnumWidget(QtWidgets.QComboBox):
             self.addItem(item)
         if config.extendable:
             self.addItem('<new>')
-        self.setCurrentIndex(self.findText(config))
+        self.set_value(config)
         self.currentIndexChanged.connect(self.new_value)
 
     @QtSlot(int)
@@ -217,6 +236,10 @@ class ConfigEnumWidget(QtWidgets.QComboBox):
 
     def get_value(self):
         return self.currentText()
+
+    def set_value(self, config):
+        self.setCurrentIndex(self.findText(config))
+        self.setEnabled(config.enabled)
 
 
 class ConfigParentWidget(QtWidgets.QWidget):
@@ -241,9 +264,13 @@ class ConfigParentWidget(QtWidgets.QWidget):
 
     def get_value(self):
         result = {}
-        for name in self.child_widgets:
-            result[name] = self.child_widgets[name].get_value()
+        for name, widget in self.child_widgets.items():
+            result[name] = widget.get_value()
         return result
+
+    def set_value(self, config):
+        for name, widget in self.child_widgets.items():
+            widget.set_value(config[name])
 
 
 class ConfigGrandParentWidget(QtWidgets.QTabWidget):
@@ -261,6 +288,12 @@ class ConfigGrandParentWidget(QtWidgets.QTabWidget):
             name = name.replace('&', '')
             result[name] = widget.get_value()
         return result
+
+    def set_value(self, config):
+        for idx in range(self.count()):
+            name = self.tabText(idx)
+            widget = self.widget(idx)
+            widget.set_value(config[name])
 
 
 def ConfigCompoundWidget(config, **kwds):
@@ -281,13 +314,14 @@ config_widget = {
     }
 
 class ConfigDialog(QtWidgets.QDialog):
-    def __init__(self, config, notify, **kwds):
+    def __init__(self, component, **kwds):
         super(ConfigDialog, self).__init__(**kwds)
         self.setWindowFlags(self.windowFlags() |
                             QtCore.Qt.WindowType.WindowStaysOnTopHint)
-        self.notify = notify
+        self.component = component
         self.setLayout(QtWidgets.QVBoxLayout())
         # central area
+        config = self.component.obj.get_config()
         self.main_area = config_widget[type(config)](config)
         self.layout().addWidget(self.main_area)
         # buttons
@@ -305,7 +339,9 @@ class ConfigDialog(QtWidgets.QDialog):
     @catch_all
     def button_clicked(self, button):
         if button in (self.apply_button, self.close_button):
-            self.notify(self.main_area.get_value())
+            self.component.obj.set_config(self.main_area.get_value())
+        if button == self.apply_button:
+            self.main_area.set_value(self.component.obj.get_config())
         if button in (self.cancel_button, self.close_button):
             self.close()
 
@@ -721,13 +757,9 @@ class ComponentIcon(ComponentOutline):
             self.config_dialog.activateWindow()
         else:
             self.config_dialog = ConfigDialog(
-                self.obj.get_config(), self.new_config,
-                parent=self.scene().views()[0])
+                self, parent=self.scene().views()[0])
             self.config_dialog.setWindowTitle('%s configuration' % self.name)
             self.config_dialog.show()
-
-    def new_config(self, config):
-        self.obj.set_config(config)
 
     def regenerate(self):
         config = self.obj.get_config()

@@ -98,6 +98,7 @@ class ConfigLeafNode(object):
 
     """
     has_default = True  #: The node has a meaningful default value.
+    enabled = True      #: The node is currently enabled.
 
     def __new__(cls, value, **kwds):
         self = super(ConfigLeafNode, cls).__new__(cls, value)
@@ -117,7 +118,7 @@ class ConfigLeafNode(object):
         """Adjust the config item's value.
 
         """
-        return self.__class__(value, **self.__dict__)
+        return self.__class__(value, **vars(self))
 
     def copy(self):
         """Copy the config item's value.
