@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2016-20  Pyctools contributors
+#  Copyright (C) 2016-25  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -116,6 +116,10 @@ class GammaCorrect(Transformer):
 
     def on_set_config(self):
         self.initialised = False
+        self.update_config()
+        self.config['knee_point'].enabled = self.config['knee']
+        self.config['knee_slope'].enabled = self.config['knee']
+        self._shadow_config = None
 
     def adjust_params(self):
         self.initialised = True
