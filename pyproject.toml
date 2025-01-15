@@ -91,9 +91,10 @@ OpenGL = ["pyctools-core[PyOpenGL]"]
 PyOpenGL = ["PyOpenGL", "PyOpenGL-accelerate"]
 rawkit = ["rawkit"]
 rawpy = ["rawpy"]
+sane = ["python-sane"]
 SciPy = ["scipy"]
 # install everything except a Qt package
-all = ["pyctools-core[matplotlib,OpenCV,PyOpenGL,rawkit,rawpy,SciPy]"]
+all = ["pyctools-core[matplotlib,OpenCV,PyOpenGL,rawkit,rawpy,sane,SciPy]"]
 
 [project.urls]
 homepage = "https://github.com/jim-easterbrook/pyctools"
