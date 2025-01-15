@@ -208,10 +208,12 @@ class ConfigStrWidget(QtWidgets.QLineEdit):
 
 
 class ConfigEnumWidget(QtWidgets.QComboBox):
+    _type = str
+
     def __init__(self, config, **kwds):
         super(ConfigEnumWidget, self).__init__(**kwds)
         for item in config.choices:
-            self.addItem(item)
+            self.addItem(str(item))
         if config.extendable:
             self.addItem('<new>')
         self.set_value(config)
@@ -223,7 +225,7 @@ class ConfigEnumWidget(QtWidgets.QComboBox):
         value = str(self.itemText(idx))
         if value == '<new>':
             value, OK = QtWidgets.QInputDialog.getText(
-                self, 'New option', 'Please enter a new option text')
+                self, 'New option', 'Please enter a new option value')
             blocked = self.blockSignals(True)
             if OK:
                 value = str(value)
@@ -234,11 +236,15 @@ class ConfigEnumWidget(QtWidgets.QComboBox):
             self.blockSignals(blocked)
 
     def get_value(self):
-        return self.currentText()
+        return self._type(self.currentText())
 
     def set_value(self, config):
-        self.setCurrentIndex(self.findText(config))
+        self.setCurrentIndex(self.findText(str(config)))
         self.setEnabled(config.enabled)
+
+
+class ConfigIntEnumWidget(ConfigEnumWidget):
+    _type = int
 
 
 class ConfigParentWidget(QtWidgets.QWidget):
@@ -308,6 +314,7 @@ config_widget = {
     ConfigParent      : ConfigCompoundWidget,
     ConfigBool        : ConfigBoolWidget,
     ConfigInt         : ConfigIntWidget,
+    ConfigIntEnum     : ConfigIntEnumWidget,
     ConfigPath        : ConfigPathWidget,
     ConfigStr         : ConfigStrWidget,
     }

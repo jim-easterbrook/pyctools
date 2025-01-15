@@ -72,7 +72,9 @@ are applied together, some time after calling
    ConfigBool
    ConfigStr
    ConfigPath
+   ChoicesConfigLeafNode
    ConfigEnum
+   ConfigIntEnum
 
 """
 
@@ -269,16 +271,14 @@ class ConfigPath(ConfigStr):
         return {'metavar' : 'path'}
 
 
-class ConfigEnum(ConfigStr):
-    """'Enum' configuration node.
+class ChoicesConfigLeafNode(ConfigLeafNode):
+    """Configuration node with a list of choices.
 
-    The value can be one of a list of choices.
+    :param value: Initial (default) value of the node.
+    :type value: int or str or None
 
-    :param str value: Initial (default) value of the node.
-
-    :param list choices: a list of strings that are the possible
-        values of the config item. If value is unset the first in the
-        list is used.
+    :param list choices: a list of possible values of the config item.
+        If value is None the first in the list is used.
 
     :param bool extendable: The choices list be extended by setting new
         values.
@@ -296,11 +296,33 @@ class ConfigEnum(ConfigStr):
                 choices.append(value)
             else:
                 raise ValueError(str(value))
-        return super(ConfigEnum, cls).__new__(
+        return super(ChoicesConfigLeafNode, cls).__new__(
             cls, value, choices=choices, extendable=extendable, **kwds)
 
+
+class ConfigEnum(ChoicesConfigLeafNode, str):
+    """String 'enum' configuration node.
+
+    :param kwds: Any other node attributes. See base class for more
+        details.
+
+    """
     def _parser_kw(self):
         result = {'metavar' : 'str'}
+        if not self.extendable:
+            result['choices'] = self.choices
+        return result
+
+
+class ConfigIntEnum(ChoicesConfigLeafNode, int):
+    """Integer 'enum' configuration node.
+
+    :param kwds: Any other node attributes. See base class for more
+        details.
+
+    """
+    def _parser_kw(self):
+        result = {'type': int, 'metavar' : 'n'}
         if not self.extendable:
             result['choices'] = self.choices
         return result
