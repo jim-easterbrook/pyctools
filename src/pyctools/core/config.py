@@ -280,14 +280,14 @@ class ConfigEnum(ConfigStr):
         values of the config item. If value is unset the first in the
         list is used.
 
+    :param bool extendable: The choices list be extended by setting new
+        values.
+
     :param kwds: Any other node attributes. See base class for more
         details.
 
     """
-    #: The choices list be extended by setting new values.
-    extendable = False
-
-    def __new__(cls, value=None, choices=[], **kwds):
+    def __new__(cls, value=None, choices=[], extendable=False, **kwds):
         choices = list(choices)
         if choices and value is None:
             value = choices[0]
@@ -297,7 +297,7 @@ class ConfigEnum(ConfigStr):
             else:
                 raise ValueError(str(value))
         return super(ConfigEnum, cls).__new__(
-            cls, value, choices=choices, **kwds)
+            cls, value, choices=choices, extendable=extendable, **kwds)
 
     def _parser_kw(self):
         result = {'metavar' : 'str'}
