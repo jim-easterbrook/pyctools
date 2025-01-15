@@ -420,7 +420,8 @@ class ConfigParent(object):
         result = ''
         details = []
         for key, value in self._value.items():
-            if value.has_default and value == value.default:
+            if not value.enabled or (
+                    value.has_default and value == value.default):
                 continue
             details.append('{}: {!r}'.format(key, value))
             line = ', '.join(details)
