@@ -419,7 +419,8 @@ class ConfigParent(object):
     def to_dict(self):
         result = {}
         for key, value in self._value.items():
-            if value.has_default and value == value.default:
+            if not value.enabled or (
+                    value.has_default and value == value.default):
                 continue
             if isinstance(value, ConfigParent):
                 child_value = value.to_dict()
