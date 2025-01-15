@@ -7,4 +7,3 @@ rawpy==0.24.0
 opencv-python-headless==4.10.0.84
 scipy==1.15.0
 matplotlib==3.10.0
-python-sane==2.9.1

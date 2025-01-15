@@ -25,17 +25,18 @@ import sys
 
 if 'sphinx' in sys.modules:
     __all__ += ['SaneScanner']
+    sane = None
+else:
+    import sane
+    sane.init()
+    sane_types = dict((sane.TYPE_STR[x], x) for x in sane.TYPE_STR)
 
 import numpy
-import sane
 
 from pyctools.core.config import (
     ConfigBool, ConfigEnum, ConfigInt, ConfigIntEnum, ConfigStr)
 from pyctools.core.base import Component, InputBuffer
 from pyctools.core.frame import Frame
-
-
-sane_types = dict((sane.TYPE_STR[x], x) for x in sane.TYPE_STR)
 
 
 class ScannerFactory(object):
@@ -211,13 +212,13 @@ class SaneScanner(Component):
 
 
 # create class for each connected scanner
-sane.init()
-for (_name, _vendor, _model, _type) in sane.get_devices(localOnly=True):
-    _class_name = 'Sane_{vendor}_{model}'.format(
-        vendor = _vendor.title().replace(' ', ''),
-        model = _model.title().replace(' ', '')
-        )
-    _class = type(_class_name, (SaneScanner,), {
-        '__doc__': f'{_vendor} {_model} scanner.\n\n', '_name': _name})
-    setattr(sys.modules[__name__], _class_name, _class)
-    __all__.append(_class_name)
+if sane:
+    for (_name, _vendor, _model, _type) in sane.get_devices(localOnly=True):
+        _class_name = 'Sane_{vendor}_{model}'.format(
+            vendor = _vendor.title().replace(' ', ''),
+            model = _model.title().replace(' ', '')
+            )
+        _class = type(_class_name, (SaneScanner,), {
+            '__doc__': f'{_vendor} {_model} scanner.\n\n', '_name': _name})
+        setattr(sys.modules[__name__], _class_name, _class)
+        __all__.append(_class_name)
