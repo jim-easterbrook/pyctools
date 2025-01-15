@@ -141,9 +141,6 @@ class BoundedConfigLeafNode(ConfigLeafNode):
     :param max_value: Maximum permissible value.
     :type max_value: int or float
 
-    :param kwds: Any other node attributes. See base class for more
-        details.
-
     """
     #: The value changes to min_value when incremented beyond max_value
     # or *vice versa*.
@@ -163,9 +160,6 @@ class ConfigInt(BoundedConfigLeafNode, int):
 
     :param int value: Initial (default) value of the node.
 
-    :param kwds: Any other node attributes. See base class for more
-        details.
-
     """
     def __new__(cls, value=0, **kwds):
         return super(ConfigInt, cls).__new__(cls, value, **kwds)
@@ -180,9 +174,6 @@ class ConfigBool(ConfigLeafNode, int):
 
     :param value: Initial (default) value of the node.
     :type value: :py:obj:`object` or ``on`` or ``off``
-
-    :param kwds: Any other node attributes. See base class for more
-        details.
 
     """
     def __new__(cls, value=False, **kwds):
@@ -210,9 +201,6 @@ class ConfigFloat(BoundedConfigLeafNode, float):
 
     :param float value: Initial (default) value of the node.
 
-    :param kwds: Any other node attributes. See base class for more
-        details.
-
     """
     #: How many decimal places to use when displaying the value.
     decimals = 8
@@ -230,9 +218,6 @@ class ConfigStr(ConfigLeafNode, str):
 
     :param str value: Initial (default) value of the node.
 
-    :param kwds: Any other node attributes. See base class for more
-        details.
-
     """
 
     def __new__(cls, value='', **kwds):
@@ -249,9 +234,6 @@ class ConfigPath(ConfigStr):
     :param str value: Initial (default) value of the node.
 
     :param bool exists: If ``True``, value must be an existing file.
-
-    :param kwds: Any other node attributes. See base class for more
-        details.
 
     """
     def __new__(cls, value='', exists=True, **kwds):
@@ -275,16 +257,13 @@ class ChoicesConfigLeafNode(ConfigLeafNode):
     """Configuration node with a list of choices.
 
     :param value: Initial (default) value of the node.
-    :type value: int or str or None
+    :type value: int or str or :py:obj:`None`
 
     :param list choices: a list of possible values of the config item.
-        If value is None the first in the list is used.
+        If value is :py:obj:`None` the first in the list is used.
 
     :param bool extendable: The choices list be extended by setting new
         values.
-
-    :param kwds: Any other node attributes. See base class for more
-        details.
 
     """
     def __new__(cls, value=None, choices=[], extendable=False, **kwds):
@@ -303,9 +282,6 @@ class ChoicesConfigLeafNode(ConfigLeafNode):
 class ConfigEnum(ChoicesConfigLeafNode, str):
     """String 'enum' configuration node.
 
-    :param kwds: Any other node attributes. See base class for more
-        details.
-
     """
     def _parser_kw(self):
         result = {'metavar' : 'str'}
@@ -316,9 +292,6 @@ class ConfigEnum(ChoicesConfigLeafNode, str):
 
 class ConfigIntEnum(ChoicesConfigLeafNode, int):
     """Integer 'enum' configuration node.
-
-    :param kwds: Any other node attributes. See base class for more
-        details.
 
     """
     def _parser_kw(self):
