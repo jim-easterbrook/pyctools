@@ -91,7 +91,7 @@ _OUTPUT_MIMETYPE = 'application/x-pyctools-component-output'
 class ConfigPathWidget(QtWidgets.QPushButton):
     def __init__(self, config, **kwds):
         super(ConfigPathWidget, self).__init__(**kwds)
-        self.set_value(self.config)
+        self.set_value(config)
         self.clicked.connect(self.new_value)
 
     @QtSlot()
@@ -152,29 +152,34 @@ class ConfigBoolWidget(QtWidgets.QCheckBox):
 class ConfigIntWidget(QtWidgets.QSpinBox):
     def __init__(self, config, **kwds):
         super(ConfigIntWidget, self).__init__(**kwds)
-        self.config = config
-        if self.config.min_value is None:
-            self.setMinimum(-(2**31))
-        else:
-            self.setMinimum(self.config.min_value)
-        if self.config.max_value is None:
-            self.setMaximum((2**31)-1)
-        else:
-            self.setMaximum(self.config.max_value)
-        self.setWrapping(config.wrapping)
         self.set_value(config)
 
     def get_value(self):
         return self.value()
 
     def set_value(self, config):
-        self.setValue(self.config)
-        self.setEnabled(self.config.enabled)
+        if config.min_value is None:
+            self.setMinimum(-(2**31))
+        else:
+            self.setMinimum(config.min_value)
+        if config.max_value is None:
+            self.setMaximum((2**31)-1)
+        else:
+            self.setMaximum(config.max_value)
+        self.setWrapping(config.wrapping)
+        self.setValue(config)
+        self.setEnabled(config.enabled)
 
 
 class ConfigFloatWidget(QtWidgets.QDoubleSpinBox):
     def __init__(self, config, **kwds):
         super(ConfigFloatWidget, self).__init__(**kwds)
+        self.set_value(config)
+
+    def get_value(self):
+        return self.value()
+
+    def set_value(self, config):
         self.setDecimals(config.decimals)
         if config.min_value is None:
             self.setMinimum(-(2**31))
@@ -185,12 +190,6 @@ class ConfigFloatWidget(QtWidgets.QDoubleSpinBox):
         else:
             self.setMaximum(config.max_value)
         self.setWrapping(config.wrapping)
-        self.set_value(config)
-
-    def get_value(self):
-        return self.value()
-
-    def set_value(self, config):
         self.setValue(config)
         self.setEnabled(config.enabled)
 
