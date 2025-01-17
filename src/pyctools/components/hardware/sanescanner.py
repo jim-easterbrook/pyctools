@@ -25,11 +25,16 @@ import sys
 
 if 'sphinx' in sys.modules:
     __all__ += ['SaneScanner']
-    sane = None
-else:
+
+try:
     import sane
     sane.init()
     sane_types = dict((sane.TYPE_STR[x], x) for x in sane.TYPE_STR)
+except ImportError:
+    if 'sphinx' in sys.modules:
+        sane = None
+    else:
+        raise
 
 import numpy
 
