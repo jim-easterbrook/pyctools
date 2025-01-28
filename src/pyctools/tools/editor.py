@@ -64,7 +64,7 @@ import warnings
 import docutils.core
 
 import pyctools.components
-from pyctools.core.compound import Compound, RunnableNetwork
+from pyctools.core.compound import Compound
 from pyctools.core.config import *
 from pyctools.core.qt import (catch_all, execute, get_app, qt_package,
                               QtCore, QtGui, QtSlot, QtWidgets)
@@ -1099,7 +1099,7 @@ class NetworkArea(QtWidgets.QGraphicsScene):
             name, obj = child.regenerate()
             components[name] = obj
         gc.collect()
-        self.runnable = RunnableNetwork(
+        self.runnable = Compound(
             linkages=self.get_linkages(), **components)
         self.runnable.start()
 
