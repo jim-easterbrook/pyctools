@@ -309,9 +309,10 @@ def ConfigCompoundWidget(config, **kwds):
 
 
 config_widget = {
+    CompoundConfig    : ConfigCompoundWidget,
     ConfigEnum        : ConfigEnumWidget,
     ConfigFloat       : ConfigFloatWidget,
-    ConfigParent      : ConfigCompoundWidget,
+    ConfigParent      : ConfigParentWidget,
     ConfigBool        : ConfigBoolWidget,
     ConfigInt         : ConfigIntWidget,
     ConfigIntEnum     : ConfigIntEnumWidget,
@@ -631,14 +632,13 @@ class OutputIcon(IOIcon):
     link_mime_type = _INPUT_MIMETYPE
 
 
-py_class = re.compile(':py:class:`(~[\w\.]*\.)?(.*?)`')
 py_mod = re.compile(':py:mod:`\.*(\S*)(\s*<[\w\.]*>)?`')
-py_other = re.compile(':py:(data|func|meth|obj):`(.*?)`')
+py_other = re.compile(
+    ':py:(attr|class|data|func|meth|obj):`(~[\w\.]*\.)?(.*?)`')
 
 def strip_sphinx_domains(text):
-    text = py_class.sub(r'*\2*', text)
     text = py_mod.sub(r'*\1*', text)
-    text = py_other.sub(r'*\2*', text)
+    text = py_other.sub(r'*\3*', text)
     return text
 
 

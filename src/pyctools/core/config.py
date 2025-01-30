@@ -65,6 +65,7 @@ are applied together, some time after calling
 
    ConfigMixin
    ConfigParent
+   CompoundConfig
    ConfigLeafNode
    BoundedConfigLeafNode
    ConfigInt
@@ -304,25 +305,16 @@ class ConfigIntEnum(ChoicesConfigLeafNode, int):
 class ConfigParent(object):
     """Parent configuration node.
 
-    Stores a set of child nodes in a :py:class:`dict`. In a
-    :py:class:`~.compound.Compound` component the children are
-    themselves :py:class:`ConfigParent` nodes, allowing components to be
-    nested to any depth whilst making their configuration accessible
-    from the top level.
-
-    The ``config_map`` is used in :py:class:`~.compound.Compound`
-    components to allow multiple child components to be controlled by
-    one config value.
+    Stores a set of child nodes in a :py:class:`dict`.
 
     """
-    _attributes = ('_config_map', '_value', 'default', 'has_default')
+    _attributes = ('_value', 'default', 'has_default')
+    default = {}
+    has_default = True
 
-    def __init__(self, config_map={}):
+    def __init__(self):
         super(ConfigParent, self).__init__()
-        self._config_map = config_map
         self._value = {}
-        self.default = {}
-        self.has_default = True
 
     def __repr__(self):
         return repr(self._value)
@@ -339,23 +331,15 @@ class ConfigParent(object):
         super(ConfigParent, self).__setattr__(name, value)
 
     def __len__(self):
-        if self._config_map:
-            return len(self._config_map)
         return len(self._value)
 
     def __getitem__(self, key):
-        if key in self._config_map:
-            return self[self._config_map[key][0]]
         child, sep, grandchild = key.partition('.')
         if grandchild:
             return self[child][grandchild]
         return self._value[key]
 
     def __setitem__(self, key, value):
-        if key in self._config_map:
-            for item in self._config_map[key]:
-                self[item] = value
-            return
         if key in self._value:
             self._value[key] = self._value[key].update(value)
             return
@@ -372,10 +356,7 @@ class ConfigParent(object):
         logger.error('unknown config item: %s, %s', key, value)
 
     def __iter__(self):
-        if self._config_map:
-            yield from self._config_map
-        else:
-            yield from self._value
+        yield from self._value
 
     def items(self):
         for key in self:
@@ -471,9 +452,54 @@ class ConfigParent(object):
         return self
 
     def copy(self):
-        copy = self.__class__(config_map=self._config_map)
+        copy = self.__class__()
         for key, value in self._value.items():
             copy._value[key] = value.copy()
+        return copy
+
+
+class CompoundConfig(ConfigParent):
+    """Configuration node for ``Compound`` components.
+
+    Stores a set of :py:class:`ConfigParent` nodes in a
+    :py:class:`dict`. This allows components to be nested to any depth
+    whilst making their configuration accessible from the top level.
+
+    The ``config_map`` is used to allow multiple child components to be
+    controlled by one config value.
+
+    """
+    _attributes = ConfigParent._attributes + ('_config_map',)
+
+    def __init__(self, config_map={}):
+        super(CompoundConfig, self).__init__()
+        self._config_map = config_map
+
+    def __len__(self):
+        if self._config_map:
+            return len(self._config_map)
+        return super(CompoundConfig, self).__len__()
+
+    def __getitem__(self, key):
+        if key in self._config_map:
+            return self[self._config_map[key][0]]
+        return super(CompoundConfig, self).__getitem__(key)
+
+    def __setitem__(self, key, value):
+        if key in self._config_map:
+            for item in self._config_map[key]:
+                self[item] = value
+            return
+        super(CompoundConfig, self).__setitem__(key, value)
+
+    def __iter__(self):
+        if self._config_map:
+            return iter(self._config_map)
+        return super(CompoundConfig, self).__iter__()
+
+    def copy(self):
+        copy = super(CompoundConfig, self).copy()
+        copy._config_map = self._config_map
         return copy
 
 

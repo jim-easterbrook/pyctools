@@ -21,7 +21,7 @@ __docformat__ = 'restructuredtext en'
 
 import logging
 
-from .config import ConfigParent
+from .config import CompoundConfig
 
 
 class Compound(object):
@@ -67,8 +67,8 @@ class Compound(object):
     :py:attr:`~Compound.inputs` and :py:attr:`~Compound.outputs` lists.
 
     All the child components' configuration objects are gathered into
-    one :py:class:`~.config.ConfigParent`. The child names are used to
-    index the :py:class:`~.config.ConfigParent`'s dict. This allows
+    one :py:class:`~.config.CompoundConfig`. The child names are used to
+    index the :py:class:`~.config.CompoundConfig`'s dict. This allows
     access to any config item in any child::
 
         cfg = image_resizer.get_config()
@@ -82,7 +82,7 @@ class Compound(object):
         cfg.resize.ydown = 8
         image_resizer.set_config(cfg)
 
-    Compound components to be nested to any depth whilst still making
+    Compound components can be nested to any depth whilst still making
     their configuration available at the top level.
 
     The ``config_map`` allows multiple child components to be controlled
@@ -135,7 +135,7 @@ class Compound(object):
         # get child components
         self.children = kw
         # set config
-        self.config = ConfigParent(config_map=config_map)
+        self.config = CompoundConfig(config_map=config_map)
         for name, child in self.children.items():
             self.config[name] = child.get_config()
         self.config.update(config)
