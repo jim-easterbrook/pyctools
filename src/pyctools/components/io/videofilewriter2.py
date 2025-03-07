@@ -86,10 +86,12 @@ class VideoFileWriter2(Component):
         'FFV1'   : ['-c:v', 'ffv1', '-level', '3'],
         'H264'   : ['-c:v', 'libx264', '-qp', '0'],
         'H264rgb': ['-c:v', 'libx264rgb', '-qp', '0'],
+        'gif'    : ['-c:v', 'gif', '-vf', 'split[s],palettegen,[s]paletteuse',
+                    '-loop', '0'],
         }
 
     pix_fmts = ('rgb24', 'rgb48le', 'uyvy422', 'yuv422p', 'yuv422p10le',
-                'gray', 'gray16le')
+                'gray', 'gray16le', 'pal8')
 
     __doc__ = __doc__.format(
         ', '.join(["``'" + x + "'``"for x in codecs.keys()]),
