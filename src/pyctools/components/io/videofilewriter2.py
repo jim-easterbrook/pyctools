@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2020  Pyctools contributors
+#  Copyright (C) 2020-25  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -83,7 +83,7 @@ class VideoFileWriter2(Component):
 
     codecs = {
         'raw'    : ['-c:v', 'rawvideo', '-f', 'rawvideo'],
-        'FFV1'   : ['-c:v', 'ffv1'],
+        'FFV1'   : ['-c:v', 'ffv1', '-level', '3'],
         'H264'   : ['-c:v', 'libx264', '-qp', '0'],
         'H264rgb': ['-c:v', 'libx264rgb', '-qp', '0'],
         }
@@ -187,9 +187,9 @@ class VideoFileWriter2(Component):
         elif comps == 3:
             if out_fmt in ('rgb24', ):
                 bit16 = False
-                in_fmt = 'bgr24'
+                in_fmt = 'rgb24'
             else:
-                in_fmt = 'bgr48le'
+                in_fmt = 'rgb48le'
         else:
             if out_fmt in ('gray', ):
                 bit16 = False
