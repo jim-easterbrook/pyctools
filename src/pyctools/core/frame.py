@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-24  Pyctools contributors
+#  Copyright (C) 2014-25  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -482,7 +482,7 @@ class Metadata(object):
 
         """
         full_tag = 'Xmp.pyctools.' + tag
-        if value is None:
-            del self.xmp_data[full_tag]
-        else:
+        if value is not None:
             self.xmp_data[full_tag] = str(value)
+        elif full_tag in self.xmp_data:
+            del self.xmp_data[full_tag]
