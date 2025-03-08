@@ -43,7 +43,7 @@ class VideoFileWriter2(Component):
     "container" format, such as ``AVI`` or ``MOV``, is inferred from the
     file name extension. Not all codecs will work with all pixel
     formats, and FFmpeg supports many more pixel formats (and codecs)
-    that are available in :py:class:`VideoFileWriter2`. Let me know if
+    than are available in :py:class:`VideoFileWriter2`. Let me know if
     you have any particular requirements that are not already included.
 
     The ``raw`` and ``ffv1`` codecs are lossless, but look out for
@@ -60,7 +60,7 @@ class VideoFileWriter2(Component):
     ``path``     str  Path name of file to be written.
     ``input``    str  The input video format. Can be ``'RGB'``, ``'YUV'``, or ``'Y'``.
     ``codec``    str  Codec name. Possible values: {}.
-    ``pix_fmt``  str  Pixel format. Possible values: {}.
+    ``pix_fmt``  str  Pixel format. Use ``None`` to let ``ffmpeg`` decide. Possible values: {}.
     ``fps``      int  Video frame rate. Only affects how file is replayed.
     ===========  ===  ====
 
@@ -90,7 +90,7 @@ class VideoFileWriter2(Component):
                     '-loop', '0'],
         }
 
-    pix_fmts = ('rgb24', 'rgb48le', 'uyvy422', 'yuv422p', 'yuv422p10le',
+    pix_fmts = ('None', 'rgb24', 'rgb48le', 'uyvy422', 'yuv422p', 'yuv422p10le',
                 'gray', 'gray16le', 'pal8')
 
     __doc__ = __doc__.format(
@@ -142,6 +142,8 @@ class VideoFileWriter2(Component):
         input_ = self.config['input']
         codec = self.config['codec']
         out_fmt = self.config['pix_fmt']
+        if out_fmt == 'None':
+            out_fmt = None
         fps = self.config['fps']
         # if no UV input expected, create a dummy "static" frame
         if input_ != 'YUV':
@@ -198,7 +200,7 @@ class VideoFileWriter2(Component):
                 in_fmt = 'gray'
             else:
                 in_fmt = 'gray16le'
-        if in_fmt != out_fmt:
+        if out_fmt and in_fmt != out_fmt:
             self.logger.warning(
                 'Converting "%s" to "%s" in FFmpeg', in_fmt, out_fmt)
         # save metadata
@@ -220,17 +222,20 @@ class VideoFileWriter2(Component):
             in_name = 'multiplex(Y, UV)'
         else:
             in_name = 'data'
+        audit = '{} = {}\n'.format(os.path.basename(path), in_name)
+        if out_fmt:
+            audit += '    FFmpeg: {} -> {}\n'.format(in_fmt, out_fmt)
         metadata.set_audit(
-            self, '{} = {}\n    FFmpeg: {} -> {}\n'.format(
-                os.path.basename(path), in_name, in_fmt, out_fmt),
-            with_date=True, with_config=self.config)
+            self, audit, with_date=True, with_config=self.config)
         metadata.to_file(path)
         # save data
         cmd = ['ffmpeg', '-v', 'error', '-y', '-an',
                '-f', 'rawvideo', '-s', '{}x{}'.format(xlen, ylen),
                '-r', '{}'.format(fps), '-pix_fmt', in_fmt, '-i', '-']
         cmd += self.codecs[codec]
-        cmd += ['-r', '{}'.format(fps), '-pix_fmt', out_fmt, path]
+        if out_fmt:
+            cmd += ['-pix_fmt', out_fmt]
+        cmd += ['-r', '{}'.format(fps), path]
         with self.subprocess(cmd, stdin=subprocess.PIPE) as sp:
             while True:
                 if bit16:
