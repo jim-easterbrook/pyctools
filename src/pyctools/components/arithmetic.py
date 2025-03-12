@@ -1,6 +1,6 @@
 #  Pyctools - a picture processing algorithm development kit.
 #  http://github.com/jim-easterbrook/pyctools
-#  Copyright (C) 2014-20  Pyctools contributors
+#  Copyright (C) 2014-25  Pyctools contributors
 #
 #  This program is free software: you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as
@@ -16,12 +16,12 @@
 #  along with this program.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
-__all__ = ['Arithmetic', 'Arithmetic2']
+__all__ = ['Arithmetic', 'Arithmetic2', 'Script0', 'Script']
 __docformat__ = 'restructuredtext en'
 
 import numpy
 
-from pyctools.core.config import ConfigStr
+from pyctools.core.config import ConfigEnum, ConfigInt, ConfigStr
 from pyctools.core.base import Component, Transformer
 from pyctools.core.types import pt_float, pt_complex
 
@@ -90,3 +90,88 @@ class Arithmetic2(Component):
         out_frame.merge_audit({'data1': in_frame1, 'data2': in_frame2})
         out_frame.set_audit(self, 'data = {}\n'.format(func))
         self.send('output', out_frame)
+
+
+class Script0(Component):
+    """Generate image data with a short script.
+
+    Runs a user supplied Python script to generate each frame. To set
+    the script, set the component's ``script`` config to a suitable
+    string expression, using semicolons to separate lines. The output
+    data should appear in your expression as the word ``data``.
+
+    For example, to generate moving vertical stripes you could do this::
+
+        stripes = Script(
+            script='x=numpy.mgrid[0:480];x=(x+out_frame.frame_no)%26;data=numpy.where(x.reshape(1,-1,1)>=13,numpy.full((360,480,3),220),40)',
+            zlen=26, looping='repeat')
+        ...
+        pipeline(stripes, ...)
+
+    """
+
+    inputs = []
+
+    def initialise(self):
+        self.config['script'] = ConfigStr()
+        self.config['zlen'] = ConfigInt(value=100, min_value=1)
+        self.config['looping'] = ConfigEnum(choices=('off', 'repeat'))
+        self.frame_no = 0
+
+    def process_frame(self):
+        self.update_config()
+        script = self.config['script']
+        zlen = self.config['zlen']
+        if self.frame_no >= zlen and self.config['looping'] == 'off':
+            self.stop()
+            return
+        out_frame = self.outframe_pool['output'].get()
+        out_frame.frame_no = self.frame_no
+        self.frame_no += 1
+        locals_ = dict(locals())
+        exec(script, globals(), locals_)
+        out_frame.data = locals_['data']
+        out_frame.set_audit(
+            self, 'script:' + '\n    '.join(script.split(';')) + '\n')
+        if out_frame.data.shape[-1] == 1:
+            out_frame.type = 'Y'
+        elif out_frame.data.shape[-1] == 3:
+            out_frame.type = 'RGB'
+        elif out_frame.data.shape[-1] == 2:
+            out_frame.type = 'UV'
+        else:
+            out_frame.type = '???'
+        self.send('output', out_frame)
+
+
+class Script(Transformer):
+    """Run a short script on image data.
+
+    Applies a user supplied Python script to each frame. To set the
+    script, set the component's ``script`` config to a suitable string
+    expression, using semicolons to separate lines. The input data
+    should appear in your expression as the word ``data``. Do not modify
+    the data in place, but make a copy with the result of your script.
+
+    For example, to paste a block of red into an image you could do this::
+
+        patch = Script(
+            script='data=data.copy();data[100:115,100:120,:]=[255,0,0]')
+        ...
+        pipeline(..., patch, ...)
+
+    """
+
+    def initialise(self):
+        self.config['script'] = ConfigStr()
+
+    def transform(self, in_frame, out_frame):
+        self.update_config()
+        script = self.config['script']
+        data = in_frame.as_numpy()
+        locals_ = dict(locals())
+        exec(script, globals(), locals_)
+        out_frame.data = locals_['data']
+        out_frame.set_audit(
+            self, 'script:' + '\n    '.join(script.split(';')) + '\n')
+        return True
